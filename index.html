@@ -620,8 +620,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v139';
-const GAME_CHANGES='Kirtiklio poza ištaisyta — kaulų ašys išmatuotos iš GLB, o ne spėtos: rankas kelia Z ašis, ne X. Ta pati klaida ištaisyta ir Perkūno smūgio pozoje';
+const GAME_VERSION='v140';
+const GAME_CHANGES='Kirtimas dabar lenkiasi pirmyn (buvau apvertęs kryptį) ir rankos suglaustos ant koto; Gyvasties versmė gavo animaciją; Perkūno ranka nusileidžia priekyje; rinkimas nutrūksta paėjus, o meditacija nebenuima taikinio';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2669,7 +2669,8 @@ function cacheGltfBones(model){
     'pinky_01_r','pinky_02_r','pinky_03_r',
     /* v138: KAIRĖ ranka ir žemesnis stuburas — reikalinga dviem rankomis
        atliekamai kirtiklio (rūdos kasimo) pozai, žr. poseMining(). */
-    'clavicle_l','upperarm_l','lowerarm_l','hand_l','spine_01','spine_02'];
+    'clavicle_l','upperarm_l','lowerarm_l','hand_l','spine_01','spine_02',
+    'Head'];   // v140: galva — Gyvasties versmės pozai
   let found=0;
   for(const n of names){
     const b=model.getObjectByName(n);
@@ -2714,39 +2715,74 @@ function poseThunderFingers(curl){
   if(curl<.02) return;      // v95: NIEKADA nesiekti curl≈0 — tai bind poza (pirštai ištiesti keistai)
   for(const [name,amt] of GLTF_THUNDER_FINGERS) poseBone(name,amt*curl,0,0);
 }
-function poseThunderArm(raise){          // 0 — nuleista, 1 — pakelta į viršų
-  /* v95: NIEKADA nesiekti raise≈0 — bind poza šiam manekenui yra T poza
-     (rankos ištiestos į šonus), tad "nulinė" poza atrodo kaip staigus
-     trūktelėjimas į T. Kai raise nusileidžia žemai, tiesiog PALIEKAM kaulus
-     ramybėje — mikserio idle/walk klipas jau juos valdo (žr. iškvietimo
-     vietą updateThunderCastPose()) ir švelniai perima kontrolę pats. */
-  if(raise<.02) return;
-  /* v139: ašys PAGALIAU IŠMATUOTOS (žr. poseMining ir ISTORIJA.md v139) —
-     ligšiolinis spėjimas buvo klaidingas: X ašis rankos NEKELIA, ji suka
-     pirmyn/atgal. Kėlimas yra Z (dešinei −Z aukštyn). Tad ši poza iki šiol
-     ne kėlė ranką į dangų, o mojavo ja pirmyn/atgal. Dabar teisinga. */
-  poseBone('spine_03',.06*raise,0,0);          // truputį atsilošia (+X = atgal)
-  poseBone('clavicle_r',-.06*raise,0,0);
-  poseBone('upperarm_r',-.25*raise,0,-1.55*raise);   // Z = kėlimas į dangų
-  poseBone('lowerarm_r',0,0,-.35*raise);
-}
 const easeOutCubic=x=>1-Math.pow(1-x,3);
-function updateThunderCastPose(){
+/* v140: viena ranka. side: 1 = dešinė, −1 = kairė. Kairei Z ženklas
+   apverčiamas (veidrodis — žr. poseBonePair), X lieka toks pat. */
+function poseArmSide(side,P,w){
+  const s=side>0?'_r':'_l';
+  poseBoneBlend('upperarm'+s,P.x,0,P.z*side,w);
+  poseBoneBlend('lowerarm'+s,P.elX,0,P.elZ*side,w);
+}
+function poseArmSideLerp(side,A,B,t,w){
+  poseArmSide(side,{x:mlerp(A.x,B.x,t),z:mlerp(A.z,B.z,t),
+    elX:mlerp(A.elX,B.elX,t),elZ:mlerp(A.elZ,B.elZ,t)},w);
+}
+/* Kairės rankos „palydinti" poza Perkūno metu — kad nejudėtų tik dešinė
+   (vartotojo pastaba v140). Truputį atitraukta ir sulenkta, ne T pozoje. */
+const ARM_ASIDE={x:.25, z:.95, elX:0, elZ:-.40};
+/* ============ v140: BURTŲ POZOS ANT GLB MODELIO ============
+   Pastaba ateičiai: ACTS_BASE įgūdžiai (ANIMS/MOVES) animuoja SENĄJĮ
+   procedūrinį kūną, kuris nuo v91 yra NEMATOMAS — todėl jų judesiai ant GLB
+   personažo nesimato. Kad burtas turėtų matomą animaciją, jam reikia pozos
+   ČIA. Kol kas padaryti du: „thunder" (Perkūno smūgis) ir „heal" (Gyvasties
+   versmė). Kitiems — pridėti analogiškai. */
+function updateSpellPose(){
   if(!playerGltfModel) return;
   const A=player.act;
-  if(!(A&&A.d&&A.d.k==='thunder')) return;   // tik šiam burtui kol kas
-  if(A.phase==='cast'){
-    const p=easeOutCubic(clamp(A.t/A.castT,0,1));
-    const wobble=Math.sin(A.t*18)*.05*p;      // energijos virpėjimas beriejant
-    poseThunderArm(p);
-    poseBone('hand_r',.3*p+wobble,0,.1*p);
-    poseThunderFingers(.9*p);                 // pirštai palengva užsičiaupia
-  }else if(A.phase==='release'){
-    const p2=clamp(A.t/A.d.dur,0,1);
-    const snap=1-Math.pow(1-p2,4);            // greitas smūgio pojūtis
-    poseThunderArm(1-snap);
-    poseBone('hand_r',.3-.8*snap,0,.1-.1*snap);
-    poseThunderFingers(Math.max(0,.9*(1-Math.min(1,p2*3.2))));  // greitai atsiveria
+  if(!(A&&A.d)) return;
+  const k=A.d.k;
+  if(k==='thunder'){
+    if(A.phase==='cast'){
+      const p=easeOutCubic(clamp(A.t/A.castT,0,1));
+      const w=Math.min(1,A.t/.18);
+      const wobble=Math.sin(A.t*18)*.05*p;    // energijos virpėjimas beriant
+      poseArmSideLerp(1,ARM_REST,ARM_UP,p,w);          // dešinė kyla į dangų
+      poseArmSideLerp(-1,ARM_REST,ARM_ASIDE,p,w*.8);   // kairė palydi
+      poseBoneBlend('spine_03',-.10*p,0,0,w);          // truputį atsilošia (−X = atgal)
+      poseBone('hand_r',.3*p+wobble,0,.1*p);
+      poseThunderFingers(.9*p);               // pirštai palengva užsičiaupia
+    }else if(A.phase==='release'){
+      const p2=clamp(A.t/A.d.dur,0,1);
+      const snap=1-Math.pow(1-p2,4);          // greitas smūgio pojūtis
+      /* v140: vartotojas prašė, kad po burto ranka nusileistų PRIEKYJE, ne
+         šonu. Todėl leidžiama ne atgal į ARM_REST (šonas), o į ARM_HIT —
+         žemai PRIEKYJE (ta pati poza, kur baigiasi kirtiklio smūgis).
+         Svoris gale nublanksta, tad iš ten ranką sklandžiai perima idle. */
+      const w=Math.min(1,(1-p2)/.30);
+      poseArmSideLerp(1,ARM_UP,ARM_HIT,snap,w);
+      poseArmSideLerp(-1,ARM_ASIDE,ARM_REST,snap,w*.8);
+      poseBoneBlend('spine_03',-.10*(1-snap)+.14*snap,0,0,w);   // atgal → pirmyn
+      poseBone('hand_r',.3-.8*snap,0,.1-.1*snap);
+      poseThunderFingers(Math.max(0,.9*(1-Math.min(1,p2*3.2)))); // greitai atsiveria
+    }
+  }else if(k==='heal'){
+    /* Gyvasties (vandens) versmė: delnai suglaudžiami prie krūtinės, tada
+       atsiveria aukštyn — iš jų ir trykšta versmė. */
+    if(A.phase==='cast'){
+      const p=easeOutCubic(clamp(A.t/A.castT,0,1));
+      const w=Math.min(1,A.t/.20);
+      const breathe=Math.sin(A.t*4.5)*.04*p;
+      applyArmPose(ARM_REST,ARM_PRAY,p,w);
+      poseBoneBlend('spine_02',.10*p+breathe,0,0,w);
+      poseBoneBlend('Head',.18*p,0,0,w*.8);      // galva palenkta prie delnų
+    }else if(A.phase==='release'){
+      const p2=clamp(A.t/A.d.dur,0,1);
+      const t=easeOutCubic(p2);
+      const w=Math.min(1,(1-p2)/.30);
+      applyArmPose(ARM_PRAY,ARM_OPEN,t,w);       // delnai atsiveria aukštyn
+      poseBoneBlend('spine_02',.10*(1-t)-.12*t,0,0,w);
+      poseBoneBlend('Head',.18*(1-t)-.20*t,0,0,w*.8);  // galva pakyla į viršų
+    }
   }
 }
 /* ============ v138: RŪDOS KASIMO POZA KIRTIKLIU (sukurta, ne iš paketo) ======
@@ -2763,53 +2799,64 @@ function updateThunderCastPose(){
    judesio logiką. Kampai radianais, delta nuo bind (T) pozos. Kėlimo ašis (X)
    PATIKRINTA veikianti (ja remiasi v95 Perkūno poza); Y/Z — smulkūs
    pataisymai, kad rankos susivestų prieš kūną, o ne kabotų šonuose. */
-/* v139 AŠYS IŠMATUOTOS, NE SPĖTOS (v138 jos buvo sumaišytos — vartotojas:
-   „rankos mostai eina nuo krūtinės į šonus"). Priežastis: rėmiausi v95
-   Perkūno pozos prielaida, kuri PAČIAME kode pažymėta kaip niekada
-   nepatikrinta. Dabar kiekviena ašis nustatyta sukant kaulą .glb faile ir
-   žiūrint, KUR pasaulyje nukeliauja plaštaka (žr. ISTORIJA.md v139):
-     personažas žiūri −Z; dešinė ranka −X pusėje; galva y≈1,57
-     upperarm  Z = KĖLIMAS      (dešinei −Z aukštyn, kairei veidrodžiu +Z)
-     upperarm  X = pirmyn/atgal (−X pirmyn) — ABIEM rankom TAS PATS ženklas
-     lowerarm  Z = alkūnė       (−Z lenkia plaštaką aukštyn)
-     spine     X = palinkimas   (−X pirmyn, +X atgal)
-   Pozos taip pat parinktos iš tikrų matavimų, ne iš akies:
-     virš galvos: rx −0,50  rz −1,50  alkūnė −0,80  → plaštaka (−0,05, 1,92, 0,02)
-                  t. y. beveik ties kūno ašimi ir virš galvos — abi rankos susieina
-     smūgis:      rx −1,25  rz +0,90  alkūnė −0,05  → plaštaka (−0,31, 1,02, −0,40)
-                  t. y. žemai ir priekyje, ties žemėje gulinčiu daiktu
-   Jei vis tiek atrodys ne taip — keisti TIK šiuos skaičius. */
+/* ===== v140: KAULŲ AŠYS IR KRYPTIS — GALUTINAI IŠMATUOTOS =====
+   v139 ašis nustačiau teisingai, BET kryptį (kur personažas žiūri) —
+   apverstą: skaičiuodamas vektorinę sandaugą supainiojau eiliškumą ir
+   nusprendžiau, kad žiūri −Z. Vartotojas pastebėjo pasekmę: „personažas
+   lošiasi atgal, ne į priekį". Dabar kryptis nustatyta NEGINČIJAMAI —
+   pagal pirštų kaulą, kuris visada yra pėdos PRIEKYJE:
+     foot_r z=−0,036  ball_r (pirštai) z=+0,113  ⇒ personažas žiūri +Z.
+   TAIGI GALUTINAI (visa tai patikrinta sukant kaulą .glb faile ir žiūrint,
+   kur pasaulyje nukeliauja plaštaka — žr. ISTORIJA.md v140):
+     upperarm  Z = KĖLIMAS      (dešinei −Z aukštyn; kairei veidrodžiu +Z)
+     upperarm  X = pirmyn/atgal (+X PIRMYN) — abiem rankom TAS PATS ženklas
+     lowerarm  Z = alkūnė (−Z kelia plaštaką), X = smulkus pasukimas
+     spine     X = palinkimas   (+X PIRMYN, −X atgal)
+   Bendros rankų pozos (tinka ir kirtimui, ir burtams). Reikšmės parinktos
+   tinklelio paieška .glb faile — ieškant MAŽIAUSIO tarpo tarp plaštakų,
+   kad rankos tikrai susiglaustų kaip ant koto: */
+const ARM_REST={x: .15, z: 1.30, elX:   0, elZ:-.15};  // nuleistos, arti idle
+const ARM_UP  ={x: .30, z:-1.60, elX:-.20, elZ:-.80};  // virš galvos, plaštakos
+                                                       // y=1,90, TARPAS=0,00
+const ARM_HIT ={x:1.80, z:  .80, elX:   0, elZ:   0};  // žemai priekyje,
+                                                       // y=1,05, priekyje=0,31
+const ARM_PRAY={x:2.00, z:  .80, elX:   0, elZ:-.80};  // delnai kartu prie
+                                                       // krūtinės, TARPAS=0,00
+const ARM_OPEN={x: .55, z:-1.00, elX:   0, elZ:-.10};  // atsivėrusios aukštyn
 const MINE_POSE={
-  restX:-.15, restZ: 1.30, restElbow:-.15,   // rankos nuleistos (arti idle)
-  upX:  -.50, upZ:  -1.50, upElbow:  -.80,   // užsimota virš galvos
-  hitX: -1.25, hitZ:   .90, hitElbow: -.05,  // kirtis žemyn priekyje
-  leanBack: .12,    // liemuo atgal užsimojant (+X = atgal)
-  leanFwd: -.45,    // liemuo pirmyn kertant  (−X = pirmyn)
-  clav:    -.10     // pečiai truputį pirmyn
+  leanBack:-.12,   // liemuo atgal užsimojant (−X = atgal)
+  leanFwd:  .45,   // liemuo PIRMYN kertant   (+X = pirmyn)
+  clav:     .10    // pečiai truputį pirmyn
 };
 const mlerp=(a,b,t)=>a+(b-a)*t;
+/* Suinterpoliuoja dvi rankų pozas ir uždeda jas ant ABIEJŲ rankų. */
+function applyArmPose(A,B,t,w,pairs){
+  const x=mlerp(A.x,B.x,t), z=mlerp(A.z,B.z,t);
+  const ex=mlerp(A.elX,B.elX,t), ez=mlerp(A.elZ,B.elZ,t);
+  if(pairs===false){                     // tik dešinė (vienarankiai burtai)
+    poseBoneBlend('upperarm_r',x,0,z,w);
+    poseBoneBlend('lowerarm_r',ex,0,ez,w);
+  }else{
+    poseBonePair('upperarm',x,0,z,w);
+    poseBonePair('lowerarm',ex,0,ez,w);
+  }
+}
 function poseMining(p){
   const M=MINE_POSE;
-  let ax,az,elbow,lean;
+  let A,B,t,lean;
   if(p<.38){                       // UŽSIMOJIMAS — tolygus, be skubos
-    const t=easeOutCubic(p/.38);
-    ax=mlerp(M.restX,M.upX,t); az=mlerp(M.restZ,M.upZ,t);
-    elbow=mlerp(M.restElbow,M.upElbow,t); lean=M.leanBack*t;
+    A=ARM_REST; B=ARM_UP; t=easeOutCubic(p/.38); lean=M.leanBack*t;
   }else if(p<.58){                 // SMŪGIS — staigus, greitėjantis
-    const t=Math.pow((p-.38)/.20,.65);
-    ax=mlerp(M.upX,M.hitX,t); az=mlerp(M.upZ,M.hitZ,t);
-    elbow=mlerp(M.upElbow,M.hitElbow,t); lean=mlerp(M.leanBack,M.leanFwd,t);
+    A=ARM_UP; B=ARM_HIT; t=Math.pow((p-.38)/.20,.65);
+    lean=mlerp(M.leanBack,M.leanFwd,t);
   }else{                           // ATSITIESIMAS
-    const t=easeOutCubic((p-.58)/.42);
-    ax=mlerp(M.hitX,M.restX,t); az=mlerp(M.hitZ,M.restZ,t);
-    elbow=mlerp(M.hitElbow,M.restElbow,t); lean=M.leanFwd*(1-t);
+    A=ARM_HIT; B=ARM_REST; t=easeOutCubic((p-.58)/.42); lean=M.leanFwd*(1-t);
   }
   /* svoris: švelniai ateina ir švelniai atsitraukia, kad nebūtų trūktelėjimo
      iš/į mikserio grojamą idle klipą (žr. poseBoneBlend paaiškinimą) */
   const w=Math.min(1,p/.12,(1-p)/.18);
   if(w<=0) return;
-  poseBonePair('upperarm',ax,0,az,w);      // X pirmyn/atgal, Z kėlimas
-  poseBonePair('lowerarm',0,0,elbow,w);    // alkūnė — irgi Z
+  applyArmPose(A,B,t,w);
   poseBonePair('clavicle',M.clav,0,0,w);
   poseBoneBlend('spine_01',lean*.30,0,0,w);
   poseBoneBlend('spine_02',lean*.34,0,0,w);
@@ -4343,7 +4390,10 @@ function toggleMeditate(){
     log(T('fullOfEnergy'),'lg-s'); return;
   }
   player.meditating=true;
-  player.targetId=null;
+  /* v140: taikinys PALIEKAMAS (vartotojo prašymu) — anksčiau meditacija jį
+     nuimdavo, tad atsigavus reikėdavo iš naujo žymėtis priešą. Pats puolimas
+     vis tiek neprasidės, nes autoAtk lieka išjungtas, o smūgis meditaciją
+     nutraukia (žr. hurtPlayer). */
   player.obj.userData.act={a:'meditate',t:0,dur:9999};
   log(T('startMeditating'),'lg-s'); sfx('cast');
   updateSkillBar();
@@ -6969,6 +7019,12 @@ function updatePlayer(dt){
        (ar tik atleidus svirtį) personažas pats grįždavo prie taikinio. */
     player.approach=false;
     player.autoAtk=false;                 // v104: ir patį puolimą
+    /* v140: rinkimui — TA PATI taisyklė kaip kovai (vartotojo prašymu):
+       paėjus, veiksmas nutrūksta, BET taikinys/žymėjimas lieka. Nuo v138
+       rinkimas kartojasi savaime (5 kirtimai), tad be šito paėjus ir vėl
+       sustojus personažas pats vėl imdavo kirsti. player.targetId ČIA
+       SĄMONINGAI neliečiamas — priešo žymėjimas turi išlikti. */
+    player.gatherId=null;
     const s=Math.sin(cam.yaw), c=Math.cos(cam.yaw);
     dir.set(kx*c+kz*s,0,kz*c-kx*s);
     if(dir.lengthSq()>1) dir.normalize();
@@ -7569,7 +7625,7 @@ function frame(now){
     }
   }
   for(const A of ENEMY_GLB) A.mixer.update(dt);
-  updateThunderCastPose();
+  updateSpellPose();             // v140: buvo updateThunderCastPose — dabar ir „heal"
   updateMiningPose(dt);          // v138: kirtiklio poza — irgi PO mikserio
   for(const mx of CATALOG_MIXERS) mx.update(dt);
   for(const ct of CATALOG_TAGS) placeTag(ct.tag,ct.x,ct.y,ct.z,60);

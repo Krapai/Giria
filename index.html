@@ -620,8 +620,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v137';
-const GAME_CHANGES='Prasmegimas išspręstas: šio skeleto kaulų vertikalė yra Z, ne Y — senasis šaknies šalinimas naikino pelvio vertikalę. Dabar liečiamas TIK „root" mazgas, kaip pas manekenus. Taip pat ištaisyta kritinių smūgių klaida';
+const GAME_VERSION='v138';
+const GAME_CHANGES='Medžiui ir titnagui reikia 5 kirtimų (matosi mažėjantis šaltinis); kirtimas/kasimas/skynimas turi savo animacijas — titnagui sukurta nauja kirtiklio poza abiem rankomis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2575,7 +2575,7 @@ const GLB_URL_UAL1='https://ggaf.online/UAL1_Standard_RM.glb';
    kuris rodomas ant manekeno galvos), nes .glb failo šiame pokalbyje neturėjau
    ir tikslių klipų vardų nežinau: klipas = gltf.animations[nr-1].
    JEI KADA PASIKEIS GLB (kita klipų tvarka) — čia vienintelė vieta taisyti. */
-const A_NO={dummyIdle:1, death:8, revive:17, wolfA:18, wolfB:19, atk3:23, chop:38};
+const A_NO={dummyIdle:1, death:8, revive:17, wolfA:18, wolfB:19, atk3:23, chop:38, herb:5};
 /* v135: vartotojo prašymu — TRYS klipai imami iš ANTRO paketo (UAL1_Standard_RM,
    žr. GLB_URL_UAL1), ne iš žaidėjo paties UAL2. Numeriai — kaip katalogo
    galvos žymėse (1-based). Kryžminis retargetinimas veikia, nes abu paketai
@@ -2666,7 +2666,10 @@ function cacheGltfBones(model){
   const names=['clavicle_r','upperarm_r','lowerarm_r','hand_r','spine_03',
     'thumb_01_r','thumb_02_r','thumb_03_r','index_01_r','index_02_r','index_03_r',
     'middle_01_r','middle_02_r','middle_03_r','ring_01_r','ring_02_r','ring_03_r',
-    'pinky_01_r','pinky_02_r','pinky_03_r'];
+    'pinky_01_r','pinky_02_r','pinky_03_r',
+    /* v138: KAIRĖ ranka ir žemesnis stuburas — reikalinga dviem rankomis
+       atliekamai kirtiklio (rūdos kasimo) pozai, žr. poseMining(). */
+    'clavicle_l','upperarm_l','lowerarm_l','hand_l','spine_01','spine_02'];
   let found=0;
   for(const n of names){
     const b=model.getObjectByName(n);
@@ -2674,11 +2677,32 @@ function cacheGltfBones(model){
   }
   log(T('thunderPoseFound')+found+'/'+names.length+T('thunderPoseEnd'),'lg-s');
 }
-const _pbQ=new THREE.Quaternion(), _pbE=new THREE.Euler();
+const _pbQ=new THREE.Quaternion(), _pbE=new THREE.Euler(), _pbQ2=new THREE.Quaternion();
 function poseBone(name,x,y,z){
   const b=GLTF_BONES[name]; if(!b) return;
   _pbE.set(x,y,z,'XYZ'); _pbQ.setFromEuler(_pbE);
   b.quaternion.copy(GLTF_BIND_Q[name]).multiply(_pbQ);
+}
+/* v138: tas pats, tik SUMAIŠOMA su tuo, ką šiame kadre jau parašė mikseris
+   (idle/ėjimo klipas), pagal svorį w (0 = vien mikseris, 1 = vien mūsų poza).
+   Kodėl to reikia: bind poza šiam modeliui yra T poza (rankos į šonus, žr.
+   v95), tad „nulinė delta" NĖRA rami poza — atleidus pozą staigiai
+   truktelėtų į T. Slerp'inant nuo mikserio pozos to nebelieka: poza švelniai
+   ateina ir švelniai atsitraukia, o tarpuose kaulus valdo įprastas klipas. */
+function poseBoneBlend(name,x,y,z,w){
+  const b=GLTF_BONES[name]; if(!b||w<=0) return;
+  _pbE.set(x,y,z,'XYZ'); _pbQ.setFromEuler(_pbE);
+  _pbQ2.copy(GLTF_BIND_Q[name]).multiply(_pbQ);
+  b.quaternion.slerp(_pbQ2,Math.min(1,w));
+}
+/* v138: veidrodinė pora. IŠMATUOTA iš .glb (nuokrypis lygiai 0,0000, žr.
+   ISTORIJA.md v138): kairio kaulo bind kvaternionas = dešinio (x, −y, −z, w).
+   Vadinasi, vietinė X ašis abiem pusėm ta pati, o Y ir Z apverstos — todėl
+   ta pati delta (rx, ry, rz) kairėje duoda veidrodinį judesį kaip
+   (rx, −ry, −rz). Taigi kėlimas aukštyn (X) abiem rankom TO PATIES ženklo. */
+function poseBonePair(base,x,y,z,w){
+  poseBoneBlend(base+'_r',x, y, z,w);
+  poseBoneBlend(base+'_l',x,-y,-z,w);
 }
 const GLTF_THUNDER_FINGERS=[
   ['thumb_01_r',.5],['thumb_02_r',.7],['thumb_03_r',.8],
@@ -2725,6 +2749,64 @@ function updateThunderCastPose(){
     poseBone('hand_r',.3-.8*snap,0,.1-.1*snap);
     poseThunderFingers(Math.max(0,.9*(1-Math.min(1,p2*3.2))));  // greitai atsiveria
   }
+}
+/* ============ v138: RŪDOS KASIMO POZA KIRTIKLIU (sukurta, ne iš paketo) ======
+   Pakete tokios animacijos nėra (patikrinta — UAL1 43 klipai, UAL2 katalogas),
+   tad ji sudėliota kaulais, ta pačia technika kaip Perkūno smūgio poza (v93).
+   Vartotojo užsakymas: „panašiai kaip medienos kirtimas, tik abiem rankom, iš
+   viršaus į apačią ant žemėje esančio daikto".
+   Judesio eiga (p — eiga 0..1):
+     0,00–0,38  UŽSIMOJIMAS: abi rankos kyla virš galvos, liemuo atsilošia
+     0,38–0,58  SMŪGIS:      greitas kirtis žemyn, liemuo palinksta pirmyn
+     0,58–1,00  ATSITIESIMAS: rankos ir liemuo grįžta prie ramios pozos
+   VISI kampai — derinami konstantos apačioje. Jei atrodys ne taip (rankos per
+   plačiai, per mažai palinksta ir pan.) — keisti TIK šiuos skaičius, ne
+   judesio logiką. Kampai radianais, delta nuo bind (T) pozos. Kėlimo ašis (X)
+   PATIKRINTA veikianti (ja remiasi v95 Perkūno poza); Y/Z — smulkūs
+   pataisymai, kad rankos susivestų prieš kūną, o ne kabotų šonuose. */
+const MINE_POSE={
+  raise:1.55,    // kiek pakeliamos rankos užsimojant (X — pagrindinė ašis)
+  down:-.30,     // kiek nuleidžiamos smūgio pabaigoje (žemiau horizonto)
+  inY:.30, inZ:.42,  // rankų suvedimas prieš kūną (kad laikytų kotą kartu)
+  elbowUp:1.05,  // alkūnių sulenkimas užsimojant (kirtiklis už galvos)
+  elbowHit:.15,  // alkūnės beveik ištiestos smūgio momentu
+  leanBack:-.20, // liemens atsilošimas užsimojant
+  leanFwd:.50,   // liemens palinkimas pirmyn kertant (pasidalina 3 slanksteliams)
+  clav:.16       // pečių pakėlimas
+};
+function poseMining(p){
+  let arm,elbow,lean;
+  if(p<.38){                       // užsimojimas — tolygus, be skubos
+    const t=easeOutCubic(p/.38);
+    arm=MINE_POSE.raise*t; elbow=MINE_POSE.elbowUp*t; lean=MINE_POSE.leanBack*t;
+  }else if(p<.58){                 // smūgis — staigus, greitėjantis
+    const t=Math.pow((p-.38)/.20,.65);
+    arm=MINE_POSE.raise+(MINE_POSE.down-MINE_POSE.raise)*t;
+    elbow=MINE_POSE.elbowUp+(MINE_POSE.elbowHit-MINE_POSE.elbowUp)*t;
+    lean=MINE_POSE.leanBack+(MINE_POSE.leanFwd-MINE_POSE.leanBack)*t;
+  }else{                           // atsitiesimas
+    const t=easeOutCubic((p-.58)/.42);
+    arm=MINE_POSE.down*(1-t); elbow=MINE_POSE.elbowHit*(1-t); lean=MINE_POSE.leanFwd*(1-t);
+  }
+  /* svoris: švelniai ateina ir švelniai atsitraukia, kad nebūtų trūktelėjimo
+     iš/į mikserio grojamą idle klipą (žr. poseBoneBlend paaiškinimą) */
+  const w=Math.min(1,p/.12,(1-p)/.18);
+  if(w<=0) return;
+  poseBonePair('upperarm',arm,MINE_POSE.inY,MINE_POSE.inZ,w);
+  poseBonePair('lowerarm',elbow,0,0,w);
+  poseBonePair('clavicle',MINE_POSE.clav*(arm>0?1:.3),0,0,w);
+  poseBoneBlend('spine_01',lean*.30,0,0,w);
+  poseBoneBlend('spine_02',lean*.34,0,0,w);
+  poseBoneBlend('spine_03',lean*.36,0,0,w);
+}
+/* Kviečiama kadre PO playerGltfMixer.update() — kaip ir Perkūno poza, kitaip
+   mikseris perrašytų mūsų kaulus. player.mine nustatomas gather() metu. */
+function updateMiningPose(dt){
+  if(!playerGltfModel||!player.mine) return;
+  player.mine.t+=dt;
+  const p=player.mine.t/player.mine.dur;
+  if(p>=1){ player.mine=null; return; }
+  poseMining(p);
 }
 /* v96: bendras vienkartinis klipas (kirtis, mirtis, prisikėlimas, kapojimas).
    __isSwing = "šito kadro cikle netrukdyti" — žr. updatePlayer. */
@@ -2835,6 +2917,7 @@ function triggerPlayerSwingClip(crit,interval){
     playerGltfActions.death=mkActionNo(A_NO.death);    // 8  — mirtis
     playerGltfActions.revive=mkActionNo(A_NO.revive);  // 17 — prisikėlimas
     playerGltfActions.chop =mkActionNo(A_NO.chop);     // 38 — medžio kapojimas
+    playerGltfActions.herb =mkActionNo(A_NO.herb);     // v138: 5 (geltona) — žolių skynimas
     /* v103: atsigavimo klipai — po kirčio A eina A_Rec, po B — B_Rec.
        Vardas ieškomas pagal šabloną „<kirčio vardas>_Rec" (nejautru raidžių
        dydžiui), tad jei pakete jie vadinasi kitaip — pasakyk, pataisysiu. */
@@ -4648,7 +4731,7 @@ function die(overkill){
   player.dead=true; player.hp=0; player.targetId=null; player.moveTo=null;
   const clip=overkill?playerGltfActions.death:(playerGltfActions.deathAlt||playerGltfActions.death);
   triggerPlayerClip(clip,1);
-  player.dash=null;
+  player.dash=null; player.mine=null;      // v138: kirtiklio poza neperrašo mirties
   log(T('knockedOut'),'lg-h');
   const f=document.getElementById('fade'); f.style.opacity=1;
   setTimeout(()=>{
@@ -7117,6 +7200,27 @@ function updatePlayer(dt){
 
 let gatherCd=0;
 const WORK_STAM_COST=6;   // v123: bazinė darbo ištvermės kaina vienam rinkimo veiksmui
+/* v138: kiek kartų reikia kirsti/kasti, kad šaltinis išsektų. Vartotojo
+   prašymu — medžiui ir titnagui po 5; visa kita nuimama iš karto. */
+const NODE_HITS={mediena:5, akmuo:5};
+const nodeHits=key=>NODE_HITS[key]||1;
+/* Matomas nusidėvėjimas: objektas mažėja, o žymėje rodoma, kiek dar liko. */
+function nodeLabel(n,left,total){
+  const nm=n.tag&&n.tag.el&&n.tag.el.querySelector&&n.tag.el.querySelector('.nm');
+  if(nm) nm.textContent=n.kind.label+(total>1?' ('+left+'/'+total+')':'');
+}
+function updateNodeWear(n){
+  const total=nodeHits(n.kind.key);
+  const left=n.hits===undefined?total:n.hits;
+  if(n.obj&&n.obj.scale) n.obj.scale.setScalar(.45+.55*(left/total));
+  nodeLabel(n,left,total);
+}
+function resetNodeWear(n){
+  n.hits=undefined;
+  const total=nodeHits(n.kind.key);
+  if(n.obj&&n.obj.scale) n.obj.scale.setScalar(1);
+  nodeLabel(n,total,total);
+}
 function gather(n){
   if(gatherCd>0) return;
   /* v123: darbo ištvermė — gali eiti į minusą iki antrasKvepavimas % nuo max, kitaip blokuoja */
@@ -7131,7 +7235,12 @@ function gather(n){
   player.obj.userData.swing=1;
   player.yaw=Math.atan2(n.pos.x-player.pos.x,n.pos.z-player.pos.z);
   burst(n.pos.x,n.pos.y+.3,n.pos.z,12,n.kind.color,2.2);
-  if(n.kind.key==='mediena') triggerPlayerClip(playerGltfActions.chop,1);   // v96: nr38
+  /* v138: kiekvienas veiksmas turi savo animaciją ir kartojasi tol, kol
+     šaltinis išsenka (žr. NODE_HITS). Medis — paketo klipas nr38; titnagas —
+     sukurta kirtiklio poza (poseMining); žolės — geltona nr5. */
+  if(n.kind.key==='mediena') triggerPlayerClip(playerGltfActions.chop,1);
+  else if(n.kind.key==='akmuo') player.mine={t:0,dur:Math.max(.6,gatherCd)};
+  else if(n.kind.key==='zole') triggerPlayerClip(playerGltfActions.herb,1);
   sfx('chop');
   let qty=gatherMult(n.kind.key);
   if((n.kind.key==='mediena'||n.kind.key==='akmuo')&&Math.random()<(D.meistryste-1)) qty*=2;
@@ -7141,11 +7250,20 @@ function gather(n){
   const gSkill=n.kind.key==='mediena'?'kirtimas':(n.kind.key==='akmuo'?'skaldymas':'rinkimas');
   addXp(gSkill,Math.round(n.kind.xp*gatherXpMult()));
   /* v133: n.infinite (žr. spawnFireDemoNodes) — nedingsta, nesislepia, be
-     atvėsimo, iškart vėl galima imti/kirsti/kasti. */
+     atvėsimo, iškart vėl galima imti/kirsti/kasti.
+     v138: medžiui ir titnagui reikia NODE_HITS kirtimų. Kol jų dar liko,
+     player.gatherId NENUIMAMAS — personažas kerta toliau savaime, o šaltinis
+     po truputį mažėja (matosi ir dydžiu, ir žymėje). */
   if(!n.infinite){
+    if(n.hits===undefined) n.hits=nodeHits(n.kind.key);
+    n.hits--;
+    if(n.hits>0){ updateNodeWear(n); return; }
     n.ready=false; n.cd=rnd(9,16); n.obj.visible=false; n.tag.el.style.display='none';
+    n.hits=undefined;
+    player.gatherId=null;
+    return;
   }
-  player.gatherId=null;
+  /* amžinas šaltinis — kirtimas tęsiasi, kol žaidėjas pats pasitraukia */
 }
 
 function updateEnemies(dt){
@@ -7289,7 +7407,7 @@ function updateNodes(dt){
   for(const n of nodes){
     if(!n.ready){
       n.cd-=dt;
-      if(n.cd<=0){n.ready=true;n.obj.visible=true;}
+      if(n.cd<=0){n.ready=true;n.obj.visible=true;resetNodeWear(n);}   // v138: vėl pilnas
       continue;
     }
     n.obj.rotation.y+=dt*.6;
@@ -7436,6 +7554,7 @@ function frame(now){
   }
   for(const A of ENEMY_GLB) A.mixer.update(dt);
   updateThunderCastPose();
+  updateMiningPose(dt);          // v138: kirtiklio poza — irgi PO mikserio
   for(const mx of CATALOG_MIXERS) mx.update(dt);
   for(const ct of CATALOG_TAGS) placeTag(ct.tag,ct.x,ct.y,ct.z,60);
   updateFx(dt);

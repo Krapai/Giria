@@ -613,8 +613,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v130';
-const GAME_CHANGES='UAL1 katalogas perkeltas tikrai šalia UAL2 (tas pats z ruožas, pastumtas per X ašį), o ne per visą žemėlapį';
+const GAME_VERSION='v131';
+const GAME_CHANGES='Ištaisyta: kirčio metu personažas kildavo/leisdavosi ir baigdavo per žemai (kojos iki kelių) — kirčio klipams pridėtas Y suvaržymas, kaip jau seniai taikomas X/Z';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2745,6 +2745,34 @@ function triggerPlayerSwingClip(crit,interval){
     playerGltfMixer=new THREE.AnimationMixer(playerGltfModel);
     stripRootMotionXZ(gltf.animations);            // v98
     const byName={}; gltf.animations.forEach(c=>{ byName[c.name]=c; });
+    /* v131: TIKRA KLAIDA — kirčio klipai (Sword_Regular_A/B/C, atk3)
+       niekada neturėjo Y suvaržymo, tik X/Z (v98). Vartotojas patikslino
+       simptomą: PAČIOS ATAKOS METU personažas šiek tiek pakyla, paskui
+       nusileidžia, o pasibaigus klipui lieka taip žemai, kad kojos
+       prasmengia iki kelių — vadinasi, klipo AUTORINĖ Y kreivė
+       nesugrįžta į pradinę reikšmę iki paskutinio kadro (autentiškai
+       kurta tikintis tolesnio _Rec klipo, kuris tą taisytų — bet v111
+       taisymas veikia TIK PAČIAM _Rec klipui, ne pagrindiniam smūgiui,
+       tad pati kirčio klipo eiga liko nepaliesta). v129/v130 bandymai
+       sprendė KITĄ (laikymo po grandinės pabaigos) problemą — ši, PAČIOS
+       animacijos vidinė Y kreivė, buvo NEPALIESTA. TAISYMAS: kirčio
+       klipams (NE idle/walk/death/revive/chop, kuriems vertikalus
+       judesys reikalingas ir tikslingas) Y dabar SUVARŽOMA prie PIRMO
+       kadro reikšmės — tas pats principas, koks jau seniai taikomas X/Z
+       (v98), tiesiog pritaikytas ir vertikaliai. Taikoma PRIEŠ sukuriant
+       veiksmus (mkAction/mkActionNo), tad kirtis niekada nebekyla/
+       nenusileidžia — lieka stovėjimo aukštyje per visą smūgį. */
+    function stripSwingY(clip){
+      if(!clip) return;
+      for(const t of clip.tracks){
+        if(!/\.position$/.test(t.name)) continue;
+        const v=t.values; if(v.length<3) continue;
+        const y0=v[1];
+        for(let i=0;i<v.length;i+=3) v[i+1]=y0;
+      }
+    }
+    [byName['Sword_Regular_A'],byName['Sword_Regular_B'],byName['Sword_Regular_C'],
+     gltf.animations[A_NO.atk3-1]].forEach(stripSwingY);
     function mkAction(name){
       const c=byName[name]; if(!c) return null;
       const a=playerGltfMixer.clipAction(c); a.setLoop(THREE.LoopRepeat); return a;

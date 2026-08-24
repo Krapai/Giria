@@ -620,8 +620,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v133';
-const GAME_CHANGES='Pasaulis laikinai visiškai lygus (be jokio reljefo); 3 amžini šaltiniai prie laužo (medis/akmuo/gintaras) — nedingsta, iškart vėl imami';
+const GAME_VERSION='v135';
+const GAME_CHANGES='Mirtis dabar 3s prieš prisikėlimą, dvi mirties animacijos (geltona overkill≥10x, kitaip mėlyna); ėjimas/sprintas — mėlyni klipai iš UAL1 paketo';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2576,6 +2576,12 @@ const GLB_URL_UAL1='https://ggaf.online/UAL1_Standard_RM.glb';
    ir tikslių klipų vardų nežinau: klipas = gltf.animations[nr-1].
    JEI KADA PASIKEIS GLB (kita klipų tvarka) — čia vienintelė vieta taisyti. */
 const A_NO={dummyIdle:1, death:8, revive:17, wolfA:18, wolfB:19, atk3:23, chop:38};
+/* v135: vartotojo prašymu — TRYS klipai imami iš ANTRO paketo (UAL1_Standard_RM,
+   žr. GLB_URL_UAL1), ne iš žaidėjo paties UAL2. Numeriai — kaip katalogo
+   galvos žymėse (1-based). Kryžminis retargetinimas veikia, nes abu paketai
+   turi TĄ PATĮ UE tipo skeleto vardyną (žr. v93/ISTORIJA.md) — Three.js
+   AnimationMixer riša takelius PAGAL MAZGO VARDĄ, ne pagal kilmės failą. */
+const A_NO_UAL1={move:14, sprint:37, deathAlt:5};
 const WALK_CLIP_MPS=1.5;         // v97: kokiam greičiui (m/s) sukurtas ėjimo klipas
 /* v98: klipuose yra ROOT MOTION — kaulo/šaknies poslinkis pirmyn. Kadangi
    poziciją valdo player.obj (o modelis ją tik kopijuoja), tas poslinkis
@@ -2760,34 +2766,47 @@ function triggerPlayerSwingClip(crit,interval){
     playerGltfMixer=new THREE.AnimationMixer(playerGltfModel);
     stripRootMotionXZ(gltf.animations);            // v98
     const byName={}; gltf.animations.forEach(c=>{ byName[c.name]=c; });
-    /* v131: TIKRA KLAIDA — kirčio klipai (Sword_Regular_A/B/C, atk3)
-       niekada neturėjo Y suvaržymo, tik X/Z (v98). Vartotojas patikslino
-       simptomą: PAČIOS ATAKOS METU personažas šiek tiek pakyla, paskui
-       nusileidžia, o pasibaigus klipui lieka taip žemai, kad kojos
-       prasmengia iki kelių — vadinasi, klipo AUTORINĖ Y kreivė
-       nesugrįžta į pradinę reikšmę iki paskutinio kadro (autentiškai
-       kurta tikintis tolesnio _Rec klipo, kuris tą taisytų — bet v111
-       taisymas veikia TIK PAČIAM _Rec klipui, ne pagrindiniam smūgiui,
-       tad pati kirčio klipo eiga liko nepaliesta). v129/v130 bandymai
-       sprendė KITĄ (laikymo po grandinės pabaigos) problemą — ši, PAČIOS
-       animacijos vidinė Y kreivė, buvo NEPALIESTA. TAISYMAS: kirčio
-       klipams (NE idle/walk/death/revive/chop, kuriems vertikalus
-       judesys reikalingas ir tikslingas) Y dabar SUVARŽOMA prie PIRMO
-       kadro reikšmės — tas pats principas, koks jau seniai taikomas X/Z
-       (v98), tiesiog pritaikytas ir vertikaliai. Taikoma PRIEŠ sukuriant
-       veiksmus (mkAction/mkActionNo), tad kirtis niekada nebekyla/
-       nenusileidžia — lieka stovėjimo aukštyje per visą smūgį. */
-    function stripSwingY(clip){
+    /* v134: TIKRA KLAIDA rasta (v131 taisė NE TĄ dalyką) — vartotojas
+       išmatavo tikrus pelvio Y skaičius rankiniu debug rodmeniu (#animDbg,
+       v132): stovint 0,087, o kirčio klipo PIRMAME kadre jau 0,012 (ne
+       0,087!). Tai reiškia, kad v131 „suvaržymas prie paties klipo pirmo
+       kadro" buvo klaidinga prielaida — klipas VISADA prasideda žemai
+       (autentiška pritūpusi kovos poza), ne stovėjimo aukštyje. Todėl
+       v131 tik PAVERTĖ dinamišką žemėjimą PASTOVIU žemu Y per visą
+       smūgį — personažas „limpa" žemai visam kirčiui, o „iššoka" atgal
+       tik kai vyksta crossfade (fadeIn .1–.2s) į idle — būtent tas
+       atidėtas pašokimas ir yra vartotojo aprašytas „po dalies sekundės
+       grįžta į normalią plokštumą".
+       TIKRAS TAISYMAS: kirčio klipų (IR jų _Rec porų) Y suvaržomas NE
+       prie savo paties pirmo kadro, o prie IDLE KLIPO Y — tų pačių kaulų
+       (root/pelvis/ir t.t.) reikšmių, kuriomis personažas stovi ramybėje.
+       Taip per VISĄ smūgį ir jo atsigavimą Y niekada nenukrypsta nuo
+       idle — nulis neatitikimo, nulis „iššokimo" pereinant atgal. */
+    const idleClip=byName['Idle_FoldArms_Loop']||byName['Idle_No_Loop'];
+    const idleY={};
+    if(idleClip) for(const t of idleClip.tracks)
+      if(/\.position$/.test(t.name)) idleY[t.name]=t.values[1];
+    function lockToIdleY(clip){
       if(!clip) return;
       for(const t of clip.tracks){
         if(!/\.position$/.test(t.name)) continue;
-        const v=t.values; if(v.length<3) continue;
-        const y0=v[1];
-        for(let i=0;i<v.length;i+=3) v[i+1]=y0;
+        const y=idleY[t.name]; if(y===undefined) continue;
+        const v=t.values;
+        for(let i=0;i<v.length;i+=3) v[i+1]=y;
       }
     }
-    [byName['Sword_Regular_A'],byName['Sword_Regular_B'],byName['Sword_Regular_C'],
-     gltf.animations[A_NO.atk3-1]].forEach(stripSwingY);
+    function findRecClip(baseName){
+      if(!baseName) return null;
+      const lb=baseName.toLowerCase();
+      const nm=Object.keys(byName).find(n=>n.toLowerCase()===lb+'_rec')||
+               Object.keys(byName).find(n=>n.toLowerCase()!==lb&&n.toLowerCase().startsWith(lb)&&/rec/i.test(n));
+      return nm?byName[nm]:null;
+    }
+    const atk3Clip=gltf.animations[A_NO.atk3-1];
+    const swingNames=['Sword_Regular_A','Sword_Regular_B','Sword_Regular_C',atk3Clip&&atk3Clip.name];
+    [byName['Sword_Regular_A'],byName['Sword_Regular_B'],byName['Sword_Regular_C'],atk3Clip]
+      .forEach(lockToIdleY);
+    swingNames.forEach(nm=>lockToIdleY(findRecClip(nm)));
     function mkAction(name){
       const c=byName[name]; if(!c) return null;
       const a=playerGltfMixer.clipAction(c); a.setLoop(THREE.LoopRepeat); return a;
@@ -2864,6 +2883,33 @@ function triggerPlayerSwingClip(crit,interval){
     playerGltfCurrent=playerGltfActions.idle||playerGltfActions.walk;
     if(playerGltfCurrent) playerGltfCurrent.play();
     log(T('modelLoaded')+gltf.animations.length+T('modelLoadedEnd'),'lg-a');
+
+    /* v135: vartotojo prašymu — ėjimas, sprintas ir „paprastos" mirties
+       klipai imami iš ANTRO paketo (UAL1_Standard_RM, mėlyni katalogo
+       numeriai). Asinchroninis kelias — jei žaidėjas jau vaikšto/miršta,
+       kol šis paketas dar kraunasi, tiesiog naudojama tai, kas tuo metu
+       jau yra (UAL2 atsarginis: mkAction('Walk_Carry_Loop') ar death nr8);
+       kai UAL1 užsikrauna, playerGltfActions.walk/sprint/deathAlt
+       PAKEIČIAMI — kitas idle↔walk/sprint perėjimas ar mirtis jau naudos
+       naują klipą. move/sprint gauna TĄ PATĮ Y suvaržymą prie idle Y kaip
+       kirčio klipai (v134) — kad einant/sprintuojant kojos nesusmegtų.
+       deathAlt PALIEKAMA be Y suvaržymo — mirtis autentiškai krinta žemyn. */
+    new THREE.GLTFLoader().load(GLB_URL_UAL1, ual1=>{
+      const ual1No=no=>ual1.animations[no-1];
+      const moveClip=ual1No(A_NO_UAL1.move), sprintClip=ual1No(A_NO_UAL1.sprint),
+            deathAltClip=ual1No(A_NO_UAL1.deathAlt);
+      stripRootMotionXZ([moveClip,sprintClip,deathAltClip].filter(Boolean));
+      lockToIdleY(moveClip); lockToIdleY(sprintClip);
+      if(moveClip){
+        playerGltfActions.walk=playerGltfMixer.clipAction(moveClip);
+        playerGltfActions.walk.setLoop(THREE.LoopRepeat);
+      }
+      if(sprintClip){
+        playerGltfActions.sprint=playerGltfMixer.clipAction(sprintClip);
+        playerGltfActions.sprint.setLoop(THREE.LoopRepeat);
+      }
+      if(deathAltClip) playerGltfActions.deathAlt=playerGltfMixer.clipAction(deathAltClip);
+    },undefined,err=>console.warn('UAL1 žaidėjo klipai neįkelti',err));
 
     /* --- katalogas: po vieną modelį kiekvienai animacijai --- */
     const names=gltf.animations.map(c=>c.name);
@@ -4571,6 +4617,10 @@ function hurtPlayer(dmg,from){
     shockRing(player.pos.x,player.pos.y+.15,player.pos.z,0xffc861,1.1);
     addShake(.3); refreshUI(); return;
   }
+  /* v135: mirties animacijos pasirinkimui reikia žinoti, ar šis smūgis —
+     didžiulis „overkill" (žr. die()) — palyginti su gyvybe TEN PAT PRIEŠ
+     smūgį (preHp), ne su max gyvybe. */
+  const preHp=player.hp;
   player.hp-=dmg;
   addXp('gynyba',Math.max(2,Math.round(dmg*2.2)));      // v107
   splat(at,String(dmg),'#ff8f7a');
@@ -4578,12 +4628,20 @@ function hurtPlayer(dmg,from){
   sfx('hurt');
   const f=document.getElementById('fade');
   f.style.opacity=.28; setTimeout(()=>f.style.opacity=0,120);
-  if(player.hp<=0) die();
+  if(player.hp<=0) die(dmg>preHp*10);
   refreshUI();
 }
-function die(){
+/* v135: vartotojo prašymu — mirties animacija priklauso nuo smūgio dydžio:
+   jei mirtinas smūgis viršija PRIEŠ jį buvusią gyvybę 10 kartų (overkill),
+   naudojama dramatiška geltona nr8 (žaidėjo paties UAL2 paketas, kaip ir
+   anksčiau); kitais atvejais — mėlyna nr5 (UAL1 paketas, žr. A_NO_UAL1,
+   playerGltfActions.deathAlt). Jei deathAlt dar neįkeltas (asinchroninis
+   UAL1 kelias), tyliai grįžtama prie geltonos — niekada nelieka be
+   animacijos. Prisikėlimas dabar po 3 s (buvo 1,3 s), kaip paprašyta. */
+function die(overkill){
   player.dead=true; player.hp=0; player.targetId=null; player.moveTo=null;
-  triggerPlayerClip(playerGltfActions.death,1);        // v96: nr8
+  const clip=overkill?playerGltfActions.death:(playerGltfActions.deathAlt||playerGltfActions.death);
+  triggerPlayerClip(clip,1);
   player.dash=null;
   log(T('knockedOut'),'lg-h');
   const f=document.getElementById('fade'); f.style.opacity=1;
@@ -4594,7 +4652,7 @@ function die(){
     triggerPlayerClip(playerGltfActions.revive,1);     // v96: nr17
     for(const e of enemies) e.state='idle';
     f.style.opacity=0; refreshUI();
-  },1300);
+  },3000);
 }
 
 /* ---------- 11. GARSAS: sintezatorius ir muzika ---------- */
@@ -7000,6 +7058,8 @@ function updatePlayer(dt){
        klipas sukurtas; jei žingsniai vis dar nesutampa — keisti tik šį skaičių). */
     if(playerGltfActions.walk)
       playerGltfActions.walk.timeScale=clamp(sp/WALK_CLIP_MPS,.5,3.6);
+    if(playerGltfActions.sprint)
+      playerGltfActions.sprint.timeScale=clamp(sp/WALK_CLIP_MPS,.5,3.6);
     playerGltfModel.position.copy(player.obj.position);
     playerGltfModel.rotation.copy(player.obj.rotation);
     const swinging=playerGltfCurrent&&playerGltfCurrent.__isSwing&&playerGltfCurrent.isRunning();
@@ -7009,7 +7069,11 @@ function updatePlayer(dt){
     const holding=playerGltfCurrent&&playerGltfCurrent.__isSwing&&engaged&&sp<=0;
     if(!swinging&&!holding&&!player.dead){       // v96: negrįžti į idle, kol guli negyvas
       const wantWalk=sp>0&&!player.dead;
-      const want=wantWalk?playerGltfActions.walk:playerGltfActions.idle;
+      /* v135: sprintuojant — mėlyna nr37 (jei jau įkelta), kitaip įprastas
+         ėjimas (mėlyna nr14); stovint — idle. */
+      const want=wantWalk
+        ?((sprinting&&playerGltfActions.sprint)?playerGltfActions.sprint:playerGltfActions.walk)
+        :playerGltfActions.idle;
       if(want&&want!==playerGltfCurrent){
         if(playerGltfCurrent) playerGltfCurrent.fadeOut(.2);
         want.reset().fadeIn(.2).play();

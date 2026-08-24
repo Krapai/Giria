@@ -613,8 +613,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v125';
-const GAME_CHANGES='Ištaisyta: įgūdžių juostos stulpeliai nebesikaupdavo vienas nelygiai kitiems — dabar visada tolygūs';
+const GAME_VERSION='v128';
+const GAME_CHANGES='Nauja ataka (Sword_Attack iš UAL1 packo, retargetinta ant žaidėjo skeleto) prijungta prie kirčių sistemos kaip trečias variantas';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2545,6 +2545,13 @@ scene.add(player.obj);
    kaimavietės, su skaičiumi ir animacijos pavadinimu ant galvos (per tą
    pačią makeTag() sistemą, kaip priešų vardai). */
 const GLB_URL='https://ggaf.online/UAL2_Standard_RM.glb';
+/* v127: antras animacijų paketas — Universal Animation Library[Standard]
+   (UAL1_Standard_RM.glb, Quaternius, CC0 — tas pats formatas/autorius kaip
+   UAL2). Kelias SPĖTAS pagal UAL2 pavyzdį (ggaf.online/<failas>.glb) — failą
+   reikia įkelti į tą patį serverį/aplanką kaip UAL2_Standard_RM.glb, kitaip
+   šis katalogas tyliai neįsikels (žr. konsolės įspėjimą). Jei kelias kitoks,
+   keisti TIK šią eilutę. */
+const GLB_URL_UAL1='https://ggaf.online/UAL1_Standard_RM.glb';
 /* v94: absoliutus kelias (ne santykinis) — kad veiktų ir Claude peržiūroje
    (ten nėra greta gulinčio .glb failo), ir pačiame Netlify (nieko
    nekeičia, tas pats domenas). Jei Netlify domeną kada pakeisi — pakeisti
@@ -2695,7 +2702,8 @@ function triggerPlayerSwingClip(crit,interval){
     const chain=[[playerGltfActions.atk1,true],[playerGltfActions.atk2,true],
                  [rec(playerGltfActions.atk2),false]];
     const alt=[[playerGltfActions.atk3,true]];
-    const vars=[chain,alt].filter(v=>v[0][0]);
+    const alt2=[[playerGltfActions.atk4,true]];     // v128: UAL1 Sword_Attack
+    const vars=[chain,alt,alt2].filter(v=>v[0][0]);
     if(!vars.length) return fallback;
     seq=vars[rndI(0,vars.length-1)];
   }
@@ -2772,7 +2780,38 @@ function triggerPlayerSwingClip(crit,interval){
     if(playerGltfActions.atk1) playerGltfActions.atk1.__rec=rec('Sword_Regular_A');
     if(playerGltfActions.atk2) playerGltfActions.atk2.__rec=rec('Sword_Regular_B');
     if(playerGltfActions.crit) playerGltfActions.crit.__rec=rec('Sword_Regular_C');
-    playerGltfMixer.addEventListener('finished',()=>{
+    /* v128: nauja ataka iš UAL1 packo (Sword_Attack) — RETARGETINAMA ant ŠIO
+       (UAL2) modelio skeleto per bendrus kaulų vardus. Abu Quaternius UAL
+       paketai naudo tą pačią UE stiliaus kaulų schemą (root/pelvis/spine_0X/
+       clavicle_r/upperarm_r/lowerarm_r/hand_r/thumb_0X_r ir t.t.) — TAI
+       PATIKRINTA v127 metu tiesiogiai skaitant abiejų .glb JSON dalį
+       (node/skin sąrašus), NE spėjimu iš vardo. Vis dėlto GALUTINIS
+       patvirtinimas įmanomas TIK naršyklėje (Node aplinkoje GLTFLoader
+       neveikia) — jei kaulų hierarchija skirtųsi (pvz. kitokia bind poza
+       ar trūkstamas mazgas), klipas arba nieko nejudins, arba iškraipys
+       personažą. PRAŠYTI vartotojo patikrinti ggaf.online, kaip ir visais
+       kitais animacijų atvejais (žr. ISTORIJA.md „GAIRĖS DETALIOMS
+       ANIMACIJOMS"). Klipas kraunamas ATSKIRU GLTFLoader.load() (UAL1
+       failas), bet clipAction sukuriama ant playerGltfMixer (UAL2 modelio
+       mikserio) — būtent tai ir yra retargetinimas: Three.js sieja takelius
+       pagal MAZGO VARDĄ, ne pagal failą, iš kurio klipas kilęs. */
+    new THREE.GLTFLoader().load(GLB_URL_UAL1, g3=>{
+      const clip=g3.animations.find(c=>c.name==='Sword_Attack');
+      if(clip&&playerGltfMixer){
+        stripRootMotionXZ([clip]);                    // v98: tas pats principas kaip UAL2 klipams
+        playerGltfActions.atk4=playerGltfMixer.clipAction(clip);
+        playerGltfActions.atk4.setLoop(THREE.LoopRepeat);
+      }
+    }, undefined, err=>console.warn('UAL1 Sword_Attack neįkeltas',err));
+    playerGltfMixer.addEventListener('finished',e=>{
+      /* v126: dvigubo/trigubo smūgio (Kirčių serija) metu playerAttack(echo)
+         paleidžia NAUJĄ grandinę VOS neatgavus senosios — playerSwingChain
+         (bendras kintamasis) perrašomas, bet SENAS klipas dar baigia groti
+         fone (fadeOut) ir vėliau irgi iššaudo 'finished'. Be šio patikrinimo
+         ta pavėluota SENA pabaiga nuskindavo/praleisdavo NAUJOS grandinės
+         narį (dažniausiai *_Rec, kuris grąžina Y į stovėjimo aukštį) —
+         personažas likdavo įstrigęs pusiau pritūpęs (prasmengęs iki kelių). */
+      if(e.action!==playerGltfCurrent) return;
       if(playerSwingChain&&playerSwingChain.length) triggerPlayerClip(playerSwingChain.shift(),1);
     });
     playerGltfCurrent=playerGltfActions.idle||playerGltfActions.walk;
@@ -2805,6 +2844,42 @@ function triggerPlayerSwingClip(crit,interval){
     console.warn('GLB load error',err);
     log(T('modelFailed'),'lg-h');
   });
+})();
+/* ============ v127: ANTRAS KATALOGAS — UAL1 Standard ============
+   Ta pati katalogo idėja kaip UAL2 aukščiau (po atskirą modelio egzempliorių
+   kiekvienai animacijai, su skaičiumi+pavadinimu ant galvos), BET šis
+   paketas TIK parodomas — neliečia žaidėjo/priešų valdymo (playerGltfActions
+   ir pan.), nes tai ATSKIRAS, dar netirtas paketas. Sustatytas ŠIEK TIEK
+   ATOKIAU nuo UAL2 katalogo (baseZ=98, ne 46), kad liktų aiškus tarpas tarp
+   dviejų packų, ir su KITOS spalvos žymėmis (#8fd0ff, ne #ffd35a), kad būtų
+   iškart matoma, kur vienas baigiasi ir prasideda kitas. Naudoja tuos
+   pačius CATALOG_MIXERS/CATALOG_TAGS masyvus kaip UAL2 — jie jau atnaujinami
+   bendrame kadro cikle (frame()), tad papildomo kodo ten nereikia. */
+(function(){
+  if(typeof THREE==='undefined'||!THREE.GLTFLoader) return;
+  new THREE.GLTFLoader().load(GLB_URL_UAL1, gltf=>{
+    const names=gltf.animations.map(c=>c.name);
+    const perRow=7, spacing=3.4, baseX=0, baseZ=98;
+    names.forEach((name,i)=>{
+      const row=Math.floor(i/perRow), col=i%perRow;
+      const x=baseX+(col-(perRow-1)/2)*spacing;
+      const z=baseZ+row*spacing;
+      new THREE.GLTFLoader().load(GLB_URL_UAL1, g2=>{
+        const m=g2.scene;
+        const y=heightAt(x,z);
+        m.position.set(x,y,z);
+        scene.add(m);
+        const clip=g2.animations.find(c=>c.name===name);
+        if(clip){
+          const mx=new THREE.AnimationMixer(m);
+          mx.clipAction(clip).setLoop(THREE.LoopRepeat).play();
+          CATALOG_MIXERS.push(mx);
+        }
+        const tag=makeTag((i+1)+' · '+name,'#8fd0ff',false);
+        CATALOG_TAGS.push({tag,x,y:y+2.3,z});
+      }, undefined, err=>console.warn('UAL1 katalogo modelis '+(i+1)+' neįkeltas',err));
+    });
+  }, undefined, err=>console.warn('UAL1 GLB load error',err));
 })();
 /* ============ v96: PRIEŠAI — TIE PATYS GLB MANEKENAI ============
    Tas pats principas kaip žaidėjui: procedūrinis kūnas (e.obj) LIEKA ir toliau
@@ -6723,12 +6798,15 @@ function updatePlayer(dt){
   /* v103: pajudėjus puolimas nutrūksta IŠKART — nutraukiamas klipas, atsigavimo
      grandinė, kritinio įsibėgėjimas ir dar neįvykęs smūgis (swingToken).
      Taikinys NENUIMAMAS — lieka pažymėtas. */
-  if(sp>0){
-    player.autoAtk=false;                                  // v104
-    if(playerGltfCurrent&&playerGltfCurrent.__isSwing){
-      player.swingToken++; playerSwingChain=[]; player.dash=null;
-      playerGltfCurrent.__isSwing=false;
-    }
+  /* v126: player.autoAtk=false PAŠALINTA iš čia — ši sąlyga (sp>0) veikia
+     ir automatiniam priėjimui prie taikinio (dir nustatomas 6680 eil., ne
+     tik WASD), todėl autoAtk būdavo išjungiamas VOS pradėjus artėti, dar
+     nepasiekus taikinio — personažas priartėdavo, bet nepradėdavo pulti.
+     Tikras savas judesys jau išjungia autoAtk aukščiau (6653 eil., kx||kz),
+     to pakanka pagal v104 aprašytą sumanymą. */
+  if(sp>0&&playerGltfCurrent&&playerGltfCurrent.__isSwing){
+    player.swingToken++; playerSwingChain=[]; player.dash=null;
+    playerGltfCurrent.__isSwing=false;
   }
   if(player.reviveCd>0) player.reviveCd-=dt;
   if(player.comboT>0){ player.comboT-=dt; if(player.comboT<=0) player.combo=0; }

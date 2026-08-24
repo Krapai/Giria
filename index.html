@@ -620,8 +620,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v140';
-const GAME_CHANGES='Kirtimas dabar lenkiasi pirmyn (buvau apvertęs kryptį) ir rankos suglaustos ant koto; Gyvasties versmė gavo animaciją; Perkūno ranka nusileidžia priekyje; rinkimas nutrūksta paėjus, o meditacija nebenuima taikinio';
+const GAME_VERSION='v141';
+const GAME_CHANGES='Kirtimo rankos nebesikryžiuoja per riešus — tarpas tarp plaštakų dabar pastovus per visą mostą, kaip laikant kotą; Ugnies pūga gavo tą pačią kirtimo animaciją';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2765,6 +2765,15 @@ function updateSpellPose(){
       poseBone('hand_r',.3-.8*snap,0,.1-.1*snap);
       poseThunderFingers(Math.max(0,.9*(1-Math.min(1,p2*3.2)))); // greitai atsiveria
     }
+  }else if(k==='fire'){
+    /* v141: Ugnies pūga — vartotojo prašymu ta pati kirtimo (kirtiklio)
+       eiga. Būrimo metu lėtai užsimojama (poseMining 0 → 0,38), o paleidus
+       — smūgis ir atsitiesimas (0,38 → 1). Taip mostas baigiasi lygiai tada,
+       kai liepsna išsiveržia. */
+    const p=A.phase==='cast'
+      ? clamp(A.t/A.castT,0,1)*.38
+      : .38+clamp(A.t/A.d.dur,0,1)*.62;
+    poseMining(p);
   }else if(k==='heal'){
     /* Gyvasties (vandens) versmė: delnai suglaudžiami prie krūtinės, tada
        atsiveria aukštyn — iš jų ir trykšta versmė. */
@@ -2823,6 +2832,21 @@ const ARM_HIT ={x:1.80, z:  .80, elX:   0, elZ:   0};  // žemai priekyje,
 const ARM_PRAY={x:2.00, z:  .80, elX:   0, elZ:-.80};  // delnai kartu prie
                                                        // krūtinės, TARPAS=0,00
 const ARM_OPEN={x: .55, z:-1.00, elX:   0, elZ:-.10};  // atsivėrusios aukštyn
+/* v141: DVIRANKĖ KOTO SERIJA (kirtikliui / kirviui). v140 klaida: paieškoje
+   liepiau ieškoti MAŽIAUSIO tarpo tarp plaštakų, tad ji nusuko rankas PRO
+   kūno ašį — viršuje plaštakos susikryžiuodavo per riešus (tarpas 0,00), o
+   leidžiantis vėl išsiskirdavo (0,21). Vartotojas tiksliai tai ir aprašė.
+   Dabar paieška su kitu reikalavimu: dešinė plaštaka VISADA lieka savo
+   pusėje (x nuo −0,17 iki −0,06), tad rankos eina GRETA, nesikryžiuoja, o
+   tarpas per visą mostą lieka beveik PASTOVUS (0,30 → 0,32 → 0,33) — kaip
+   laikant kotą. Elektros/burtų pozos (ARM_UP, ARM_HIT) TYČIA paliktos
+   atskiros: ten ranka viena, ir joms tinka kitokie kampai. */
+const GRIP_HOLD={x:1.65, z:  .40, elX:0, elZ:0};  // laiko prie juosmens
+                                                  // y=1,23 priekyje=0,44 tarpas=0,30
+const GRIP_UP  ={x:2.30, z:-1.50, elX:0, elZ:0};  // užsimota virš galvos
+                                                  // y=1,99 priekyje=−0,04 tarpas=0,32
+const GRIP_HIT ={x:1.65, z:  .95, elX:0, elZ:0};  // kirtis žemyn priekyje
+                                                  // y=1,00 priekyje=0,25 tarpas=0,33
 const MINE_POSE={
   leanBack:-.12,   // liemuo atgal užsimojant (−X = atgal)
   leanFwd:  .45,   // liemuo PIRMYN kertant   (+X = pirmyn)
@@ -2845,12 +2869,12 @@ function poseMining(p){
   const M=MINE_POSE;
   let A,B,t,lean;
   if(p<.38){                       // UŽSIMOJIMAS — tolygus, be skubos
-    A=ARM_REST; B=ARM_UP; t=easeOutCubic(p/.38); lean=M.leanBack*t;
+    A=GRIP_HOLD; B=GRIP_UP; t=easeOutCubic(p/.38); lean=M.leanBack*t;
   }else if(p<.58){                 // SMŪGIS — staigus, greitėjantis
-    A=ARM_UP; B=ARM_HIT; t=Math.pow((p-.38)/.20,.65);
+    A=GRIP_UP; B=GRIP_HIT; t=Math.pow((p-.38)/.20,.65);
     lean=mlerp(M.leanBack,M.leanFwd,t);
   }else{                           // ATSITIESIMAS
-    A=ARM_HIT; B=ARM_REST; t=easeOutCubic((p-.58)/.42); lean=M.leanFwd*(1-t);
+    A=GRIP_HIT; B=GRIP_HOLD; t=easeOutCubic((p-.58)/.42); lean=M.leanFwd*(1-t);
   }
   /* svoris: švelniai ateina ir švelniai atsitraukia, kad nebūtų trūktelėjimo
      iš/į mikserio grojamą idle klipą (žr. poseBoneBlend paaiškinimą) */

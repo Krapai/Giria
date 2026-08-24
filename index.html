@@ -370,6 +370,11 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 #gate{position:fixed;inset:0;z-index:20;display:grid;place-items:center;text-align:center;
   background:radial-gradient(ellipse at 50% 40%,#1c2a20,#080d0a 75%)}
 #gate .in{max-width:440px;padding:26px}
+#gvBadges{position:fixed;top:16px;left:16px;z-index:21;display:flex;gap:8px}
+.gvBadge{font-family:'Fraunces',serif;font-size:20px;line-height:1;padding:8px 10px;
+  border:1px solid rgba(217,152,47,.5);border-radius:8px;background:#141d18cc;
+  color:var(--amber-lit);cursor:pointer;transition:background .2s,border-color .2s}
+.gvBadge:hover{background:#1d2a20;border-color:var(--amber)}
 #gate h1{font-family:'Fraunces',serif;font-weight:900;font-size:clamp(38px,10vw,64px);margin:0;
   letter-spacing:-.02em;line-height:.94;
   background:linear-gradient(180deg,#ffd489,#c07a22);-webkit-background-clip:text;background-clip:text;
@@ -551,17 +556,15 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
        kad nebeliktų rankomis pamirštamos eilutės. -->
   <div id="gVer" style="font-size:11px;letter-spacing:.18em;color:#d9982f;margin:-8px 0 16px"></div>
 
+  <div id="gvBadges" style="display:none">
+    <button id="gvFlagBadge" class="gvBadge" title="Kalba"></button>
+    <button id="gvDeviceBadge" class="gvBadge" title="Įrenginys"></button>
+  </div>
+
   <div id="gvLang">
     <p id="gvLangQ">Pasirink kalbą</p>
     <button class="gbtn" id="langLt">Lietuviškai</button>
     <button class="gbtn" id="langEn">English</button>
-  </div>
-
-  <div id="gvDevice" style="display:none">
-    <p id="gvDeviceQ">Kaip žaisi?</p>
-    <button class="gbtn" id="devicePc">🖥 Kompiuteris</button>
-    <button class="gbtn" id="devicePhone">📱 Telefonas</button>
-    <button class="gbtn ghost" id="deviceBack">Grįžti</button>
   </div>
 
   <div id="gvStart" style="display:none">
@@ -610,8 +613,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v123';
-const GAME_CHANGES='Naujas Amatų medis (40 atributų), kovos/rinkimo savybės pertvarkytos, darbo ištvermė, rytoRasa žvejybos logika, aprašymai — hover/tap popup, muzikos takelio pasirinkimas';
+const GAME_VERSION='v124';
+const GAME_CHANGES='Daiktų/aprangos aprašymai perkelti į popup; titulinis: kalbos+įrenginio ženkliukai kairėje, įrenginio ekranas pašalintas';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -905,9 +908,9 @@ function applyStaticLang(){
   if(document.documentElement) document.documentElement.lang=LANG;
   const gT=document.getElementById('gTitle');
   if(gT) gT.innerHTML=LANG==='en'?'Amber<br>Forest':'Gintaro<br>Giria<span class="en">Amber Forest</span>';
-  setTx('gvLangQ','langQ'); setTx('gvDeviceQ','deviceQ');
-  setTx('devicePc','devicePc'); setTx('devicePhone','devicePhone');
-  document.getElementById('deviceBack').textContent=T('back');
+  setTx('gvLangQ','langQ');
+  setTt('gvFlagBadge','sLang'); setTt('gvDeviceBadge','sDevice');
+  if(document.getElementById('gvBadges').style.display!=='none') updateGvBadges();
   setTx('gvStartP','startP'); setTx('goReg','goReg'); setTx('goGuest','goGuest');
   setTx('gvGuestB','guestB'); setTx('gvGuestP','guestP'); setTx('guestGo','guestGo'); setTx('guestBack','back');
   setTx('gvAuthP','authP'); setPh('auEmail','emailPh'); setPh('auPass','passPh');
@@ -3161,7 +3164,18 @@ const POPUP_HTML={};   // v123: atributų/meistrysčių aprašymų HTML, rodomas
 function showAttrPopup(key,evt){
   const html=POPUP_HTML[key]; if(!html) return;
   const p=document.getElementById('attrPopup'); if(!p) return;
-  document.getElementById('attrPopupBody').innerHTML=html;
+  const body=document.getElementById('attrPopupBody');
+  body.innerHTML=html;
+  /* v124: kai kuriuose popup'uose (aprangos daiktai) yra veiksmo mygtukas —
+     prijungiama čia, kad neišsiskirstytų bindimo logika po kelias vietas. */
+  if(body.querySelectorAll) body.querySelectorAll('.gbEq').forEach(b=>b.onclick=()=>{
+    if(!equipItem(b.dataset.eq)) log(T('equipFail'),'lg-h');
+    hideAttrPopup(); drawGearBag(); drawCharPanel();
+  });
+  if(body.querySelectorAll) body.querySelectorAll('.unEq').forEach(b=>b.onclick=e=>{
+    if(e&&e.stopPropagation) e.stopPropagation();
+    unequipItem(b.dataset.u); hideAttrPopup(); drawCharPanel(); drawGearBag();
+  });
   p.style.display='block';
   const pw=220,ph=p.offsetHeight||90;
   let x=(evt.clientX||0)+14, y=(evt.clientY||0)+14;
@@ -5355,10 +5369,15 @@ function giveItem(id){
   owned.push(id);
   log(T('found')+CATALOG[id].n,'lg-a');
 }   // kol kas tik pradinis ginklas
-let openGear=null;
 function slotHtml(sl,extra){
   const it=gear[sl.k];
-  return '<div class="gearSlot '+(it?'filled':'empty')+(openGear===sl.k?' sel':'')+
+  /* v124: aprašymas nebe inline-expand, o hover/tap popup (žr. showAttrPopup) */
+  POPUP_HTML[sl.k]='<b style="color:#ffc861">'+(it?it.n:Lx(sl.n)+' — '+T('empty'))+'</b><br>'+
+    (it?(it.d||'')+'<br><span style="color:#ffc861">'+itemFullStats(it)+'</span>'+
+        '<br><span style="opacity:.7">'+T('slotLabel')+': '+Lx(sl.n)+'</span>'+
+        '<br><button class="tbtn unEq" data-u="'+sl.k+'" style="width:auto;height:22px;padding:0 10px;font-size:10px;border-radius:6px;margin-top:5px">'+T('unequip')+'</button>'
+      : Lx(sl.d));
+  return '<div class="gearSlot '+(it?'filled':'empty')+
     '" data-g="'+sl.k+'"'+(extra||'')+'>'+
     '<span class="ic">'+(it?it.i:sl.i)+'</span>'+
     '<span class="sl">'+Lx(sl.n)+'</span>'+
@@ -5437,29 +5456,15 @@ function openChar(tab){
   }
 }
 /* v105: aprangos daiktų langas — 50 vietų, ikonos, aprašymas bakstelėjus
-   (telefone) arba užvedus pelę (kompiuteryje), slenkamas atskirai. */
+   (telefone) arba užvedus pelę (kompiuteryje), slenkamas atskirai.
+   v124: aprašymas nebe fiksuotoje #gearBagInfo dėžėje, o hover/tap popup'e
+   (žr. showAttrPopup) — #gearBagInfo lieka tik kaip statinė užuomina. */
 const GEAR_BAG_SLOTS=50;
-let gearBagSel=null;
 function gearBagInfoHtml(it){
-  if(!it) return T('gearHint');
-  return '<b>'+it.n+'</b><br>'+(it.d||'')+
+  return '<b style="color:#ffc861">'+it.n+'</b><br>'+(it.d||'')+
     '<br><span style="color:#ffc861">'+itemFullStats(it)+'</span>'+
     '<br><button class="tbtn gbEq" data-eq="'+it.id+'" style="width:auto;height:22px;padding:0 10px;'+
     'font-size:10px;border-radius:6px;margin-top:5px">'+T('equip')+'</button>';
-}
-/* v110: aprašymo langelis piešiamas VIENOJE vietoje kartu su „Užsidėti"
-   mygtuko prijungimu. Anksčiau užvedus pelę (onmouseenter) turinys būdavo
-   perrašomas be prijungimo, todėl kompiuteryje mygtukas nieko nedarydavo —
-   atrodė, kad daiktų iš viso negalima užsidėti. */
-function showGearInfo(it){
-  const box=document.getElementById('gearBagInfo');
-  if(!box) return;
-  box.innerHTML=gearBagInfoHtml(it);
-  if(!box.querySelectorAll) return;
-  box.querySelectorAll('.gbEq').forEach(b=>b.onclick=()=>{
-    if(!equipItem(b.dataset.eq)) log(T('equipFail'),'lg-h');
-    gearBagSel=null; drawGearBag(); drawCharPanel();
-  });
 }
 function drawGearBag(){
   const p=document.getElementById('pGearBag');
@@ -5468,18 +5473,13 @@ function drawGearBag(){
   let h='';
   for(let i=0;i<GEAR_BAG_SLOTS;i++){
     const it=items[i];
-    h+='<div class="gbSlot'+(it?' filled':'')+(it&&gearBagSel===i?' sel':'')+'" data-i="'+i+'"'+
+    if(it) POPUP_HTML[i]=gearBagInfoHtml(it);
+    h+='<div class="gbSlot'+(it?' filled':'')+'" data-i="'+i+'"'+
        (it?' title="'+it.n+'"':'')+'>'+(it?it.i:'')+'</div>';
   }
   const grid=document.getElementById('gearBagGrid');
   grid.innerHTML=h;
-  showGearInfo(gearBagSel!==null?items[gearBagSel]:null);
-  if(grid.querySelectorAll) grid.querySelectorAll('.gbSlot').forEach(el=>{
-    const i=+el.dataset.i, it=items[i];
-    if(!it) return;
-    el.onclick=()=>{ gearBagSel=(gearBagSel===i?null:i); drawGearBag(); };
-    el.onmouseenter=()=>{ if(gearBagSel===null) showGearInfo(it); };
-  });
+  bindPopups(grid,'.gbSlot','i');
 }
 /* Klaviatūra: tas pats klavišas antrą kartą uždaro langą. Skirtukų juostoje
    ir programiškai openChar elgiasi kaip anksčiau — ten uždarymas atrodytų
@@ -5510,15 +5510,6 @@ function charInfoHtml(){
   h+='</div><div id="ringRow">';
   for(const sl of RING_SLOTS) h+=slotHtml(sl);
   h+='</div>';
-  if(openGear){
-    const sl=ALL_SLOTS.find(x=>x.k===openGear), it=gear[openGear];
-    if(sl) h+='<div class="gearInfo">'+
-      '<b>'+(it?it.n:Lx(sl.n)+' — '+T('empty'))+'</b><br>'+
-      (it?(it.d||'')+'<br><span style="color:#ffc861">'+itemFullStats(it)+'</span>'+
-          '<br><span style="opacity:.7">'+T('slotLabel')+': '+Lx(sl.n)+'</span>'+
-          '<br><button class="tbtn unEq" data-u="'+openGear+'" style="width:auto;height:22px;padding:0 10px;font-size:10px;border-radius:6px;margin-top:5px">'+T('unequip')+'</button>'
-        : Lx(sl.d))+'</div>';
-  }
   /* v105: nepanaudoti taškai — iškart po vardu (buvo lango apačioje). */
   if(free>0) h='<div class="hint" style="margin:0 0 8px;color:#ffc861">'+T('unusedPoints')+free+'</div>'+h;
   h+='<div class="row" style="border-bottom:1px solid rgba(217,152,47,.28);margin-top:4px">'+
@@ -5598,17 +5589,10 @@ function bindSkills(box){
   });
 }
 function bindGear(box){
+  bindPopups(box,'.gearSlot','g');
   if(!box.querySelectorAll) return;
-  box.querySelectorAll('.gearSlot').forEach(el=>el.onclick=()=>{
-    openGear = openGear===el.dataset.g ? null : el.dataset.g;
-    redrawSkillsUI();
-  });
   box.querySelectorAll('.itemRow').forEach(el=>el.onclick=()=>{
     equipItem(el.dataset.eq); redrawSkillsUI();
-  });
-  box.querySelectorAll('.unEq').forEach(el=>el.onclick=e=>{
-    if(e&&e.stopPropagation) e.stopPropagation();
-    unequipItem(el.dataset.u); openGear=null; gearBagSel=null; redrawSkillsUI();
   });
 }
 /* v106: Meistrysčių sąrašas — lygis, patirties juosta ir išskleidžiamas
@@ -7477,29 +7461,27 @@ function enterWorld(){
   mpStart();
 }
 
-/* v114: kalbos ir įrenginio pasirinkimas PRIEŠ registracijos/svečio šaką */
-document.getElementById('langLt').onclick=()=>{
-  LANG='lt'; applyStaticLang();
-  document.getElementById('gvLang').style.display='none';
-  document.getElementById('gvDevice').style.display='block';
-};
-document.getElementById('langEn').onclick=()=>{
-  LANG='en'; applyStaticLang();
-  document.getElementById('gvLang').style.display='none';
-  document.getElementById('gvDevice').style.display='block';
-};
-function chooseDevice(phone){
-  const pc=document.getElementById('devicePc'), ph=document.getElementById('devicePhone');
-  pc.classList.toggle('on',!phone); ph.classList.toggle('on',phone);
-  setDevice(phone);
-  setTimeout(()=>gview('gvStart'),260);   // trumpa pauzė — matomas pažymėjimas prieš perėjimą
+/* v124: kalbos pasirinkimas PRIEŠ registracijos/svečio šaką. Įrenginio EKRANAS
+   pašalintas (vartotojo prašymu) — vietoje jo iškart „Prisijungti/Žaisti
+   neprisijungus" (gvStart). Kalba ir įrenginys rodomi kaip maži ženkliukai
+   kairiajame viršutiniame kampe (#gvBadges), abu spaudžiami — įrenginys
+   pradeda nuo automatinio aptikimo (isTouch), keičiamas ženkliuku ARBA
+   bet kada vėliau per Nustatymus (#oDevice, žr. v122). */
+function updateGvBadges(){
+  document.getElementById('gvFlagBadge').textContent=LANG==='lt'?'🇱🇹':'🇬🇧';
+  document.getElementById('gvDeviceBadge').textContent=isTouch?'📱':'🖥';
 }
-document.getElementById('devicePc').onclick=()=>chooseDevice(false);
-document.getElementById('devicePhone').onclick=()=>chooseDevice(true);
-document.getElementById('deviceBack').onclick=()=>{
-  document.getElementById('gvDevice').style.display='none';
-  document.getElementById('gvLang').style.display='block';
-};
+function chooseLang(lang){
+  LANG=lang; applyStaticLang();
+  document.getElementById('gvLang').style.display='none';
+  document.getElementById('gvBadges').style.display='flex';
+  updateGvBadges();
+  gview('gvStart');
+}
+document.getElementById('langLt').onclick=()=>chooseLang('lt');
+document.getElementById('langEn').onclick=()=>chooseLang('en');
+document.getElementById('gvFlagBadge').onclick=()=>chooseLang(LANG==='lt'?'en':'lt');
+document.getElementById('gvDeviceBadge').onclick=()=>{ setDevice(!isTouch); updateGvBadges(); };
 
 document.getElementById('goGuest').onclick=()=>gview('gvGuest');
 document.getElementById('guestBack').onclick=()=>gview('gvStart');

@@ -620,8 +620,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v136';
-const GAME_CHANGES='GLB modelio pėdos visada prisegtos prie žemės/vandens plokštumos (jokio kilimo per įgūdžius); ėjimo/sprinto spartos kalibracija pagal tikslius, iš GLB failo išmatuotus skaičius';
+const GAME_VERSION='v137';
+const GAME_CHANGES='Prasmegimas išspręstas: šio skeleto kaulų vertikalė yra Z, ne Y — senasis šaknies šalinimas naikino pelvio vertikalę. Dabar liečiamas TIK „root" mazgas, kaip pas manekenus. Taip pat ištaisyta kritinių smūgių klaida';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2590,37 +2590,62 @@ const WALK_CLIP_MPS=1.5;         // v97: kokiam greičiui (m/s) sukurtas UAL2 ė
    UAL2 „Walk_Carry_Loop" klipui (žymiai lėtesnis žingsnis) — todėl pritaikius
    ją NAUJAM, greitesniam UAL1 klipui, kojos suktis dukart-triskart greičiau,
    nei kūnas realiai juda per plokštumą. */
-const UAL1_MOVE_MPS=5.3571, UAL1_SPRINT_MPS=8.25;
-/* v98: klipuose yra ROOT MOTION — kaulo/šaknies poslinkis pirmyn. Kadangi
-   poziciją valdo player.obj (o modelis ją tik kopijuoja), tas poslinkis
-   atrodydavo kaip slydimas pirmyn ir „teleportavimasis" atgal klipui
-   pasibaigus ar pasikartojus (ryškiausiai — einant ir per kritinį smūgį).
-   Sprendimas: visiems .position takeliams X ir Z prilyginami pirmam kadrui
-   (klipas tampa „vietoje"), Y paliekamas — kad išliktų pritūpimai, kritimas,
-   šuolis. Taikoma ir žaidėjui, ir priešams; katalogo modeliams NE (ten
-   judesys matomas toks, koks yra faile). */
+/* v137: vartotojas pastebėjo, kad bėgimo klipe kojos per ilgai užsibūna
+   ištiestos tarp žingsnių. Klipo kadrų perpiešti negalim, bet galim groti jį
+   sparčiau — tada visas ciklas, taigi ir ta „pakibimo" pauzė, sutrumpėja.
+   SNAP = kiek procentų sparčiau nei tiksliai sinchroniška sparta. 1,0 =
+   idealus žingsnių sutapimas su žeme (bet su ta pauze); didesnis = žvitriau,
+   bet pėdos ima truputį slysti. 1,18 — kompromisas. DERINTI TIK ŠĮ SKAIČIŲ. */
+const MOVE_SNAP=1.18;
+const UAL1_MOVE_MPS=5.3571/MOVE_SNAP, UAL1_SPRINT_MPS=8.25/MOVE_SNAP;
+/* ============ v137: ŠAKNIES JUDESIO ŠALINIMAS — PERRAŠYTA IŠ ESMĖS ============
+   Vartotojas uždavė lemiamą klausimą: KODĖL katalogo manekenai groja tuos
+   PAČIUS klipus švariai, be prasmegimų ir šokinėjimų, o žaidėjas — ne?
+   Skirtumas tik vienas: manekenai groja NELIESTUS klipus, o žaidėjo klipus
+   mes mutuojame. Vadinasi, kalta MUTACIJA, ne klipas.
+   IŠMATUOTA tiesiai iš .glb (Node skriptu, žr. ISTORIJA.md v137): šiame
+   skelete KAULŲ VIETINĖ VERTIKALĖ YRA Z, NE Y.
+     Sword_Attack: pelvis Z 0,800 → 0,533  (TAI IR YRA pritūpimas)
+                   pelvis Y 0,071 → 0,117  (tik pasilenkimas pirmyn/atgal)
+     Jog_Fwd_Loop: pelvis Z 0,701 → 0,946  (klubų linkčiojimas bėgant)
+                   pelvis Y 0,0566 PASTOVUS
+     root:         Y visada 0; Z neša locomotion (0 → 5,0 bėgant,
+                   0 → 1,501 kirčio išpuolyje)
+   SENOJI KLAIDA (v98, galiojusi visą laiką): stripRootMotionXZ trynė X ir Z
+   VISIEMS .position takeliams — taigi ir pelviui. O pelvio Z yra jo
+   VERTIKALĖ. Rezultatas: klubai priverstinai lieka pirmo kadro aukštyje,
+   BET kojos toliau lenkiasi taip, tarsi personažas tūptų — geometrija
+   nebesueina ir pėdos nueina PO žeme. Būtent tai vartotojas ir matė:
+   „atsistoja į normalią būseną ir yra iki kelių prasmegęs". v111 (_rec Y),
+   v131, v134 (lockToIdleY) bandė tą patį gydyti dar labiau varžydami Y —
+   NE TĄ AŠĮ, todėl niekas nepadėjo, o kai kur pablogėjo.
+   NAUJA TAISYKLĖ (vadovėlinė): šaknies judesys šalinamas TIK iš „root"
+   MAZGO ir ten iš KARTO iš visų trijų ašių (root neša tik pasaulio
+   poslinkį, jokios kūno pozos). Visi kiti kaulai — pelvis, stuburas,
+   kojos — paliekami VISIŠKAI nepaliesti, lygiai kaip pas manekeną.
+   Tada žaidėjo skeletas tampa BIT-IN-BIT toks pat kaip manekeno, tik be
+   nuklydimo per pasaulį. */
+function rootMotionNodeName(trackName){
+  const i=trackName.lastIndexOf('.');
+  if(i<0) return '';
+  let nm=trackName.slice(0,i);
+  const b=nm.lastIndexOf('[');                 // atsarga formatui „.bones[root]"
+  if(b>=0&&nm.endsWith(']')) nm=nm.slice(b+1,-1);
+  return nm;
+}
 function stripRootMotionXZ(clips){
   for(const c of clips){
     for(const t of c.tracks){
       if(!/\.position$/.test(t.name)) continue;
+      if(rootMotionNodeName(t.name)!=='root') continue;   // v137: TIK šaknies mazgas
       const v=t.values; if(v.length<6) continue;
-      const x0=v[0], z0=v[2];
-      /* v102: prieš nunulinant įsimenam bendrą horizontalų poslinkį — kritiniam
-         smūgiui jis paverčiamas TIKRU personažo pajudėjimu (žr. player.dash),
-         todėl judesys išlieka, bet niekas nebeatšoka atgal. */
+      const x0=v[0], y0=v[1], z0=v[2];
+      /* v102: prieš nunulinant įsimenam bendrą poslinkį — kritiniam smūgiui
+         jis paverčiamas TIKRU personažo pajudėjimu (žr. player.dash), todėl
+         judesys išlieka, bet niekas nebeatšoka atgal. */
       const dx=v[v.length-3]-x0, dz=v[v.length-1]-z0;
       if(!c.__rootXZ||Math.hypot(dx,dz)>Math.hypot(c.__rootXZ[0],c.__rootXZ[1])) c.__rootXZ=[dx,dz];
-      for(let i=0;i<v.length;i+=3){ v[i]=x0; v[i+2]=z0; }
-      /* v111: ATSIGAVIMO klipuose (*_Rec) šaknis dar juda ir VERTIKALIAI —
-         jie sukurti taip, tarsi personažas keltųsi nuo žemės, todėl mūsų
-         modelis, kurio aukštį valdo player.obj, stodamasis prasmegdavo iki
-         kelių. Tokiuose klipuose Y prilyginamas PASKUTINIAM kadrui (stovinčio
-         poza), tad kėlimasis vyksta tik kaulais, be šaknies nusileidimo.
-         Kituose klipuose Y paliekamas (reikia pritūpimams, kritimui). */
-      if(/_rec$/i.test(c.name||'')){
-        const yEnd=v[v.length-2];
-        for(let i=0;i<v.length;i+=3) v[i+1]=yEnd;
-      }
+      for(let i=0;i<v.length;i+=3){ v[i]=x0; v[i+1]=y0; v[i+2]=z0; }
     }
   }
 }
@@ -2749,8 +2774,16 @@ function triggerPlayerSwingClip(crit,interval){
   player.swingLen=t;
   const eff=seq[0][0].getClip().duration||1;           // pirmo klipo trukmė
   /* v102: klipo root motion virsta tikru pajudėjimu (kol kas TIK kritiniam —
-     paprastiems kirčiams jo nereikia, kitaip personažas šliaužtų pirmyn). */
-  const rm=crit?clip.__rootXZ:null;
+     paprastiems kirčiams jo nereikia, kitaip personažas šliaužtų pirmyn).
+     v137 KLAIDA IŠTAISYTA: čia buvo `clip.__rootXZ`, bet kintamojo `clip`
+     šioje funkcijoje NIEKADA nebuvo — kiekvienas KRITINIS kirtis mesdavo
+     ReferenceError. Kadangi tai įvyksta PRIEŠ `return hits`, playerAttack
+     gaudavo undefined, tada `hits.forEach` irgi mesdavo — vadinasi (a)
+     kritiniai smūgiai NEPADARYDAVO JOKIOS ŽALOS, ir (b) player.atkCd taip
+     ir nebūdavo nustatytas, tad jau KITAME kadre puolimas startuodavo iš
+     naujo — klipas be perstojo persileisdavo iš pradžių. Būtent tai ir
+     atrodė kaip „šokinėjimas pirmyn ir atgal". */
+  const rm=crit?seq[0][0].getClip().__rootXZ:null;
   if(rm&&Math.hypot(rm[0],rm[1])>.05){
     const c0=Math.cos(player.yaw), s0=Math.sin(player.yaw);
     const wx=(c0*rm[0]+s0*rm[1])/eff, wz=(-s0*rm[0]+c0*rm[1])/eff;
@@ -2774,47 +2807,11 @@ function triggerPlayerSwingClip(crit,interval){
     playerGltfMixer=new THREE.AnimationMixer(playerGltfModel);
     stripRootMotionXZ(gltf.animations);            // v98
     const byName={}; gltf.animations.forEach(c=>{ byName[c.name]=c; });
-    /* v134: TIKRA KLAIDA rasta (v131 taisė NE TĄ dalyką) — vartotojas
-       išmatavo tikrus pelvio Y skaičius rankiniu debug rodmeniu (#animDbg,
-       v132): stovint 0,087, o kirčio klipo PIRMAME kadre jau 0,012 (ne
-       0,087!). Tai reiškia, kad v131 „suvaržymas prie paties klipo pirmo
-       kadro" buvo klaidinga prielaida — klipas VISADA prasideda žemai
-       (autentiška pritūpusi kovos poza), ne stovėjimo aukštyje. Todėl
-       v131 tik PAVERTĖ dinamišką žemėjimą PASTOVIU žemu Y per visą
-       smūgį — personažas „limpa" žemai visam kirčiui, o „iššoka" atgal
-       tik kai vyksta crossfade (fadeIn .1–.2s) į idle — būtent tas
-       atidėtas pašokimas ir yra vartotojo aprašytas „po dalies sekundės
-       grįžta į normalią plokštumą".
-       TIKRAS TAISYMAS: kirčio klipų (IR jų _Rec porų) Y suvaržomas NE
-       prie savo paties pirmo kadro, o prie IDLE KLIPO Y — tų pačių kaulų
-       (root/pelvis/ir t.t.) reikšmių, kuriomis personažas stovi ramybėje.
-       Taip per VISĄ smūgį ir jo atsigavimą Y niekada nenukrypsta nuo
-       idle — nulis neatitikimo, nulis „iššokimo" pereinant atgal. */
-    const idleClip=byName['Idle_FoldArms_Loop']||byName['Idle_No_Loop'];
-    const idleY={};
-    if(idleClip) for(const t of idleClip.tracks)
-      if(/\.position$/.test(t.name)) idleY[t.name]=t.values[1];
-    function lockToIdleY(clip){
-      if(!clip) return;
-      for(const t of clip.tracks){
-        if(!/\.position$/.test(t.name)) continue;
-        const y=idleY[t.name]; if(y===undefined) continue;
-        const v=t.values;
-        for(let i=0;i<v.length;i+=3) v[i+1]=y;
-      }
-    }
-    function findRecClip(baseName){
-      if(!baseName) return null;
-      const lb=baseName.toLowerCase();
-      const nm=Object.keys(byName).find(n=>n.toLowerCase()===lb+'_rec')||
-               Object.keys(byName).find(n=>n.toLowerCase()!==lb&&n.toLowerCase().startsWith(lb)&&/rec/i.test(n));
-      return nm?byName[nm]:null;
-    }
-    const atk3Clip=gltf.animations[A_NO.atk3-1];
-    const swingNames=['Sword_Regular_A','Sword_Regular_B','Sword_Regular_C',atk3Clip&&atk3Clip.name];
-    [byName['Sword_Regular_A'],byName['Sword_Regular_B'],byName['Sword_Regular_C'],atk3Clip]
-      .forEach(lockToIdleY);
-    swingNames.forEach(nm=>lockToIdleY(findRecClip(nm)));
+    /* v137: v131 ir v134 „Y suvaržymai" PAŠALINTI. Jie varžė NE TĄ AŠĮ —
+       šiame skelete kaulų vietinė vertikalė yra Z, ne Y (išmatuota, žr.
+       stripRootMotionXZ komentarą aukščiau ir ISTORIJA.md v137). Kirčio
+       klipai dabar grojami VISIŠKAI neliesti, lygiai kaip pas katalogo
+       manekenus — nes būtent taip jie ir atrodo teisingai. */
     function mkAction(name){
       const c=byName[name]; if(!c) return null;
       const a=playerGltfMixer.clipAction(c); a.setLoop(THREE.LoopRepeat); return a;
@@ -2900,15 +2897,13 @@ function triggerPlayerSwingClip(crit,interval){
        jau yra (UAL2 atsarginis: mkAction('Walk_Carry_Loop') ar death nr8);
        kai UAL1 užsikrauna, playerGltfActions.walk/sprint/deathAlt
        PAKEIČIAMI — kitas idle↔walk/sprint perėjimas ar mirtis jau naudos
-       naują klipą. move/sprint gauna TĄ PATĮ Y suvaržymą prie idle Y kaip
-       kirčio klipai (v134) — kad einant/sprintuojant kojos nesusmegtų.
-       deathAlt PALIEKAMA be Y suvaržymo — mirtis autentiškai krinta žemyn. */
+       naują klipą. v137: jokių papildomų Y suvaržymų (v134 lockToIdleY
+       pašalinta — varžė ne tą ašį); pakanka šaknies mazgo neutralizavimo. */
     new THREE.GLTFLoader().load(GLB_URL_UAL1, ual1=>{
       const ual1No=no=>ual1.animations[no-1];
       const moveClip=ual1No(A_NO_UAL1.move), sprintClip=ual1No(A_NO_UAL1.sprint),
             deathAltClip=ual1No(A_NO_UAL1.deathAlt);
       stripRootMotionXZ([moveClip,sprintClip,deathAltClip].filter(Boolean));
-      lockToIdleY(moveClip); lockToIdleY(sprintClip);
       if(moveClip){
         playerGltfActions.walk=playerGltfMixer.clipAction(moveClip);
         playerGltfActions.walk.setLoop(THREE.LoopRepeat);

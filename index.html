@@ -620,8 +620,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v135';
-const GAME_CHANGES='Mirtis dabar 3s prieš prisikėlimą, dvi mirties animacijos (geltona overkill≥10x, kitaip mėlyna); ėjimas/sprintas — mėlyni klipai iš UAL1 paketo';
+const GAME_VERSION='v136';
+const GAME_CHANGES='GLB modelio pėdos visada prisegtos prie žemės/vandens plokštumos (jokio kilimo per įgūdžius); ėjimo/sprinto spartos kalibracija pagal tikslius, iš GLB failo išmatuotus skaičius';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2582,7 +2582,15 @@ const A_NO={dummyIdle:1, death:8, revive:17, wolfA:18, wolfB:19, atk3:23, chop:3
    turi TĄ PATĮ UE tipo skeleto vardyną (žr. v93/ISTORIJA.md) — Three.js
    AnimationMixer riša takelius PAGAL MAZGO VARDĄ, ne pagal kilmės failą. */
 const A_NO_UAL1={move:14, sprint:37, deathAlt:5};
-const WALK_CLIP_MPS=1.5;         // v97: kokiam greičiui (m/s) sukurtas ėjimo klipas
+const WALK_CLIP_MPS=1.5;         // v97: kokiam greičiui (m/s) sukurtas UAL2 ėjimo klipas (atsarginis, kol UAL1 dar neįkeltas)
+/* v136: TIKRI, iš paties UAL1_Standard_RM.glb failo išmatuoti greičiai (žr.
+   ISTORIJA.md v136) — šaknies kaulo („root") poslinkis per klipo trukmę:
+   Jog_Fwd_Loop (nr14) = 5,0 m / 0,9333 s = 5,357 m/s; Sprint_Loop (nr37) =
+   5,5 m / 0,6667 s = 8,25 m/s. Senoji viena WALK_CLIP_MPS=1,5 buvo sukurta
+   UAL2 „Walk_Carry_Loop" klipui (žymiai lėtesnis žingsnis) — todėl pritaikius
+   ją NAUJAM, greitesniam UAL1 klipui, kojos suktis dukart-triskart greičiau,
+   nei kūnas realiai juda per plokštumą. */
+const UAL1_MOVE_MPS=5.3571, UAL1_SPRINT_MPS=8.25;
 /* v98: klipuose yra ROOT MOTION — kaulo/šaknies poslinkis pirmyn. Kadangi
    poziciją valdo player.obj (o modelis ją tik kopijuoja), tas poslinkis
    atrodydavo kaip slydimas pirmyn ir „teleportavimasis" atgal klipui
@@ -2815,6 +2823,7 @@ function triggerPlayerSwingClip(crit,interval){
        pakete nėra paprasto "Walk". Jei tai ne tas — pasakyk, pakeisiu. */
     playerGltfActions.idle=mkAction('Idle_FoldArms_Loop')||mkAction('Idle_No_Loop');
     playerGltfActions.walk=mkAction('Walk_Carry_Loop');
+    if(playerGltfActions.walk) playerGltfActions.walk.__mps=WALK_CLIP_MPS;   // v136: atsarginė kalibracija
     /* v92: paprasti kirčiai (be skillų) — vartotojas patvirtino:
        Sword_Regular_A/B pakaitomis, truputį sulėtinti; Sword_Regular_C — kritinis. */
     playerGltfActions.atk1=mkAction('Sword_Regular_A');
@@ -2903,10 +2912,12 @@ function triggerPlayerSwingClip(crit,interval){
       if(moveClip){
         playerGltfActions.walk=playerGltfMixer.clipAction(moveClip);
         playerGltfActions.walk.setLoop(THREE.LoopRepeat);
+        playerGltfActions.walk.__mps=UAL1_MOVE_MPS;      // v136: tikra klipo sparta
       }
       if(sprintClip){
         playerGltfActions.sprint=playerGltfMixer.clipAction(sprintClip);
         playerGltfActions.sprint.setLoop(THREE.LoopRepeat);
+        playerGltfActions.sprint.__mps=UAL1_SPRINT_MPS;  // v136: tikra klipo sparta
       }
       if(deathAltClip) playerGltfActions.deathAlt=playerGltfMixer.clipAction(deathAltClip);
     },undefined,err=>console.warn('UAL1 žaidėjo klipai neįkelti',err));
@@ -7053,14 +7064,30 @@ function updatePlayer(dt){
     player.obj.rotation.z+=(0-player.obj.rotation.z)*.15;
   } else groundAlign(player.obj,player.pos.x,player.pos.z,player.yaw);
   if(playerGltfModel){
-    /* v97: kojos ėjo lėčiau nei personažas slysta per plokštumą — klipo sparta
-       dabar proporcinga TIKRAM greičiui (WALK_CLIP_MPS = greitis, kuriam
-       klipas sukurtas; jei žingsniai vis dar nesutampa — keisti tik šį skaičių). */
+    /* v97/v136: kojos ėjo lėčiau/greičiau nei personažas slysta per plokštumą —
+       klipo sparta dabar proporcinga TIKRAM greičiui, DALIJANT iš TO KONKREČIO
+       veiksmo TIKROS spartos (žr. __mps, priskirta v136 — pačiam klipui, ne
+       vienai bendrai konstantai, nes walk ir sprint dabar SKIRTINGI klipai su
+       SKIRTINGA natūralia sparta: 5,357 m/s ir 8,25 m/s, matuota tiesiai iš
+       .glb failo — žr. ISTORIJA.md v136). Jei __mps dar nepriskirta (labai
+       trumpas langas prieš pirmą mkAction()) — atsarginė WALK_CLIP_MPS. */
     if(playerGltfActions.walk)
-      playerGltfActions.walk.timeScale=clamp(sp/WALK_CLIP_MPS,.5,3.6);
+      playerGltfActions.walk.timeScale=clamp(sp/(playerGltfActions.walk.__mps||WALK_CLIP_MPS),.5,3.6);
     if(playerGltfActions.sprint)
-      playerGltfActions.sprint.timeScale=clamp(sp/WALK_CLIP_MPS,.5,3.6);
-    playerGltfModel.position.copy(player.obj.position);
+      playerGltfActions.sprint.timeScale=clamp(sp/(playerGltfActions.sprint.__mps||WALK_CLIP_MPS),.5,3.6);
+    /* v136: vartotojo prašymu — VISIŠKAI prisegti pėdas prie žemės/vandens
+       plokštumos. Anksčiau Y buvo kopijuojama iš player.obj.position.y, kuris
+       jau turėjo pridėtą player.actY (senosios procedūrinės ACTS_BASE įgūdžių
+       sistemos — cleave/sweep/whirl/lunge/upper/slam/triple/back — šuolio/
+       pritūpimo poslinkį, žr. animateBody/ANIMS). GLB modelio VIDINĖ (kaulų)
+       animacija tų įgūdžių apskritai nerodo (jie tebenaudoja SENĄJĮ procedūrinį
+       player.obj, kuris dabar nematomas) — tad GLB tiesiog KILDAVO/LEISDAVOSI
+       kartu su nematomu kūnu, nors jo paties skeletas likdavo idle/walk pozoje.
+       Naudojant „švarų" player.pos.y (jis NIEKADA negauna actY priedo — žr.
+       aukščiau player.obj.position.y+=player.actY, kur PRIDEDAMA prie kopijos,
+       ne prie originalo) šis nesutapimas dingsta visam laikui, bet kokios
+       animacijos ar įgūdžio metu. */
+    playerGltfModel.position.set(player.obj.position.x,player.pos.y,player.obj.position.z);
     playerGltfModel.rotation.copy(player.obj.rotation);
     const swinging=playerGltfCurrent&&playerGltfCurrent.__isSwing&&playerGltfCurrent.isRunning();
     /* v102: kovinė poza laikoma TIK kol taikinys tebėra pasiekiamas ir stovim

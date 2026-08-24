@@ -472,6 +472,13 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
   <input id="chatIn" maxlength="200" placeholder="rašyk ir spausk Enter" autocomplete="off" style="display:none">
   <div id="stressBox" class="card" style="position:absolute;left:10px;top:78px;padding:7px 10px;
     border-radius:10px;font-size:11.5px;line-height:1.5;display:none;font-variant-numeric:tabular-nums"></div>
+  <!-- v132: LAIKINA diagnostika (žr. PROJEKTAS.md 5 sk. — "nebespėti, pridėti
+       matomą diagnostiką"). VISADA matoma, niekas neuždengia (fixed, aukštas
+       z-index), rodo TIKRĄ personažo Y per A→B kirčio grandinę. Ištrinti,
+       kai kojų prasmegimo klausimas bus tikrai išspręstas ir patvirtintas. -->
+  <div id="animDbg" style="position:fixed;top:4px;right:4px;z-index:99;
+    background:rgba(0,0,0,.8);color:#8fe08f;font:11px/1.5 monospace;
+    padding:5px 9px;border-radius:5px;white-space:pre;pointer-events:none"></div>
 
   <div id="stick"><div id="knob"></div></div>
 
@@ -613,8 +620,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v131';
-const GAME_CHANGES='Ištaisyta: kirčio metu personažas kildavo/leisdavosi ir baigdavo per žemai (kojos iki kelių) — kirčio klipams pridėtas Y suvaržymas, kaip jau seniai taikomas X/Z';
+const GAME_VERSION='v133';
+const GAME_CHANGES='Pasaulis laikinai visiškai lygus (be jokio reljefo); 3 amžini šaltiniai prie laužo (medis/akmuo/gintaras) — nedingsta, iškart vėl imami';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -1006,6 +1013,14 @@ function fordDepth(z){                       // 1 = gili upė, 0 = sekli brasta
 }
 
 function heightAt(x,z){
+  /* v133: vartotojo prašymu VISAS pasaulis LAIKINAI padarytas vienoda lygi
+     plokštuma (be kalvelių, duobelių, upės vagos ar krašto kalvų) — testavimo
+     patogumui. GRĄŽINTI SENĄ RELJEFĄ: ištrinti šią „return 0;" eilutę —
+     likusi funkcijos dalis (žemiau, dabar nepasiekiama) paliekama nepaliesta
+     tam. Šalutinis poveikis: vandens plokštuma (WATER=-1.15) dabar visur
+     lieka ŽEMIAU lygaus žemės paviršiaus (y=0) — nematoma; jei prireiks
+     vandens atgal, reikės arba grąžinti reljefą, arba pakelti WATER. */
+  return 0;
   const d=Math.hypot(x,z);
   let h=(fbm(x*.018+40,z*.018+40)-.45)*13;
   h+=(fbm(x*.06,z*.06)-.5)*1.5;
@@ -3527,15 +3542,16 @@ const DUMMY_DEF={key:'manekenas', name:'Manekenas', lvl:1, hp:99999, dmg:0, xp:0
 }
 
 /* renkami taškai */
+const NODE_KINDS=[
+  {key:'mediena',color:0x6b4a2c,geo:()=>new THREE.CylinderGeometry(.34,.46,2.4,6),h:1.2,label:'Sausuolis',xp:16},
+  {key:'grybas', color:0xb4543f,geo:()=>new THREE.SphereGeometry(.34,7,5,0,TAU,0,Math.PI/2),h:.3,label:'Grybai',xp:11},
+  {key:'gintaras',color:0xd9982f,geo:()=>new THREE.OctahedronGeometry(.4,0),h:.5,label:'Gintaro sakai',xp:24},
+  {key:'akmuo',  color:0x6e6b62,geo:()=>new THREE.DodecahedronGeometry(.52,0),h:.45,label:'Titnago luitas',xp:20},
+  {key:'uogos',  color:0x4a5fa0,geo:()=>new THREE.SphereGeometry(.42,8,6),h:.4,label:'Uogienojai',xp:13},
+  {key:'zole',   color:0x6f9257,geo:()=>new THREE.ConeGeometry(.36,.7,5),h:.4,label:'Vaistažolės',xp:14}
+];
 function spawnNodes(){
-  const kinds=[
-    {key:'mediena',color:0x6b4a2c,geo:()=>new THREE.CylinderGeometry(.34,.46,2.4,6),h:1.2,label:'Sausuolis',xp:16},
-    {key:'grybas', color:0xb4543f,geo:()=>new THREE.SphereGeometry(.34,7,5,0,TAU,0,Math.PI/2),h:.3,label:'Grybai',xp:11},
-    {key:'gintaras',color:0xd9982f,geo:()=>new THREE.OctahedronGeometry(.4,0),h:.5,label:'Gintaro sakai',xp:24},
-    {key:'akmuo',  color:0x6e6b62,geo:()=>new THREE.DodecahedronGeometry(.52,0),h:.45,label:'Titnago luitas',xp:20},
-    {key:'uogos',  color:0x4a5fa0,geo:()=>new THREE.SphereGeometry(.42,8,6),h:.4,label:'Uogienojai',xp:13},
-    {key:'zole',   color:0x6f9257,geo:()=>new THREE.ConeGeometry(.36,.7,5),h:.4,label:'Vaistažolės',xp:14}
-  ];
+  const kinds=NODE_KINDS;
   const clearOfTrees=(x,z)=>{
     for(const t of trees) if(Math.hypot(x-t.x,z-t.z)<t.r+1.9) return false;
     return true;
@@ -3558,7 +3574,32 @@ function spawnNodes(){
       tag:makeTag(k.label,'#8fbf7a',false)});
   }
 }
+/* v133: 3 fiksuoti, AMŽINI šaltiniai prie laužo — vartotojo prašymu,
+   testavimui: 1 medis (kirtimas), 1 „kasomas metalas" (artimiausias esamas
+   kasimo tipo šaltinis — akmuo/„Titnago luitas", skaldymo meistrystė;
+   žaidime formalios „metalo rūdos" ekonomikos šiuo metu nėra — metalai
+   perkami pas pirklį, ne kasami), 1 paprastas renkamas daiktas (gintaras).
+   n.infinite=true — žr. gather(): nedingsta, nesislepia, be atvėsimo,
+   iškart vėl galima imti. Sudėti šalia laužo, bet nekertant pirklio/kario
+   stalo/manekeno vietų (žr. MERCH_POS/STALL_POS/WARRIORS/DUMMY_DEF). Kita
+   žymės spalva (#ffd166) nei įprastų šaltinių (#8fbf7a), kad būtų aišku,
+   jog šitie – specialūs/amžini. */
+function spawnFireDemoNodes(){
+  const spots=[{kindKey:'mediena',x:2.0,z:2.0},{kindKey:'akmuo',x:2.8,z:1.2},
+               {kindKey:'gintaras',x:1.2,z:2.8}];
+  for(const sp of spots){
+    const k=NODE_KINDS.find(kk=>kk.key===sp.kindKey);
+    const mat=new THREE.MeshLambertMaterial({color:k.color,
+      emissive:k.key==='gintaras'?0x4a2f06:0x000000});
+    const m=new THREE.Mesh(k.geo(),mat);
+    m.position.set(sp.x,heightAt(sp.x,sp.z)+k.h,sp.z); m.castShadow=true; m.userData.shad=true;
+    scene.add(m);
+    nodes.push({obj:m,kind:k,pos:m.position,ready:true,cd:0,infinite:true,
+      tag:makeTag(k.label,'#ffd166',false)});
+  }
+}
 spawnNodes();
+spawnFireDemoNodes();
 
 /* keliautojų botai pašalinti — mažesnė apkrova.
    Masyvas paliktas tuščias, kad minimapas ir kitas kodas veiktų. */
@@ -7013,7 +7054,11 @@ function gather(n){
   /* v106: patirtis eina į tą meistrystę, kurią atitinka veiksmas */
   const gSkill=n.kind.key==='mediena'?'kirtimas':(n.kind.key==='akmuo'?'skaldymas':'rinkimas');
   addXp(gSkill,Math.round(n.kind.xp*gatherXpMult()));
-  n.ready=false; n.cd=rnd(9,16); n.obj.visible=false; n.tag.el.style.display='none';
+  /* v133: n.infinite (žr. spawnFireDemoNodes) — nedingsta, nesislepia, be
+     atvėsimo, iškart vėl galima imti/kirsti/kasti. */
+  if(!n.infinite){
+    n.ready=false; n.cd=rnd(9,16); n.obj.visible=false; n.tag.el.style.display='none';
+  }
   player.gatherId=null;
 }
 
@@ -7288,6 +7333,21 @@ function frame(now){
     placeTag(merchant.tag,merchant.pos.x,merchant.pos.y+2.35,merchant.pos.z,30);
   }
   if(playerGltfMixer) playerGltfMixer.update(dt);
+  /* v132: LAIKINA diagnostika — žr. PROJEKTAS.md 5 sk. Rodo TIKRĄ personažo
+     modelio Y ir root/pelvis kaulų vietinę Y kiekviename kadre, kad
+     A→B kirčio grandinės metu matytųsi realūs skaičiai, ne spėjimas. */
+  if(playerGltfModel){
+    const dbg=document.getElementById('animDbg');
+    if(dbg){
+      const rb=playerGltfModel.getObjectByName('root');
+      const pb=playerGltfModel.getObjectByName('pelvis');
+      const clip=playerGltfCurrent&&playerGltfCurrent.getClip&&playerGltfCurrent.getClip();
+      dbg.textContent='klipas: '+(clip?clip.name:'-')+
+        '\nmodelio Y: '+playerGltfModel.position.y.toFixed(3)+
+        '\nroot vietinė Y: '+(rb?rb.position.y.toFixed(3):'nėra tokio mazgo')+
+        '\npelvis vietinė Y: '+(pb?pb.position.y.toFixed(3):'nėra tokio mazgo');
+    }
+  }
   for(const A of ENEMY_GLB) A.mixer.update(dt);
   updateThunderCastPose();
   for(const mx of CATALOG_MIXERS) mx.update(dt);

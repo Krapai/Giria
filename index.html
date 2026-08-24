@@ -613,8 +613,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v124';
-const GAME_CHANGES='Daiktų/aprangos aprašymai perkelti į popup; titulinis: kalbos+įrenginio ženkliukai kairėje, įrenginio ekranas pašalintas';
+const GAME_VERSION='v125';
+const GAME_CHANGES='Ištaisyta: įgūdžių juostos stulpeliai nebesikaupdavo vienas nelygiai kitiems — dabar visada tolygūs';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -4826,11 +4826,23 @@ const MAX_PER_COL=12;              // daugiausia mygtukų viename stulpelyje
 function layoutSkillPositions(n,btnSize,gap,baseBottom,rightOffsets,vh,clockBottom,margin){
   const budget=Math.max(0,vh-clockBottom-margin-baseBottom);
   const perCol=Math.max(1,Math.min(MAX_PER_COL,Math.floor((budget+gap)/(btnSize+gap))));
+  /* TIKRA KLAIDA (v125, vartotojo pastebėta): stulpelio indeksas anksčiau buvo
+     apkarpomas iki rightOffsets.length-1, tad kai perCol<12 (žemas vh), VISI
+     likę slotai susikaupdavo VIENAME (paskutiniame) stulpelyje — vienas
+     stulpelis turėdavo gerokai daugiau nei kiti du. Dabar stulpelių tiek,
+     kiek reikia, kad nė vienas neviršytų perCol, IR slotai paskirstomi
+     TOLYGIAI tarp jų (skirtumas tarp bet kurių dviejų stulpelių ≤1),
+     nauji stulpeliai generuojami tuo pačiu žingsniu, kaip ir pirmieji trys. */
+  const neededCols=Math.max(1,Math.ceil(n/perCol));
+  const step=rightOffsets.length>=2?rightOffsets[1]-rightOffsets[0]:btnSize+gap;
+  const cols=rightOffsets.slice();
+  while(cols.length<neededCols) cols.push(cols[cols.length-1]+step);
+  const base=Math.floor(n/neededCols), extra=n%neededCols;
   const pos=[];
-  for(let i=0;i<n;i++){
-    const col=Math.min(rightOffsets.length-1,Math.floor(i/perCol));
-    const idx=i-col*perCol;
-    pos.push({right:rightOffsets[col],bottom:baseBottom+idx*(btnSize+gap)});
+  let i=0;
+  for(let c=0;c<neededCols;c++){
+    const size=base+(c<extra?1:0);
+    for(let idx=0;idx<size;idx++,i++) pos.push({right:cols[c],bottom:baseBottom+idx*(btnSize+gap)});
   }
   return pos;
 }

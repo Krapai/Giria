@@ -613,8 +613,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v128';
-const GAME_CHANGES='Nauja ataka (Sword_Attack iš UAL1 packo, retargetinta ant žaidėjo skeleto) prijungta prie kirčių sistemos kaip trečias variantas';
+const GAME_VERSION='v130';
+const GAME_CHANGES='UAL1 katalogas perkeltas tikrai šalia UAL2 (tas pats z ruožas, pastumtas per X ašį), o ne per visą žemėlapį';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2701,9 +2701,8 @@ function triggerPlayerSwingClip(crit,interval){
   else{
     const chain=[[playerGltfActions.atk1,true],[playerGltfActions.atk2,true],
                  [rec(playerGltfActions.atk2),false]];
-    const alt=[[playerGltfActions.atk3,true]];
-    const alt2=[[playerGltfActions.atk4,true]];     // v128: UAL1 Sword_Attack
-    const vars=[chain,alt,alt2].filter(v=>v[0][0]);
+    const alt=[[playerGltfActions.atk3,true],[rec(playerGltfActions.atk3),false]];  // v129: dabar su atsigavimu, kaip chain/crit
+    const vars=[chain,alt].filter(v=>v[0][0]);
     if(!vars.length) return fallback;
     seq=vars[rndI(0,vars.length-1)];
   }
@@ -2780,29 +2779,23 @@ function triggerPlayerSwingClip(crit,interval){
     if(playerGltfActions.atk1) playerGltfActions.atk1.__rec=rec('Sword_Regular_A');
     if(playerGltfActions.atk2) playerGltfActions.atk2.__rec=rec('Sword_Regular_B');
     if(playerGltfActions.crit) playerGltfActions.crit.__rec=rec('Sword_Regular_C');
-    /* v128: nauja ataka iš UAL1 packo (Sword_Attack) — RETARGETINAMA ant ŠIO
-       (UAL2) modelio skeleto per bendrus kaulų vardus. Abu Quaternius UAL
-       paketai naudo tą pačią UE stiliaus kaulų schemą (root/pelvis/spine_0X/
-       clavicle_r/upperarm_r/lowerarm_r/hand_r/thumb_0X_r ir t.t.) — TAI
-       PATIKRINTA v127 metu tiesiogiai skaitant abiejų .glb JSON dalį
-       (node/skin sąrašus), NE spėjimu iš vardo. Vis dėlto GALUTINIS
-       patvirtinimas įmanomas TIK naršyklėje (Node aplinkoje GLTFLoader
-       neveikia) — jei kaulų hierarchija skirtųsi (pvz. kitokia bind poza
-       ar trūkstamas mazgas), klipas arba nieko nejudins, arba iškraipys
-       personažą. PRAŠYTI vartotojo patikrinti ggaf.online, kaip ir visais
-       kitais animacijų atvejais (žr. ISTORIJA.md „GAIRĖS DETALIOMS
-       ANIMACIJOMS"). Klipas kraunamas ATSKIRU GLTFLoader.load() (UAL1
-       failas), bet clipAction sukuriama ant playerGltfMixer (UAL2 modelio
-       mikserio) — būtent tai ir yra retargetinimas: Three.js sieja takelius
-       pagal MAZGO VARDĄ, ne pagal failą, iš kurio klipas kilęs. */
-    new THREE.GLTFLoader().load(GLB_URL_UAL1, g3=>{
-      const clip=g3.animations.find(c=>c.name==='Sword_Attack');
-      if(clip&&playerGltfMixer){
-        stripRootMotionXZ([clip]);                    // v98: tas pats principas kaip UAL2 klipams
-        playerGltfActions.atk4=playerGltfMixer.clipAction(clip);
-        playerGltfActions.atk4.setLoop(THREE.LoopRepeat);
-      }
-    }, undefined, err=>console.warn('UAL1 Sword_Attack neįkeltas',err));
+    /* v129: TIKRA KLAIDA rasta — atk3 (alt variantas, žr. triggerPlayerSwingClip)
+       neturėjo __rec, skirtingai nuo atk1/atk2/crit. player.__isSwing NIEKADA
+       neišjungiamas, kol žaidėjas nepajuda (žr. updatePlayer, sp>0 blokas) —
+       tad pasibaigus kirčiui personažas laiko PASKUTINIO grandinės klipo pozą
+       tol, kol stovi ir kaunasi (v102 „kovinė poza"). chain ir crit tą pabaigos
+       pozą taiso _Rec klipu (v111: Y fiksuojamas į stovėjimo aukštį), bet atk3
+       neturėjo jokio _Rec — jo žalias paskutinis kadras (tikėtina, žemas/
+       pasilenkęs, nes tai TAS PATS tipo klipas kaip A/B) būdavo laikomas
+       AMŽINAI stovint ir kaunantis — būtent tai ir yra „praranda kojas
+       žemėje" pranešimas, ne v126 spręsta lenktynių klaida (ta buvo tik
+       dvigubo/trigubo smūgio atveju). Vardas imamas iš PAČIO klipo (ne
+       spėjama Sword_Regular_C, nes atk3 kraunamas pagal indeksą A_NO.atk3,
+       jo tikras vardas nežinomas iš anksto). */
+    if(playerGltfActions.atk3){
+      const atk3Name=gltf.animations[A_NO.atk3-1]&&gltf.animations[A_NO.atk3-1].name;
+      if(atk3Name) playerGltfActions.atk3.__rec=rec(atk3Name);
+    }
     playerGltfMixer.addEventListener('finished',e=>{
       /* v126: dvigubo/trigubo smūgio (Kirčių serija) metu playerAttack(echo)
          paleidžia NAUJĄ grandinę VOS neatgavus senosios — playerSwingChain
@@ -2812,7 +2805,18 @@ function triggerPlayerSwingClip(crit,interval){
          narį (dažniausiai *_Rec, kuris grąžina Y į stovėjimo aukštį) —
          personažas likdavo įstrigęs pusiau pritūpęs (prasmengęs iki kelių). */
       if(e.action!==playerGltfCurrent) return;
-      if(playerSwingChain&&playerSwingChain.length) triggerPlayerClip(playerSwingChain.shift(),1);
+      if(playerSwingChain&&playerSwingChain.length){ triggerPlayerClip(playerSwingChain.shift(),1); return; }
+      /* v129: bendra apsauga nuo prasmegimo. player.__isSwing (žr. updatePlayer
+         „holding") NIEKADA neišjungiamas, kol žaidėjas nepajuda — tad grandinei
+         baigus, personažas laiko PASKUTINIO klipo pozą tol, kol stovi ir
+         kaunasi (v102 „kovinė poza"). Tai saugu TIK klipams, kurių Y jau
+         fiksuotas į stovėjimo aukštį (žr. stripRootMotionXZ, /_rec$/i
+         patikra). Jei grandinė baigėsi NE tokiu klipu (pvz. paketas neturi
+         atitinkamo _Rec varianto) — nelaikom jo amžinai, o iškart grąžinam
+         __isSwing=false, kad personažas pereitų į idle/walk, o ne liktų
+         įstrigęs galimai žemoje/pasilenkusioje mid-swing pozoje. */
+      const nm=e.action.getClip().name||'';
+      if(!/_rec$/i.test(nm)) e.action.__isSwing=false;
     });
     playerGltfCurrent=playerGltfActions.idle||playerGltfActions.walk;
     if(playerGltfCurrent) playerGltfCurrent.play();
@@ -2849,17 +2853,24 @@ function triggerPlayerSwingClip(crit,interval){
    Ta pati katalogo idėja kaip UAL2 aukščiau (po atskirą modelio egzempliorių
    kiekvienai animacijai, su skaičiumi+pavadinimu ant galvos), BET šis
    paketas TIK parodomas — neliečia žaidėjo/priešų valdymo (playerGltfActions
-   ir pan.), nes tai ATSKIRAS, dar netirtas paketas. Sustatytas ŠIEK TIEK
-   ATOKIAU nuo UAL2 katalogo (baseZ=98, ne 46), kad liktų aiškus tarpas tarp
-   dviejų packų, ir su KITOS spalvos žymėmis (#8fd0ff, ne #ffd35a), kad būtų
-   iškart matoma, kur vienas baigiasi ir prasideda kitas. Naudoja tuos
-   pačius CATALOG_MIXERS/CATALOG_TAGS masyvus kaip UAL2 — jie jau atnaujinami
-   bendrame kadro cikle (frame()), tad papildomo kodo ten nereikia. */
+   ir pan.), nes tai ATSKIRAS, dar netirtas paketas.
+   v129 (klaidingas taisymas) kėlė katalogą į pietus nuo kaimavietės — bet
+   vartotojas norėjo „šalia geltonų", ne per visą žemėlapį į kitą pusę.
+   v130 TAISYMAS: katalogas dabar TIKRAI ŠALIA UAL2 katalogo — tame paČIAME
+   z ruože (baseZ=46, kaip UAL2), tik pastumtas Į RYTUS palei X ašį
+   (baseX=24). UAL2 katalogas užima x nuo -10,2 iki +10,2; šis prasideda
+   nuo x=13,8 — tarp jų lieka ~3,6 vieneto tarpas (aiškiai atskiriamas
+   žvilgsniu, bet vis tiek „šalia", ne toli). Kadangi z ruožas TAS PATS kaip
+   UAL2 (46..66,4), reljefas irgi tas pats lygus (nepatenka į WORLD*.78≈92
+   „edge" kalvų zoną, kuri kėlė v129 problemą prie baseZ=98). Kitos spalvos
+   žymės (#8fd0ff, ne UAL2 #ffd35a) PALIKTOS — vartotojas patvirtino, kad
+   tai gerai atskiria packus. Naudoja tuos pačius CATALOG_MIXERS/CATALOG_TAGS
+   masyvus kaip UAL2 — jie jau atnaujinami bendrame kadro cikle (frame()). */
 (function(){
   if(typeof THREE==='undefined'||!THREE.GLTFLoader) return;
   new THREE.GLTFLoader().load(GLB_URL_UAL1, gltf=>{
     const names=gltf.animations.map(c=>c.name);
-    const perRow=7, spacing=3.4, baseX=0, baseZ=98;
+    const perRow=7, spacing=3.4, baseX=24, baseZ=46;
     names.forEach((name,i)=>{
       const row=Math.floor(i/perRow), col=i%perRow;
       const x=baseX+(col-(perRow-1)/2)*spacing;

@@ -621,8 +621,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v148';
-const GAME_CHANGES='Kirtiklis smūgio metu laikomas stačiai, kotas eina per kumščio žiedą, I atidaro aprangos daiktų langą';
+const GAME_VERSION='v149';
+const GAME_CHANGES='Kirtiklis leidžiasi kūno plokštuma (nebenuklysta į dešinę), kotas pastumtas aukštyn ir link kūno';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2613,10 +2613,18 @@ const KIRTIKLIS_SPIN=Math.PI/2;
    pos.x palikti kaip v147 (juos nustatė vartotojo matytas nuokrypis „per
    plaštaką"/„per pusę plaštakos"; jie jau vedė kotą į žiedo x≈−0,033).
    pos.z — poslinkis PAČIU KOTU (kardui −0,10, kad rankena būtų kumštyje). */
+/* v149: vartotojo prašymu kotas pastumtas AUKŠTYN per 2 pirštų storius ir per
+   1 pirštą LINK KŪNO. Piršto storis imtas iš išmatuoto plaštakos pločio:
+   0,073 / 4 = 0,0183. Kryptys perskaičiuotos iš idle pozos plaštakos ašių
+   (hand_r vietinės ašys pasaulyje: X(−0,985; 0,173; −0,007),
+   Y(−0,154; −0,858; 0,489), Z(0,079; 0,483; 0,872)) — pasaulio „aukštyn"
+   plaštakos ašimis yra (0,173; −0,858; 0,483), o „link kūno" (t. y. į
+   personažo kairę, nes dešinė plaštaka yra −X pusėje) — (−0,985; −0,154;
+   0,079). Iš viso postūmis vietinėje sistemoje (−0,0117; −0,0341; +0,0191). */
 const WEAPON_FIT={
-  axe:      {scale:.157, pos:{x:-.073,y:.135,z:0},  rot:{x:Math.PI/2,y:0,z:0}},
-  sword:    {scale:.150, pos:{x:0,    y:.135,z:-.10},rot:{x:Math.PI/2,y:0,z:0}},
-  kirtiklis:{scale:.233, pos:{x:-.037,y:.135,z:0},  rot:{x:Math.PI/2,y:KIRTIKLIS_SPIN,z:0}}
+  axe:      {scale:.157, pos:{x:-.085,y:.101,z: .019},rot:{x:Math.PI/2,y:0,z:0}},
+  sword:    {scale:.150, pos:{x:-.012,y:.101,z:-.081},rot:{x:Math.PI/2,y:0,z:0}},
+  kirtiklis:{scale:.233, pos:{x:-.049,y:.101,z: .019},rot:{x:Math.PI/2,y:KIRTIKLIS_SPIN,z:0}}
 };
 /* Ginklo TIPAS (CATALOG[id].type) → kuris WEAPON_FIT modelis rodomas rankoje
    KOVOJE/idle/ėjime, kai atitinkamas daiktas užsidėtas 'ginklas' vietoje.
@@ -2952,12 +2960,30 @@ const ARM_OPEN={x: .55, z:-1.00, elX:   0, elZ:-.10};  // atsivėrusios aukštyn
    Kad tai išvis būtų pasiekiama, prireikė platesnių alkūnės ribų (dilbio
    sukimas iki 1,6 rad, lenkimas iki 2,2 rad) — tai fiziologiškai normalu,
    o su senomis ribomis sprendinio nebuvo. */
-const GRIP_HOLD={x:1.536, z: 1.448, elX:-1.600, elZ:-2.146}; // laiko stačiai prieš save
-                                   // plaštaka (−0,080; 1,195; 0,189) kairė +0,298
-const GRIP_UP  ={x:-.857, z:-1.298, elX:-1.599, elZ:-1.738}; // užsimota, geležtė aukštyn
-                                   // plaštaka (−0,080; 1,793; 0,050) kairė −0,289
-const GRIP_HIT ={x:1.637, z:  .975, elX:-1.600, elZ:-1.960}; // smūgis: kotas STAČIAS žemyn
-                                   // plaštaka (−0,080; 1,212; 0,329) kairė +0,298
+/* v149: MOSTAS LIEKA KŪNO PLOKŠTUMOJE. v148 buvo tik trys raktai, ir tarp jų
+   sąnarių interpoliacija nuvesdavo kotą į ŠONĄ — išmatuota: šoninė koto
+   dedamoji tarp raktų siekdavo 0,64 (kotas beveik horizontaliai į dešinę),
+   nors patys raktai buvo teisingi. Vartotojas tai ir pamatė: „leidžiasi ne
+   tiesiai, o į dešinę". Sprendimas — TARPINIAI raktai, kiekvienas išspręstas
+   su reikalavimu, kad koto šoninė dedamoji būtų 0, o kotas suktųsi plokštuma
+   PIRMYN: žemyn → pirmyn → aukštyn → pirmyn → žemyn.
+   Kiekvieno rakto komentare — IŠMATUOTA koto kryptis (x, y, z) pasaulyje.
+   Patikra per visą mostą: šoninė dedamoji ≤0,049 (buvo 0,64), plaštakų
+   tarpas 0,300 pastovus, IK klaida 0,0000, siekio atsarga ≥0,173. */
+const GRIP_HOLD={x:1.636, z: 1.467, elX:-1.533, elZ:-2.034}; // laiko stačiai: kotas ( 0,00; −1,00; 0,06)
+const GRIP_R1  ={x:1.582, z:  .693, elX:-1.552, elZ:-2.034}; // kelia:        kotas ( 0,00; −0,64; 0,77)
+const GRIP_R2  ={x:1.494, z: -.443, elX:-1.565, elZ:-2.033}; // kelia:        kotas ( 0,00;  0,47; 0,88)
+const GRIP_UP  ={x:1.234, z:-1.300, elX:-1.605, elZ:-1.821}; // užsimota:     kotas ( 0,00;  0,99; 0,17)
+const GRIP_F1  ={x:1.257, z: -.854, elX:-1.459, elZ:-1.861}; // leidžia:      kotas ( 0,00;  0,65; 0,76)
+const GRIP_F2  ={x:1.431, z:  .212, elX:-1.441, elZ:-2.146}; // leidžia:      kotas ( 0,00; −0,52; 0,86)
+const GRIP_HIT ={x:1.431, z:  .990, elX:-1.454, elZ:-2.170}; // smūgis:       kotas ( 0,00; −0,99; 0,11)
+const GRIP_RISE=[GRIP_HOLD,GRIP_R1,GRIP_R2,GRIP_UP];   // užsimojimo grandinė
+const GRIP_FALL=[GRIP_UP,GRIP_F1,GRIP_F2,GRIP_HIT];    // smūgio grandinė
+/* Grandinė tolygiai išdėstoma per visą fazę: u=0 pirmas raktas, u=1 paskutinis. */
+function gripSeg(list,u){
+  const n=list.length-1, x=Math.max(0,Math.min(n-1e-6,u*n)), i=Math.floor(x);
+  return [list[i],list[i+1],x-i];
+}
 const MINE_POSE={
   leanBack:-.12,   // liemuo atgal užsimojant (−X = atgal)
   leanFwd:  .45,   // liemuo PIRMYN kertant   (+X = pirmyn)
@@ -3063,10 +3089,11 @@ function poseMining(p){
   const M=MINE_POSE;
   let A,B,t,lean;
   if(p<.38){                       // UŽSIMOJIMAS — tolygus, be skubos
-    A=GRIP_HOLD; B=GRIP_UP; t=easeOutCubic(p/.38); lean=M.leanBack*t;
+    const u=easeOutCubic(p/.38); lean=M.leanBack*u;
+    [A,B,t]=gripSeg(GRIP_RISE,u);
   }else if(p<.58){                 // SMŪGIS — staigus, greitėjantis
-    A=GRIP_UP; B=GRIP_HIT; t=Math.pow((p-.38)/.20,.65);
-    lean=mlerp(M.leanBack,M.leanFwd,t);
+    const u=Math.pow((p-.38)/.20,.65); lean=mlerp(M.leanBack,M.leanFwd,u);
+    [A,B,t]=gripSeg(GRIP_FALL,u);
   }else{                           // ATSITIESIMAS
     A=GRIP_HIT; B=GRIP_HOLD; t=easeOutCubic((p-.58)/.42); lean=M.leanFwd*(1-t);
   }

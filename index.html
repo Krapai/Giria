@@ -371,6 +371,14 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
   background:radial-gradient(ellipse at 50% 40%,#1c2a20,#080d0a 75%)}
 #gate .in{max-width:440px;padding:26px}
 #gvBadges{position:fixed;top:16px;left:16px;z-index:21;display:flex;gap:8px}
+/* v145: ATSKIRAS mygtukas PIRMAME titulinio puslapyje (kalbos ekrane), dešinėje —
+   vienas paspaudimas ir žaidimas. Ne .gbtn, kad neitų į gvStart stulpelį ir kad
+   gbusy() jo neišjungtų. */
+#quickPlay{position:fixed;top:16px;right:16px;z-index:21;font-family:'Fraunces',serif;
+  font-size:13px;line-height:1;padding:11px 15px;border:1px solid rgba(217,152,47,.5);
+  border-radius:8px;background:#141d18cc;color:var(--amber-lit);cursor:pointer;
+  transition:background .2s,border-color .2s}
+#quickPlay:hover{background:#1d2a20;border-color:var(--amber)}
 .gvBadge{font-family:'Fraunces',serif;font-size:20px;line-height:1;padding:8px 10px;
   border:1px solid rgba(217,152,47,.5);border-radius:8px;background:#141d18cc;
   color:var(--amber-lit);cursor:pointer;transition:background .2s,border-color .2s}
@@ -510,7 +518,7 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
   <!-- v105: atskiras aprangos daiktų langas šalia Keliautojo lango -->
   <div class="panel card" id="pGearBag"><button class="pClose" title="Uždaryti">✕</button>
     <h3 id="pGearBagTitle">Aprangos daiktai</h3>
-    <div id="gearBagInfo" class="gearInfo">Bakstelėk daiktą — pamatysi, ką jis duoda.</div>
+    <div id="gearBagInfo" class="gearInfo">Bakstelėk daiktą — pamatysi, ką jis duoda. 2× arba dešiniu pelės mygtuku — iškart užsidedi.</div>
     <div id="gearBagGrid"></div>
   </div>
   <div class="panel card" id="pShop"><button class="pClose" title="Uždaryti">✕</button>
@@ -553,6 +561,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
        kad nebeliktų rankomis pamirštamos eilutės. -->
   <div id="gVer" style="font-size:11px;letter-spacing:.18em;color:#d9982f;margin:-8px 0 16px"></div>
 
+  <button id="quickPlay">Žaisti iškart</button>
+
   <div id="gvBadges" style="display:none">
     <button id="gvFlagBadge" class="gvBadge" title="Kalba"></button>
     <button id="gvDeviceBadge" class="gvBadge" title="Įrenginys"></button>
@@ -568,7 +578,6 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
     <p id="gvStartP">Sengirė, kurioje gyvi kaukai, laumės ir vilkolakiai. Kirsk medžius, rink gintarą, kaukis ir kilk lygiais — visa tai tiesiog naršyklėje, be jokių diegimų.</p>
     <button class="gbtn" id="goReg">Susikurti personažą</button>
     <button class="gbtn ghost" id="goGuest">Žaisti be registracijos</button>
-    <button class="gbtn ghost" id="goJustPlay">Tiesiog žaisti</button>
   </div>
 
   <div id="gvGuest" style="display:none">
@@ -612,8 +621,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v144';
-const GAME_CHANGES='Naujas „Tiesiog žaisti" mygtukas tituliniame ekrane (be perspėjimo), senasis „Žaisti be registracijos" grąžintas prie originalaus elgesio';
+const GAME_VERSION='v146';
+const GAME_CHANGES='Daiktai užsideda į savo vietą 2× paspaudus kairiu (ir telefone) arba 1× dešiniu pelės mygtuku';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -646,7 +655,7 @@ const I18N={
   lt:{ loading:'Kraunama giria…', sub:'Trečio asmens RPG · naršyklėje',
     langQ:'Pasirink kalbą', deviceQ:'Kaip žaisi?', devicePc:'🖥 Kompiuteris', devicePhone:'📱 Telefonas', sDevice:'Įrenginys',
     startP:'Sengirė, kurioje gyvi kaukai, laumės ir vilkolakiai. Kirsk medžius, rink gintarą, kaukis ir kilk lygiais — visa tai tiesiog naršyklėje, be jokių diegimų.',
-    goReg:'Susikurti personažą', goGuest:'Žaisti be registracijos', goJustPlay:'Tiesiog žaisti',
+    goReg:'Susikurti personažą', goGuest:'Žaisti be registracijos', quickPlay:'Žaisti iškart',
     guestB:'Progresas nebus išsaugotas.',
     guestP:'Uždarius arba perkrovus langą personažas, daiktai, lygiai ir įgūdžiai dings. Personažas vadinsis „Keliautojas“.',
     guestGo:'Vis tiek žaisti', back:'Grįžti',
@@ -659,7 +668,7 @@ const I18N={
     rzHint:'↔ plotis · ↕ mastelis', chatPh:'rašyk ir spausk Enter',
     ttSettings:'Nustatymai', ttSpells:'Burtai', ttActive:'Aktyvūs įgūdžiai', ttBag:'Krepšys',
     ttMenu:'Meniu', ttSprint:'Sprintas (Shift)', ttMeditate:'Meditacija (Tarpas)', ttClose:'Uždaryti',
-    pBag:'Krepšys', pGearBag:'Aprangos daiktai', gearHint:'Bakstelėk daiktą — pamatysi, ką jis duoda.',
+    pBag:'Krepšys', pGearBag:'Aprangos daiktai', gearHint:'Bakstelėk daiktą — pamatysi, ką jis duoda. 2× arba dešiniu pelės mygtuku — iškart užsidedi.',
     pFish:'Žvejyba', pSet:'Nustatymai',
     sLang:'Kalba', sGraphics:'Grafika', sMusic:'Muzika', sSound:'Garsai', sPlaying:'Skamba',
     sTrackPick:'Takelis', trackAuto:'Automatinis',
@@ -770,7 +779,7 @@ const I18N={
   en:{ loading:'Loading the forest…', sub:'Third-person RPG · in your browser',
     langQ:'Choose language', deviceQ:'How will you play?', devicePc:'🖥 Computer', devicePhone:'📱 Phone', sDevice:'Device',
     startP:'An ancient forest home to kaukai, laumės and werewolves. Chop trees, gather amber, fight and level up — all in your browser, no installs.',
-    goReg:'Create a character', goGuest:'Play without an account', goJustPlay:'Just play',
+    goReg:'Create a character', goGuest:'Play without an account', quickPlay:'Play now',
     guestB:'Your progress will not be saved.',
     guestP:'Closing or reloading the window will erase your character, items, levels and skills. Your character will be called "Traveler".',
     guestGo:'Play anyway', back:'Back',
@@ -783,7 +792,7 @@ const I18N={
     rzHint:'↔ width · ↕ scale', chatPh:'type and press Enter',
     ttSettings:'Settings', ttSpells:'Spells', ttActive:'Active skills', ttBag:'Bag',
     ttMenu:'Menu', ttSprint:'Sprint (Shift)', ttMeditate:'Meditate (Space)', ttClose:'Close',
-    pBag:'Bag', pGearBag:'Gear items', gearHint:'Tap an item to see what it does.',
+    pBag:'Bag', pGearBag:'Gear items', gearHint:'Tap an item to see what it does. Double-click or right-click equips it at once.',
     pFish:'Fishing', pSet:'Settings',
     sLang:'Language', sGraphics:'Graphics', sMusic:'Music', sSound:'Sound', sPlaying:'Playing',
     sTrackPick:'Track', trackAuto:'Automatic',
@@ -910,7 +919,7 @@ function applyStaticLang(){
   setTx('gvLangQ','langQ');
   setTt('gvFlagBadge','sLang'); setTt('gvDeviceBadge','sDevice');
   if(document.getElementById('gvBadges').style.display!=='none') updateGvBadges();
-  setTx('gvStartP','startP'); setTx('goReg','goReg'); setTx('goGuest','goGuest'); setTx('goJustPlay','goJustPlay');
+  setTx('gvStartP','startP'); setTx('goReg','goReg'); setTx('goGuest','goGuest'); setTx('quickPlay','quickPlay');
   setTx('gvGuestB','guestB'); setTx('gvGuestP','guestP'); setTx('guestGo','guestGo'); setTx('guestBack','back');
   setTx('gvAuthP','authP'); setPh('auEmail','emailPh'); setPh('auPass','passPh');
   setTx('auSignup','signup'); setTx('auLogin','login'); setTx('auBack','back');
@@ -5963,11 +5972,46 @@ function drawGearBag(){
     const it=items[i];
     if(it) POPUP_HTML[i]=gearBagInfoHtml(it);
     h+='<div class="gbSlot'+(it?' filled':'')+'" data-i="'+i+'"'+
-       (it?' title="'+it.n+'"':'')+'>'+(it?it.i:'')+'</div>';
+       (it?' data-eq="'+it.id+'" title="'+it.n+'"':'')+'>'+(it?it.i:'')+'</div>';
   }
   const grid=document.getElementById('gearBagGrid');
   grid.innerHTML=h;
   bindPopups(grid,'.gbSlot','i');
+  bindQuickEquip(grid);
+}
+/* v146: GREITAS UŽSIDĖJIMAS iš aprangos lango — daiktas keliauja į JAM SKIRTĄ
+   vietą pats (slotOf(): ginklas→ginklas, šalmas→galva; žiedas→pirma laisva
+   žiedo vieta per freeRingSlot()). Trys būdai, visi veda į tą patį equipItem:
+     PC:       2× kairiu ARBA 1× dešiniu (contextmenu, su preventDefault —
+               kitaip iššoktų naršyklės meniu; drobė tai jau darė, žr. cv)
+     telefonas: 2× bakstelėjimas (pirmas bakstelėjimas kaip anksčiau parodo
+               aprašymo popup'ą — jo elgesys NEPAKEISTAS, tik apgaubtas)
+   Popup'o „Užsidėti" mygtukas lieka — tai tik greitesnis kelias, ne pakaitalas. */
+let lastBagTap={i:null,t:0};
+function bindQuickEquip(box){
+  if(!box.querySelectorAll) return;
+  box.querySelectorAll('.gbSlot').forEach(el=>{
+    const id=el.dataset.eq;
+    if(!id) return;                       // tuščias langelis
+    const doEquip=e=>{
+      if(e&&e.preventDefault) e.preventDefault();
+      if(e&&e.stopPropagation) e.stopPropagation();
+      if(owned.indexOf(id)<0) return;     // jau užsidėtas (pasikartojantis įvykis)
+      if(!equipItem(id)) log(T('equipFail'),'lg-h');
+      hideAttrPopup(); drawGearBag(); drawCharPanel();
+    };
+    el.ondblclick=doEquip;
+    el.oncontextmenu=doEquip;
+    if(isTouch){
+      const showPopup=el.onclick;         // bindPopups jau prijungė aprašymą
+      el.onclick=e=>{
+        const now=Date.now(), key=el.dataset.i;
+        if(lastBagTap.i===key&&now-lastBagTap.t<400){ lastBagTap={i:null,t:0}; doEquip(e); return; }
+        lastBagTap={i:key,t:now};
+        if(showPopup) showPopup(e);
+      };
+    }
+  });
 }
 /* Klaviatūra: tas pats klavišas antrą kartą uždaro langą. Skirtukų juostoje
    ir programiškai openChar elgiasi kaip anksčiau — ten uždarymas atrodytų
@@ -8052,6 +8096,7 @@ function updateGvBadges(){
 function chooseLang(lang){
   LANG=lang; applyStaticLang();
   document.getElementById('gvLang').style.display='none';
+  document.getElementById('quickPlay').style.display='none';
   document.getElementById('gvBadges').style.display='flex';
   updateGvBadges();
   gview('gvStart');
@@ -8062,12 +8107,10 @@ document.getElementById('gvFlagBadge').onclick=()=>chooseLang(LANG==='lt'?'en':'
 document.getElementById('gvDeviceBadge').onclick=()=>{ setDevice(!isTouch); updateGvBadges(); };
 
 document.getElementById('goGuest').onclick=()=>gview('gvGuest');
-/* v143 PATAISYTA: v142 KLAIDINGAI pakeitė ŠIO ESAMO goGuest mygtuko elgesį
-   vietoj NAUJO mygtuko pridėjimo — vartotojas aiškiai pasakė NELIESTI
-   esamų mygtukų. goGuest grąžintas prie originalaus elgesio (gvGuest
-   perspėjimo ekranas), o žemiau — NAUJAS, ATSKIRAS goJustPlay mygtukas su
-   nauja logika (be jokio perspėjimo), jokios esamos logikos nekeičia. */
-document.getElementById('goJustPlay').onclick=()=>{ SESSION=null; setPlayerName(T('defName')); enterWorld(); };
+/* v145: goJustPlay (v142/v143, gvStart sąraše — t. y. matomas TIK po kalbos
+   pasirinkimo) IŠTRINTAS. Vietoj jo — #quickPlay PIRMAME titulinio puslapyje,
+   dešinėje: vienas paspaudimas ir iškart į žaidimą, be jokių tarpinių ekranų. */
+document.getElementById('quickPlay').onclick=()=>{ SESSION=null; setPlayerName(T('defName')); enterWorld(); };
 document.getElementById('guestBack').onclick=()=>gview('gvStart');
 document.getElementById('guestGo').onclick=()=>{ SESSION=null; setPlayerName(T('defName')); enterWorld(); };
 document.getElementById('goReg').onclick=()=>{ gerr('auErr',''); gview('gvAuth'); };

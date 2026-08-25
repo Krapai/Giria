@@ -621,8 +621,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v149';
-const GAME_CHANGES='Kirtiklis leidžiasi kūno plokštuma (nebenuklysta į dešinę), kotas pastumtas aukštyn ir link kūno';
+const GAME_VERSION='v150';
+const GAME_CHANGES='Kirtiklio smaigalys visą mostą nukreiptas pirmyn, kairė alkūnė nebelūžta atgal';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2970,13 +2970,23 @@ const ARM_OPEN={x: .55, z:-1.00, elX:   0, elZ:-.10};  // atsivėrusios aukštyn
    Kiekvieno rakto komentare — IŠMATUOTA koto kryptis (x, y, z) pasaulyje.
    Patikra per visą mostą: šoninė dedamoji ≤0,049 (buvo 0,64), plaštakų
    tarpas 0,300 pastovus, IK klaida 0,0000, siekio atsarga ≥0,173. */
-const GRIP_HOLD={x:1.636, z: 1.467, elX:-1.533, elZ:-2.034}; // laiko stačiai: kotas ( 0,00; −1,00; 0,06)
-const GRIP_R1  ={x:1.582, z:  .693, elX:-1.552, elZ:-2.034}; // kelia:        kotas ( 0,00; −0,64; 0,77)
-const GRIP_R2  ={x:1.494, z: -.443, elX:-1.565, elZ:-2.033}; // kelia:        kotas ( 0,00;  0,47; 0,88)
-const GRIP_UP  ={x:1.234, z:-1.300, elX:-1.605, elZ:-1.821}; // užsimota:     kotas ( 0,00;  0,99; 0,17)
-const GRIP_F1  ={x:1.257, z: -.854, elX:-1.459, elZ:-1.861}; // leidžia:      kotas ( 0,00;  0,65; 0,76)
-const GRIP_F2  ={x:1.431, z:  .212, elX:-1.441, elZ:-2.146}; // leidžia:      kotas ( 0,00; −0,52; 0,86)
-const GRIP_HIT ={x:1.431, z:  .990, elX:-1.454, elZ:-2.170}; // smūgis:       kotas ( 0,00; −0,99; 0,11)
+/* v150: MOSTAS NEBEVERČIA KIRTIKLIO PER GALVĄ. v149 užsimojimas kėlė kotą
+   pro priekį AUKŠTYN ir už galvos (koto kampas nuo „žemyn" nueidavo iki 195°).
+   Standžiam įrankiui tai reiškia, kad smaigalys — statmuo kotui toje pačioje
+   plokštumoje — apsiverčia kartu: pasukus kotą per ~180°, PIRMYN nukreiptas
+   smaigalys neišvengiamai atsisuka ATGAL. Vartotojas tai ir pamatė.
+   Todėl užsimojimas dabar sustoja ties kotu PIRMYN (80°): geležtė pakyla
+   priekyje iki plaštakų aukščio, o pačios plaštakos pakyla nuo 1,20 iki 1,67.
+   IŠMATUOTA po pakeitimo: smaigalio kryptis visose mosto vietose turi
+   TEIGIAMĄ pirmyn dedamąją (nuo 0,08 viršuje iki 0,88 smūgio metu) — atgal
+   nebeatsisuka niekur. */
+const GRIP_HOLD={x:1.636, z: 1.467, elX:-1.533, elZ:-2.034}; // laiko: kotas ( 0,00; −1,00; 0,06)
+const GRIP_R1  ={x:1.593, z:  .946, elX:-1.545, elZ:-2.020}; // kelia: kotas ( 0,00; −0,80; 0,60)
+const GRIP_R2  ={x:1.572, z:  .514, elX:-1.555, elZ:-1.995}; // kelia: kotas ( 0,00; −0,44; 0,90)
+const GRIP_UP  ={x:1.555, z:  .179, elX:-1.563, elZ:-1.973}; // užsimota: kotas ( 0,00; −0,09; 1,00)
+const GRIP_F1  ={x:1.555, z:  .179, elX:-1.563, elZ:-1.973}; // leidžia: kotas ( 0,00; −0,33; 0,95)
+const GRIP_F2  ={x:1.574, z:  .418, elX:-1.563, elZ:-1.973}; // leidžia: kotas ( 0,00; −0,70; 0,72)
+const GRIP_HIT ={x:1.628, z:  .977, elX:-1.563, elZ:-1.974}; // smūgis: kotas ( 0,00; −0,99; 0,11)
 const GRIP_RISE=[GRIP_HOLD,GRIP_R1,GRIP_R2,GRIP_UP];   // užsimojimo grandinė
 const GRIP_FALL=[GRIP_UP,GRIP_F1,GRIP_F2,GRIP_HIT];    // smūgio grandinė
 /* Grandinė tolygiai išdėstoma per visą fazę: u=0 pirmas raktas, u=1 paskutinis. */
@@ -3020,7 +3030,12 @@ function applyArmPose(A,B,t,w,pairs){
 /* v148: NEIGIAMAS — kairė plaštaka ant koto VIRŠ dešinės (link koto galo),
    nes smūgio metu geležtė nukreipta žemyn. Ženklas lemia, kuri ranka viršuje. */
 const GRIP_SPAN=-.30;                                 // plaštakų tarpas ant koto
-const GRIP_POLE=new THREE.Vector3(.8,-1,.25);         // kur atsikiša kairė alkūnė
+/* v150: alkūnės kryptis pataisyta — su v149 reikšme kairė alkūnė mosto metu
+   nuklysdavo UŽ kūno (išmatuota alkūnės z iki −0,30, t. y. ranka lūžta atgal;
+   vartotojas: „kairė per daug lenkiasi atgal"). Su (1; −1; 0,5) alkūnė per
+   visą mostą lieka PRIEKYJE (z ≥ 0,10) ir savo pusėje (x ≥ 0,03), neišsikelia
+   virš peties (y ≤ 1,55). */
+const GRIP_POLE=new THREE.Vector3(1,-1,.5);           // kur atsikiša kairė alkūnė
 const _gk={ax:new THREE.Vector3(),base:new THREE.Vector3(),sh:new THREE.Vector3(),
   tgt:new THREE.Vector3(),v:new THREE.Vector3(),vn:new THREE.Vector3(),
   n:new THREE.Vector3(),perp:new THREE.Vector3(),elbow:new THREE.Vector3(),

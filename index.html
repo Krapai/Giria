@@ -567,7 +567,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
   <div id="gvStart" style="display:none">
     <p id="gvStartP">Sengirė, kurioje gyvi kaukai, laumės ir vilkolakiai. Kirsk medžius, rink gintarą, kaukis ir kilk lygiais — visa tai tiesiog naršyklėje, be jokių diegimų.</p>
     <button class="gbtn" id="goReg">Susikurti personažą</button>
-    <button class="gbtn ghost" id="goGuest">Tiesiog žaisti</button>
+    <button class="gbtn ghost" id="goGuest">Žaisti be registracijos</button>
+    <button class="gbtn ghost" id="goJustPlay">Tiesiog žaisti</button>
   </div>
 
   <div id="gvGuest" style="display:none">
@@ -611,8 +612,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v143';
-const GAME_CHANGES='Tituliniame ekrane pašalinti trys stiliai (Šešėlis, Kalvė, Šerkšnas)';
+const GAME_VERSION='v144';
+const GAME_CHANGES='Naujas „Tiesiog žaisti" mygtukas tituliniame ekrane (be perspėjimo), senasis „Žaisti be registracijos" grąžintas prie originalaus elgesio';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -645,7 +646,7 @@ const I18N={
   lt:{ loading:'Kraunama giria…', sub:'Trečio asmens RPG · naršyklėje',
     langQ:'Pasirink kalbą', deviceQ:'Kaip žaisi?', devicePc:'🖥 Kompiuteris', devicePhone:'📱 Telefonas', sDevice:'Įrenginys',
     startP:'Sengirė, kurioje gyvi kaukai, laumės ir vilkolakiai. Kirsk medžius, rink gintarą, kaukis ir kilk lygiais — visa tai tiesiog naršyklėje, be jokių diegimų.',
-    goReg:'Susikurti personažą', goGuest:'Tiesiog žaisti',
+    goReg:'Susikurti personažą', goGuest:'Žaisti be registracijos', goJustPlay:'Tiesiog žaisti',
     guestB:'Progresas nebus išsaugotas.',
     guestP:'Uždarius arba perkrovus langą personažas, daiktai, lygiai ir įgūdžiai dings. Personažas vadinsis „Keliautojas“.',
     guestGo:'Vis tiek žaisti', back:'Grįžti',
@@ -769,7 +770,7 @@ const I18N={
   en:{ loading:'Loading the forest…', sub:'Third-person RPG · in your browser',
     langQ:'Choose language', deviceQ:'How will you play?', devicePc:'🖥 Computer', devicePhone:'📱 Phone', sDevice:'Device',
     startP:'An ancient forest home to kaukai, laumės and werewolves. Chop trees, gather amber, fight and level up — all in your browser, no installs.',
-    goReg:'Create a character', goGuest:'Just play',
+    goReg:'Create a character', goGuest:'Play without an account', goJustPlay:'Just play',
     guestB:'Your progress will not be saved.',
     guestP:'Closing or reloading the window will erase your character, items, levels and skills. Your character will be called "Traveler".',
     guestGo:'Play anyway', back:'Back',
@@ -909,7 +910,7 @@ function applyStaticLang(){
   setTx('gvLangQ','langQ');
   setTt('gvFlagBadge','sLang'); setTt('gvDeviceBadge','sDevice');
   if(document.getElementById('gvBadges').style.display!=='none') updateGvBadges();
-  setTx('gvStartP','startP'); setTx('goReg','goReg'); setTx('goGuest','goGuest');
+  setTx('gvStartP','startP'); setTx('goReg','goReg'); setTx('goGuest','goGuest'); setTx('goJustPlay','goJustPlay');
   setTx('gvGuestB','guestB'); setTx('gvGuestP','guestP'); setTx('guestGo','guestGo'); setTx('guestBack','back');
   setTx('gvAuthP','authP'); setPh('auEmail','emailPh'); setPh('auPass','passPh');
   setTx('auSignup','signup'); setTx('auLogin','login'); setTx('auBack','back');
@@ -8060,10 +8061,13 @@ document.getElementById('langEn').onclick=()=>chooseLang('en');
 document.getElementById('gvFlagBadge').onclick=()=>chooseLang(LANG==='lt'?'en':'lt');
 document.getElementById('gvDeviceBadge').onclick=()=>{ setDevice(!isTouch); updateGvBadges(); };
 
-/* v142: vartotojo prašymu — be jokio papildomo perspėjimo ekrano (gvGuest),
-   tiesiog iškart į žaidimą, kaip ir guestGo. gvGuest paliktas kode
-   nenaudojamas (negyvas, bet nepavojingas), jei prireiktų grąžinti. */
-document.getElementById('goGuest').onclick=()=>{ SESSION=null; setPlayerName(T('defName')); enterWorld(); };
+document.getElementById('goGuest').onclick=()=>gview('gvGuest');
+/* v143 PATAISYTA: v142 KLAIDINGAI pakeitė ŠIO ESAMO goGuest mygtuko elgesį
+   vietoj NAUJO mygtuko pridėjimo — vartotojas aiškiai pasakė NELIESTI
+   esamų mygtukų. goGuest grąžintas prie originalaus elgesio (gvGuest
+   perspėjimo ekranas), o žemiau — NAUJAS, ATSKIRAS goJustPlay mygtukas su
+   nauja logika (be jokio perspėjimo), jokios esamos logikos nekeičia. */
+document.getElementById('goJustPlay').onclick=()=>{ SESSION=null; setPlayerName(T('defName')); enterWorld(); };
 document.getElementById('guestBack').onclick=()=>gview('gvStart');
 document.getElementById('guestGo').onclick=()=>{ SESSION=null; setPlayerName(T('defName')); enterWorld(); };
 document.getElementById('goReg').onclick=()=>{ gerr('auErr',''); gview('gvAuth'); };

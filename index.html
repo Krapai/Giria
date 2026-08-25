@@ -621,8 +621,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v146';
-const GAME_CHANGES='Daiktai užsideda į savo vietą 2× paspaudus kairiu (ir telefone) arba 1× dešiniu pelės mygtuku';
+const GAME_VERSION='v147';
+const GAME_CHANGES='Abi rankos ant to paties koto (kairė per IK), kirtiklio smailė į taikinį, idle — mėlyna nr10, pataisytos ginklų vietos plaštakoje';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2586,10 +2586,26 @@ const WEAPON_URL={
    vizualiai, derinti šiuos skaičius pagal ggaf.online vaizdą, ne spėti iš
    naujo. Poza (rot) — irgi spėjimas: objekto vietinė Y ašis (ilgis)
    pasukama, kad sutaptų su plaštakos griebimo kryptimi. */
+/* v147: pataisyta pagal vartotojo pastabas + IŠMATUOTUS plaštakos kaulo dydžius
+   (UAL2_Standard_RM.glb, Idle_Loop poza):
+     hand_r vietinė +X → pasaulyje (−0,985; 0,17; −0,01) = personažo DEŠINĖ
+     hand_r vietinė +Y → pirštų kryptis (middle_01_r guli ties y=0,122)
+     hand_r vietinė +Z → koto ašis (rot.x=PI/2 pasuka modelio Y į plaštakos Z)
+   Matai: plaštakos plotis 0,073; kumštis 0,060.
+   „Kotas nukrypęs į dešinę" ⇒ neigiamas pos.x (per plaštaką = 0,073, per pusę
+   plaštakos = 0,037). „Kardas per aukštai, laiko už nieko" ⇒ tinklelį reikia
+   nuleisti KOTU ŽEMYN, t. y. neigiamas pos.z (0,10 ≈ pusantro kumščio).
+   KIRTIKLIS: rot.y pasuka modelį APIE PATĮ KOTĄ (rot.x jau pasuko modelio Y į
+   plaštakos Z, o Euler XYZ tvarkoje Ry taikomas prieš Rx). Smūgio momentu
+   plaštakos vietinė +Y rodo (0,07; −0,74; 0,66) — ŽEMYN PIRMYN, t. y. tiesiai
+   į kasamą taikinį, todėl smailę sukame būtent ten. Paties modelio neturime,
+   tad nežinoma, ar smailė guli ties modelio +X ar −X: JEI SMAILĖ ATSISUKS
+   ATGAL/AUKŠTYN — pakeisti KIRTIKLIS_SPIN ženklą, daugiau nieko. */
+const KIRTIKLIS_SPIN=Math.PI/2;
 const WEAPON_FIT={
-  axe:      {scale:.157, pos:{x:0,y:.02,z:0}, rot:{x:Math.PI/2,y:0,z:0}},
-  sword:    {scale:.150, pos:{x:0,y:.05,z:0}, rot:{x:Math.PI/2,y:0,z:0}},
-  kirtiklis:{scale:.233, pos:{x:0,y:.02,z:0}, rot:{x:Math.PI/2,y:0,z:0}}
+  axe:      {scale:.157, pos:{x:-.073,y:.02,z:0},  rot:{x:Math.PI/2,y:0,z:0}},
+  sword:    {scale:.150, pos:{x:0,    y:.05,z:-.10},rot:{x:Math.PI/2,y:0,z:0}},
+  kirtiklis:{scale:.233, pos:{x:-.037,y:.02,z:0},  rot:{x:Math.PI/2,y:KIRTIKLIS_SPIN,z:0}}
 };
 /* Ginklo TIPAS (CATALOG[id].type) → kuris WEAPON_FIT modelis rodomas rankoje
    KOVOJE/idle/ėjime, kai atitinkamas daiktas užsidėtas 'ginklas' vietoje.
@@ -2650,7 +2666,7 @@ const A_NO={dummyIdle:1, death:8, revive:17, wolfA:18, wolfB:19, atk3:23, chop:3
    galvos žymėse (1-based). Kryžminis retargetinimas veikia, nes abu paketai
    turi TĄ PATĮ UE tipo skeleto vardyną (žr. v93/ISTORIJA.md) — Three.js
    AnimationMixer riša takelius PAGAL MAZGO VARDĄ, ne pagal kilmės failą. */
-const A_NO_UAL1={move:14, sprint:37, deathAlt:5};
+const A_NO_UAL1={move:14, sprint:37, deathAlt:5, idle:10};  // v147: idle = mėlyna nr10 (Idle_Loop)
 const WALK_CLIP_MPS=1.5;         // v97: kokiam greičiui (m/s) sukurtas UAL2 ėjimo klipas (atsarginis, kol UAL1 dar neįkeltas)
 /* v136: TIKRI, iš paties UAL1_Standard_RM.glb failo išmatuoti greičiai (žr.
    ISTORIJA.md v136) — šaknies kaulo („root") poslinkis per klipo trukmę:
@@ -2910,12 +2926,17 @@ const ARM_OPEN={x: .55, z:-1.00, elX:   0, elZ:-.10};  // atsivėrusios aukštyn
    tarpas per visą mostą lieka beveik PASTOVUS (0,30 → 0,32 → 0,33) — kaip
    laikant kotą. Elektros/burtų pozos (ARM_UP, ARM_HIT) TYČIA paliktos
    atskiros: ten ranka viena, ir joms tinka kitokie kampai. */
-const GRIP_HOLD={x:1.65, z:  .40, elX:0, elZ:0};  // laiko prie juosmens
-                                                  // y=1,23 priekyje=0,44 tarpas=0,30
-const GRIP_UP  ={x:2.30, z:-1.50, elX:0, elZ:0};  // užsimota virš galvos
-                                                  // y=1,99 priekyje=−0,04 tarpas=0,32
-const GRIP_HIT ={x:1.65, z:  .95, elX:0, elZ:0};  // kirtis žemyn priekyje
-                                                  // y=1,00 priekyje=0,25 tarpas=0,33
+/* v147: TIK DEŠINĖ RANKA. Kairė nebe veidrodinė kopija — ją skaičiuoja
+   poseGripLeftIK(), todėl plaštakos VISADA lieka ant to paties koto.
+   Reikšmės iš naujo išspręstos tiesiai .glb faile tuo pačiu IK, kurį naudoja
+   žaidimas; komentaruose — IŠMATUOTA dešinės plaštakos vieta ir kiek kairė
+   yra virš jos. */
+const GRIP_HOLD={x:1.244, z: 1.191, elX:.433, elZ:-1.239};  // laiko prie juosmens
+                                   // plaštaka (−0,300; 1,220; 0,284) kairė +0,100
+const GRIP_UP  ={x:1.157, z:-1.407, elX:.234, elZ: .020};   // užsimota virš galvos
+                                   // plaštaka (−0,120; 1,986; −0,020) kairė −0,089
+const GRIP_HIT ={x:1.263, z:  .992, elX:.480, elZ:-.570};   // kirtis žemyn priekyje
+                                   // plaštaka (−0,236; 1,000; 0,260) kairė +0,080
 const MINE_POSE={
   leanBack:-.12,   // liemuo atgal užsimojant (−X = atgal)
   leanFwd:  .45,   // liemuo PIRMYN kertant   (+X = pirmyn)
@@ -2934,6 +2955,87 @@ function applyArmPose(A,B,t,w,pairs){
     poseBonePair('lowerarm',ex,0,ez,w);
   }
 }
+/* ===== v147: KAIRĖ RANKA ANT KOTO — 2 KAULŲ IK, NE VEIDRODIS =====
+   KODĖL: iki v146 abi rankos gaudavo TAS PAČIAS deltas (poseBonePair), tad
+   plaštakos buvo veidrodinės — viršuje susieidavo per kūno ašį (atrodė kaip
+   sukryžiuoti riešai), o apačioje išsiskirdavo. Vartotojas tai aprašė tiksliai.
+   IŠMATUOTA .glb faile su v141 reikšmėmis: viršuje kairė plaštaka buvo 0,149
+   NUO koto linijos, o tarpas kirtimo pabaigoje išaugdavo 0,343 → 0,405.
+   Veidrodinė poza to ištaisyti NEGALI iš principo — veidrodyje abiejų
+   plaštakų aukštis visada vienodas (dy=0,000), o prašyta, kad kairė būtų
+   šiek tiek AUKŠČIAU.
+   DABAR: dešinė ranka valdo kotą (GRIP_* pozos), o kairės plaštaka statoma
+   TIKSLIAI ant koto linijos, per GRIP_SPAN nuo dešinės. Patikrinta per visą
+   mostą (101 taškas): nuokrypis nuo koto 0,0000, tarpas 0,300–0,356, siekio
+   atsarga ≥0,022, kairė aukščiau +0,100 laikant ir +0,080 kertant.
+   Koto ašis imama kaip hand_r vietinė +Z (ten WEAPON_FIT rot.x=PI/2 nukreipia
+   modelio ilgį) — todėl ranka seka TIKRĄ ginklo padėtį, ne spėjimą. */
+const GRIP_SPAN=.30;                                  // plaštakų tarpas ant koto
+const GRIP_POLE=new THREE.Vector3(.5,-1,-.35);        // kur atsikiša kairė alkūnė
+const _gk={ax:new THREE.Vector3(),base:new THREE.Vector3(),sh:new THREE.Vector3(),
+  tgt:new THREE.Vector3(),v:new THREE.Vector3(),vn:new THREE.Vector3(),
+  n:new THREE.Vector3(),perp:new THREE.Vector3(),elbow:new THREE.Vector3(),
+  pole:new THREE.Vector3(),dir:new THREE.Vector3(),a1:new THREE.Vector3(),a2:new THREE.Vector3(),
+  qw:new THREE.Quaternion(),qp:new THREE.Quaternion(),qa:new THREE.Quaternion(),
+  q1w:new THREE.Quaternion(),q1l:new THREE.Quaternion(),q2w:new THREE.Quaternion(),
+  q2l:new THREE.Quaternion(),qi:new THREE.Quaternion(),save:new THREE.Quaternion()};
+function poseGripLeftIK(w){
+  const hr=GLTF_BONES.hand_r, ua=GLTF_BONES.upperarm_l,
+        la=GLTF_BONES.lowerarm_l, hl=GLTF_BONES.hand_l;
+  if(!hr||!ua||!la||!hl||!ua.parent||!playerGltfModel||w<=0) return;
+  playerGltfModel.updateMatrixWorld(true);      // dešinė ranka jau pastatyta
+  const g=_gk, l1=la.position.length(), l2=hl.position.length(), L=l1+l2;
+  g.ax.setFromMatrixColumn(hr.matrixWorld,2).normalize();
+  g.base.setFromMatrixPosition(hr.matrixWorld);
+  g.sh.setFromMatrixPosition(ua.matrixWorld);
+  /* taškas ant koto: pastovus tarpas; slenkamas TIK jei kairė nepasiektų —
+     taip plaštaka niekada nepalieka koto, nebent truputį pakinta tarpas */
+  let t=GRIP_SPAN;
+  const Rr=.96*L;
+  if(g.v.copy(g.base).addScaledVector(g.ax,t).sub(g.sh).length()>Rr){
+    g.v.copy(g.base).sub(g.sh);
+    const b=g.v.dot(g.ax), c=g.v.lengthSq()-Rr*Rr, disc=b*b-c;
+    if(disc>=0){ const r1=-b-Math.sqrt(disc), r2=-b+Math.sqrt(disc);
+      t=Math.abs(r1-GRIP_SPAN)<Math.abs(r2-GRIP_SPAN)?r1:r2; }
+    else t=-b;
+    t=Math.max(.18,Math.min(.45,t));
+  }
+  g.tgt.copy(g.base).addScaledVector(g.ax,t);
+  g.v.copy(g.tgt).sub(g.sh);
+  let d=g.v.length(); if(d<1e-4) return;
+  g.vn.copy(g.v).divideScalar(d);
+  d=Math.max(Math.abs(l1-l2)+1e-3,Math.min(L-1e-3,d));
+  const cs=(l1*l1+d*d-l2*l2)/(2*l1*d), a=Math.acos(Math.max(-1,Math.min(1,cs)));
+  g.pole.copy(GRIP_POLE).applyQuaternion(playerGltfModel.quaternion).normalize();
+  g.n.copy(g.vn).cross(g.pole);
+  if(g.n.lengthSq()<1e-6) g.n.set(0,0,1).cross(g.vn);
+  g.n.normalize();
+  g.perp.copy(g.n).cross(g.vn).normalize();
+  g.elbow.copy(g.sh).addScaledVector(g.vn,l1*Math.cos(a)).addScaledVector(g.perp,l1*Math.sin(a));
+  /* žastas → alkūnė. Kaulo ašis šiame skelete yra vietinė +Y (vaikas guli ties
+     (0; 0,274; 0) — IŠMATUOTA), todėl kryptis imama iš vaiko kaulo vietos. */
+  ua.getWorldQuaternion(g.qw);
+  g.a1.copy(la.position).normalize().applyQuaternion(g.qw);
+  g.dir.copy(g.elbow).sub(g.sh).normalize();
+  g.qa.setFromUnitVectors(g.a1,g.dir);
+  g.q1w.copy(g.qa).multiply(g.qw);
+  ua.parent.getWorldQuaternion(g.qp);
+  g.q1l.copy(g.qp).invert().multiply(g.q1w);
+  /* dilbis → plaštakos taikinys (skaičiuojama su JAU pasuktu žastu) */
+  g.save.copy(ua.quaternion);
+  ua.quaternion.copy(g.q1l);
+  ua.updateMatrixWorld(true);
+  la.getWorldQuaternion(g.qw);
+  g.a2.copy(hl.position).normalize().applyQuaternion(g.qw);
+  g.dir.copy(g.tgt).sub(g.elbow).normalize();
+  g.qa.setFromUnitVectors(g.a2,g.dir);
+  g.q2w.copy(g.qa).multiply(g.qw);
+  g.qi.copy(g.q1w).invert();
+  g.q2l.copy(g.qi).multiply(g.q2w);
+  /* svoris — kaip poseBoneBlend: sklandžiai iš mikserio pozos ir atgal */
+  ua.quaternion.copy(g.save).slerp(g.q1l,Math.min(1,w));
+  la.quaternion.slerp(g.q2l,Math.min(1,w));
+}
 function poseMining(p){
   const M=MINE_POSE;
   let A,B,t,lean;
@@ -2949,11 +3051,12 @@ function poseMining(p){
      iš/į mikserio grojamą idle klipą (žr. poseBoneBlend paaiškinimą) */
   const w=Math.min(1,p/.12,(1-p)/.18);
   if(w<=0) return;
-  applyArmPose(A,B,t,w);
+  applyArmPose(A,B,t,w,false);              // v147: TIK dešinė — kairę stato IK
   poseBonePair('clavicle',M.clav,0,0,w);
   poseBoneBlend('spine_01',lean*.30,0,0,w);
   poseBoneBlend('spine_02',lean*.34,0,0,w);
   poseBoneBlend('spine_03',lean*.36,0,0,w);
+  poseGripLeftIK(w);                        // PO stuburo/pečių — IK skaito pasaulio matricas
 }
 /* Kviečiama kadre PO playerGltfMixer.update() — kaip ir Perkūno poza, kitaip
    mikseris perrašytų mūsų kaulus. player.mine nustatomas gather() metu. */
@@ -3142,8 +3245,23 @@ function triggerPlayerSwingClip(crit,interval){
     new THREE.GLTFLoader().load(GLB_URL_UAL1, ual1=>{
       const ual1No=no=>ual1.animations[no-1];
       const moveClip=ual1No(A_NO_UAL1.move), sprintClip=ual1No(A_NO_UAL1.sprint),
-            deathAltClip=ual1No(A_NO_UAL1.deathAlt);
-      stripRootMotionXZ([moveClip,sprintClip,deathAltClip].filter(Boolean));
+            deathAltClip=ual1No(A_NO_UAL1.deathAlt), idleClip=ual1No(A_NO_UAL1.idle);
+      stripRootMotionXZ([moveClip,sprintClip,deathAltClip,idleClip].filter(Boolean));
+      /* v147: vartotojo prašymu įprasta (stovėjimo) būsena — MĖLYNA nr10
+         (UAL1 „Idle_Loop"), ne UAL2 „Idle_FoldArms_Loop". Perjungiama TA PAČIA
+         asinchronine tvarka kaip ėjimas; jei personažas tuo metu jau stovi
+         senojo idle pozoje, persiliejama iškart, kad nereikėtų laukti kito
+         idle↔ėjimas perėjimo. */
+      if(idleClip){
+        const oldIdle=playerGltfActions.idle, wasIdle=(playerGltfCurrent===oldIdle);
+        playerGltfActions.idle=playerGltfMixer.clipAction(idleClip);
+        playerGltfActions.idle.setLoop(THREE.LoopRepeat);
+        if(wasIdle){
+          if(oldIdle) oldIdle.fadeOut(.25);
+          playerGltfActions.idle.reset().fadeIn(.25).play();
+          playerGltfCurrent=playerGltfActions.idle;
+        }
+      }
       if(moveClip){
         playerGltfActions.walk=playerGltfMixer.clipAction(moveClip);
         playerGltfActions.walk.setLoop(THREE.LoopRepeat);

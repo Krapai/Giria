@@ -621,8 +621,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v147';
-const GAME_CHANGES='Abi rankos ant to paties koto (kairė per IK), kirtiklio smailė į taikinį, idle — mėlyna nr10, pataisytos ginklų vietos plaštakoje';
+const GAME_VERSION='v148';
+const GAME_CHANGES='Kirtiklis smūgio metu laikomas stačiai, kotas eina per kumščio žiedą, I atidaro aprangos daiktų langą';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2602,10 +2602,21 @@ const WEAPON_URL={
    tad nežinoma, ar smailė guli ties modelio +X ar −X: JEI SMAILĖ ATSISUKS
    ATGAL/AUKŠTYN — pakeisti KIRTIKLIS_SPIN ženklą, daugiau nieko. */
 const KIRTIKLIS_SPIN=Math.PI/2;
+/* v148: „kotas ten, kur pirštai susigniaužia į apskritimą". IŠMATUOTA:
+   sugniaužus kumštį (tie patys kampai, kuriuos naudoja poseThunderFingers)
+   pirštakauliai atsiduria hand_r vietinėje sistemoje taip:
+     pirštų pamatų eilė   y≈0,120   galiukai y≈0,163, nusisukę į x≈−0,055
+     nykščio galas        (−0,061; 0,095; −0,004)
+   Žiedo (skylės) centras — tarp pamatų eilės ir galiukų, nykščio pusėje:
+     ≈ (−0,033; 0,135; 0). Todėl pos.y keliamas nuo 0,02/0,05 iki 0,135 —
+   kotas nebeguli ties riešu, o eina per patį kumščio žiedą.
+   pos.x palikti kaip v147 (juos nustatė vartotojo matytas nuokrypis „per
+   plaštaką"/„per pusę plaštakos"; jie jau vedė kotą į žiedo x≈−0,033).
+   pos.z — poslinkis PAČIU KOTU (kardui −0,10, kad rankena būtų kumštyje). */
 const WEAPON_FIT={
-  axe:      {scale:.157, pos:{x:-.073,y:.02,z:0},  rot:{x:Math.PI/2,y:0,z:0}},
-  sword:    {scale:.150, pos:{x:0,    y:.05,z:-.10},rot:{x:Math.PI/2,y:0,z:0}},
-  kirtiklis:{scale:.233, pos:{x:-.037,y:.02,z:0},  rot:{x:Math.PI/2,y:KIRTIKLIS_SPIN,z:0}}
+  axe:      {scale:.157, pos:{x:-.073,y:.135,z:0},  rot:{x:Math.PI/2,y:0,z:0}},
+  sword:    {scale:.150, pos:{x:0,    y:.135,z:-.10},rot:{x:Math.PI/2,y:0,z:0}},
+  kirtiklis:{scale:.233, pos:{x:-.037,y:.135,z:0},  rot:{x:Math.PI/2,y:KIRTIKLIS_SPIN,z:0}}
 };
 /* Ginklo TIPAS (CATALOG[id].type) → kuris WEAPON_FIT modelis rodomas rankoje
    KOVOJE/idle/ėjime, kai atitinkamas daiktas užsidėtas 'ginklas' vietoje.
@@ -2931,12 +2942,22 @@ const ARM_OPEN={x: .55, z:-1.00, elX:   0, elZ:-.10};  // atsivėrusios aukštyn
    Reikšmės iš naujo išspręstos tiesiai .glb faile tuo pačiu IK, kurį naudoja
    žaidimas; komentaruose — IŠMATUOTA dešinės plaštakos vieta ir kiek kairė
    yra virš jos. */
-const GRIP_HOLD={x:1.244, z: 1.191, elX:.433, elZ:-1.239};  // laiko prie juosmens
-                                   // plaštaka (−0,300; 1,220; 0,284) kairė +0,100
-const GRIP_UP  ={x:1.157, z:-1.407, elX:.234, elZ: .020};   // užsimota virš galvos
-                                   // plaštaka (−0,120; 1,986; −0,020) kairė −0,089
-const GRIP_HIT ={x:1.263, z:  .992, elX:.480, elZ:-.570};   // kirtis žemyn priekyje
-                                   // plaštaka (−0,236; 1,000; 0,260) kairė +0,080
+/* v148: kotas STATMENAS. v147 smūgio metu kotas gulėjo beveik horizontaliai
+   (išmatuota kryptis (0,944; 0,266; 0,192) — skersai kūno), vartotojas tai ir
+   pastebėjo. Pozos perskaičiuotos su nauju reikalavimu: koto kryptis smūgio
+   metu (0,00; −0,99; 0,11) — stačiai žemyn, o geležtė (koto +ašis) nukreipta
+   į kasamą daiktą. Todėl kairė plaštaka dabar VIRŠ dešinės ant koto, t. y.
+   GRIP_SPAN neigiamas (link koto galo, ne link geležtės) — kaip tikrai
+   laikomas kirtiklis: dešinė žemiau, arčiau geležtės.
+   Kad tai išvis būtų pasiekiama, prireikė platesnių alkūnės ribų (dilbio
+   sukimas iki 1,6 rad, lenkimas iki 2,2 rad) — tai fiziologiškai normalu,
+   o su senomis ribomis sprendinio nebuvo. */
+const GRIP_HOLD={x:1.536, z: 1.448, elX:-1.600, elZ:-2.146}; // laiko stačiai prieš save
+                                   // plaštaka (−0,080; 1,195; 0,189) kairė +0,298
+const GRIP_UP  ={x:-.857, z:-1.298, elX:-1.599, elZ:-1.738}; // užsimota, geležtė aukštyn
+                                   // plaštaka (−0,080; 1,793; 0,050) kairė −0,289
+const GRIP_HIT ={x:1.637, z:  .975, elX:-1.600, elZ:-1.960}; // smūgis: kotas STAČIAS žemyn
+                                   // plaštaka (−0,080; 1,212; 0,329) kairė +0,298
 const MINE_POSE={
   leanBack:-.12,   // liemuo atgal užsimojant (−X = atgal)
   leanFwd:  .45,   // liemuo PIRMYN kertant   (+X = pirmyn)
@@ -2970,8 +2991,10 @@ function applyArmPose(A,B,t,w,pairs){
    atsarga ≥0,022, kairė aukščiau +0,100 laikant ir +0,080 kertant.
    Koto ašis imama kaip hand_r vietinė +Z (ten WEAPON_FIT rot.x=PI/2 nukreipia
    modelio ilgį) — todėl ranka seka TIKRĄ ginklo padėtį, ne spėjimą. */
-const GRIP_SPAN=.30;                                  // plaštakų tarpas ant koto
-const GRIP_POLE=new THREE.Vector3(.5,-1,-.35);        // kur atsikiša kairė alkūnė
+/* v148: NEIGIAMAS — kairė plaštaka ant koto VIRŠ dešinės (link koto galo),
+   nes smūgio metu geležtė nukreipta žemyn. Ženklas lemia, kuri ranka viršuje. */
+const GRIP_SPAN=-.30;                                 // plaštakų tarpas ant koto
+const GRIP_POLE=new THREE.Vector3(.8,-1,.25);         // kur atsikiša kairė alkūnė
 const _gk={ax:new THREE.Vector3(),base:new THREE.Vector3(),sh:new THREE.Vector3(),
   tgt:new THREE.Vector3(),v:new THREE.Vector3(),vn:new THREE.Vector3(),
   n:new THREE.Vector3(),perp:new THREE.Vector3(),elbow:new THREE.Vector3(),
@@ -2998,7 +3021,7 @@ function poseGripLeftIK(w){
     if(disc>=0){ const r1=-b-Math.sqrt(disc), r2=-b+Math.sqrt(disc);
       t=Math.abs(r1-GRIP_SPAN)<Math.abs(r2-GRIP_SPAN)?r1:r2; }
     else t=-b;
-    t=Math.max(.18,Math.min(.45,t));
+    t=Math.max(.18,Math.min(.45,Math.abs(t)))*(GRIP_SPAN<0?-1:1);
   }
   g.tgt.copy(g.base).addScaledVector(g.ax,t);
   g.v.copy(g.tgt).sub(g.sh);
@@ -4121,6 +4144,9 @@ addEventListener('keydown',e=>{
   if(typingInField(e)) return;
   keys[e.code]=true;
   if(e.code==='KeyB') togglePanel('pBag','bBag');
+  /* v148: I — aprangos daiktų langas atskirai (iki šiol jis atsidarydavo TIK
+     kartu su Keliautoju, žr. openChar). Antras paspaudimas uždaro. */
+  if(e.code==='KeyI'){ togglePanel('pGearBag',null); drawGearBag(); }
   if(e.code==='KeyK') charKey('skills');
   if(e.code==='KeyC') charKey('combat');
   if(e.code==='KeyG') charKey('gather');

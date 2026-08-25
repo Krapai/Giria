@@ -6,7 +6,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- v109: papildomi šriftai TIK tituliniam ekranui (8 stiliai) -->
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Karla:wght@400;500;700&family=Cinzel:wght@700;900&family=Uncial+Antiqua&family=Cormorant+Garamond:ital,wght@0,300;1,600&family=Bebas+Neue&family=Special+Elite&family=Marcellus+SC&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Karla:wght@400;500;700&family=Cinzel:wght@700;900&family=Uncial+Antiqua&family=Cormorant+Garamond:ital,wght@0,300;1,600&family=Marcellus+SC&display=swap" rel="stylesheet">
 <title>Gintaro Giria — Amber Forest</title>
 <style>
 :root{
@@ -393,21 +393,11 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 #gate h1.t3{font-family:'Uncial Antiqua',serif;font-weight:400;letter-spacing:.02em;font-size:clamp(30px,8vw,50px);
   -webkit-text-fill-color:initial;background:none;color:#c9d8b8;
   text-shadow:0 0 18px rgba(127,163,107,.55)}
-#gate h1.t4{font-family:'Bebas Neue',sans-serif;font-weight:400;letter-spacing:.12em;
-  -webkit-text-fill-color:initial;background:none;color:#0d1512;
-  -webkit-text-stroke:1px #d9982f;text-shadow:0 0 26px rgba(217,152,47,.45)}
 #gate h1.t5{font-family:'Cormorant Garamond',serif;font-weight:300;font-style:italic;letter-spacing:.03em;
   -webkit-text-fill-color:initial;background:none;color:#f0e6cc}
 #gate h1.t6{font-family:'Marcellus SC',serif;font-weight:400;letter-spacing:.18em;font-size:clamp(28px,7.2vw,46px);
   -webkit-text-fill-color:initial;background:none;color:#ffc861;
   text-shadow:0 0 8px #d9982f,0 0 26px rgba(217,152,47,.7),0 0 52px rgba(196,70,47,.45)}
-#gate h1.t7{font-family:'Special Elite',serif;font-weight:400;letter-spacing:.04em;font-size:clamp(26px,6.6vw,42px);
-  -webkit-text-fill-color:initial;background:none;color:#cfd8cc;
-  text-shadow:2px 2px 0 #1b2a22,4px 4px 0 rgba(0,0,0,.55)}
-#gate h1.t8{font-family:'Karla',sans-serif;font-weight:700;letter-spacing:.34em;text-transform:uppercase;
-  font-size:clamp(20px,5.2vw,34px);-webkit-text-fill-color:initial;background:none;color:#8fd0ff;
-  text-shadow:0 0 12px rgba(143,208,255,.45)}
-#gate h1.t8 .en{letter-spacing:.24em;color:#5f8ea8}
 #titleStyles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:18px 0 0}
 #titleStyles button{font-family:'Karla',sans-serif;font-size:10px;letter-spacing:.08em;
   padding:7px 4px;cursor:pointer;border:1px solid rgba(217,152,47,.35);border-radius:2px;
@@ -577,7 +567,7 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
   <div id="gvStart" style="display:none">
     <p id="gvStartP">Sengirė, kurioje gyvi kaukai, laumės ir vilkolakiai. Kirsk medžius, rink gintarą, kaukis ir kilk lygiais — visa tai tiesiog naršyklėje, be jokių diegimų.</p>
     <button class="gbtn" id="goReg">Susikurti personažą</button>
-    <button class="gbtn ghost" id="goGuest">Žaisti be registracijos</button>
+    <button class="gbtn ghost" id="goGuest">Tiesiog žaisti</button>
   </div>
 
   <div id="gvGuest" style="display:none">
@@ -606,22 +596,23 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 
   <div id="titleStyles">
     <button data-t="t1">Gintaras</button><button data-t="t2">Akmuo</button>
-    <button data-t="t3">Sakmė</button><button data-t="t4">Šešėlis</button>
+    <button data-t="t3">Sakmė</button>
     <button data-t="t5">Rasa</button><button data-t="t6">Ugnis</button>
-    <button data-t="t7">Kalvė</button><button data-t="t8">Šerkšnas</button>
   </div>
 
 </div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v141';
-const GAME_CHANGES='Kirtimo rankos nebesikryžiuoja per riešus — tarpas tarp plaštakų dabar pastovus per visą mostą, kaip laikant kotą; Ugnies pūga gavo tą pačią kirtimo animaciją';
+const GAME_VERSION='v143';
+const GAME_CHANGES='Tituliniame ekrane pašalinti trys stiliai (Šešėlis, Kalvė, Šerkšnas)';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -654,7 +645,7 @@ const I18N={
   lt:{ loading:'Kraunama giria…', sub:'Trečio asmens RPG · naršyklėje',
     langQ:'Pasirink kalbą', deviceQ:'Kaip žaisi?', devicePc:'🖥 Kompiuteris', devicePhone:'📱 Telefonas', sDevice:'Įrenginys',
     startP:'Sengirė, kurioje gyvi kaukai, laumės ir vilkolakiai. Kirsk medžius, rink gintarą, kaukis ir kilk lygiais — visa tai tiesiog naršyklėje, be jokių diegimų.',
-    goReg:'Susikurti personažą', goGuest:'Žaisti be registracijos',
+    goReg:'Susikurti personažą', goGuest:'Tiesiog žaisti',
     guestB:'Progresas nebus išsaugotas.',
     guestP:'Uždarius arba perkrovus langą personažas, daiktai, lygiai ir įgūdžiai dings. Personažas vadinsis „Keliautojas“.',
     guestGo:'Vis tiek žaisti', back:'Grįžti',
@@ -778,7 +769,7 @@ const I18N={
   en:{ loading:'Loading the forest…', sub:'Third-person RPG · in your browser',
     langQ:'Choose language', deviceQ:'How will you play?', devicePc:'🖥 Computer', devicePhone:'📱 Phone', sDevice:'Device',
     startP:'An ancient forest home to kaukai, laumės and werewolves. Chop trees, gather amber, fight and level up — all in your browser, no installs.',
-    goReg:'Create a character', goGuest:'Play without an account',
+    goReg:'Create a character', goGuest:'Just play',
     guestB:'Your progress will not be saved.',
     guestP:'Closing or reloading the window will erase your character, items, levels and skills. Your character will be called "Traveler".',
     guestGo:'Play anyway', back:'Back',
@@ -2567,6 +2558,74 @@ const GLB_URL='https://ggaf.online/UAL2_Standard_RM.glb';
    šis katalogas tyliai neįsikels (žr. konsolės įspėjimą). Jei kelias kitoks,
    keisti TIK šią eilutę. */
 const GLB_URL_UAL1='https://ggaf.online/UAL1_Standard_RM.glb';
+/* v142: ginklo tinkleliai (.obj+.mtl, be tekstūrų — vien spalvos) rankoje.
+   Šaltinis — atskiras nesusijęs paketas (ne UAL), tad mastelis/pozicija
+   NEIŠMATUOTI iš kaulo, o SPĖTI iš .obj rėžio (bounding box) ir derinti
+   AKIMIS ggaf.online — žr. WEAPON_FIT žemiau. Keliai SPĖTI pagal GLB
+   pavyzdį — visus šešis failus (trys .obj, trys .mtl) reikia įkelti į tą
+   patį serverį/aplanką. */
+const WEAPON_URL={
+  axe:{obj:'https://ggaf.online/Axe_Double.obj', mtl:'https://ggaf.online/Axe_Double.mtl'},
+  sword:{obj:'https://ggaf.online/Claymore.obj', mtl:'https://ggaf.online/Claymore.mtl'},
+  kirtiklis:{obj:'https://ggaf.online/Scythe.obj', mtl:'https://ggaf.online/Scythe.mtl'}
+};
+/* Mastelis: .obj rėžis (Blender vienetais, IŠMATUOTA skaitant .obj tekstą)
+   axe SizeY=6,353, sword SizeY=6,595, kirtiklis(dalgis) SizeY=5,582 — visi
+   trys modeliai NESUSIJĘ su UAL skeleto mastu, tad skalė parinkta taip,
+   kad ilgis atitiktų dviranke laikomą ~1–1,3 m įrankį; NEPATVIRTINTA
+   vizualiai, derinti šiuos skaičius pagal ggaf.online vaizdą, ne spėti iš
+   naujo. Poza (rot) — irgi spėjimas: objekto vietinė Y ašis (ilgis)
+   pasukama, kad sutaptų su plaštakos griebimo kryptimi. */
+const WEAPON_FIT={
+  axe:      {scale:.157, pos:{x:0,y:.02,z:0}, rot:{x:Math.PI/2,y:0,z:0}},
+  sword:    {scale:.150, pos:{x:0,y:.05,z:0}, rot:{x:Math.PI/2,y:0,z:0}},
+  kirtiklis:{scale:.233, pos:{x:0,y:.02,z:0}, rot:{x:Math.PI/2,y:0,z:0}}
+};
+/* Ginklo TIPAS (CATALOG[id].type) → kuris WEAPON_FIT modelis rodomas rankoje
+   KOVOJE/idle/ėjime, kai atitinkamas daiktas užsidėtas 'ginklas' vietoje.
+   Kasimo metu (player.mine) updatePlayerWeaponVisual() VISADA priverstinai
+   rodo 'kirtiklis', nepaisant to, kas užsidėta — žr. ten. */
+const WEAPON_MODEL_BY_TYPE={kalavijas:'sword', kirvis:'axe', kirtiklis:'kirtiklis'};
+const WEAPON_CACHE={};           // kind → jau įkeltas THREE.Object3D (kartą, ne kaskart)
+let playerWeaponMesh=null, weaponVisualKind=null;
+function ensureWeaponLoaded(kind,cb){
+  if(WEAPON_CACHE[kind]){ cb(WEAPON_CACHE[kind]); return; }
+  const u=WEAPON_URL[kind]; if(!u) return;
+  new THREE.MTLLoader().load(u.mtl, materials=>{
+    materials.preload();
+    new THREE.OBJLoader().setMaterials(materials).load(u.obj, obj=>{
+      const f=WEAPON_FIT[kind];
+      obj.scale.setScalar(f.scale);
+      obj.position.set(f.pos.x,f.pos.y,f.pos.z);
+      obj.rotation.set(f.rot.x,f.rot.y,f.rot.z);
+      obj.traverse(n=>{ if(n.isMesh){ n.castShadow=true; n.receiveShadow=false; } });
+      WEAPON_CACHE[kind]=obj;
+      cb(obj);
+    }, undefined, e=>console.warn('ginklo .obj neįsikėlė ('+kind+')',e));
+  }, undefined, e=>console.warn('ginklo .mtl neįsikėlė ('+kind+')',e));
+}
+/* Perjungia, kas šiuo metu matoma dešinėje plaštakoje. kind=null — nuima.
+   Krovimas asinchroninis — jei kol modelis kraunasi norimas kind pasikeitė
+   dar kartą, senas atsakymas tyliai ignoruojamas (žr. patikrinimą viduje). */
+function setPlayerWeaponVisual(kind){
+  if(kind===weaponVisualKind) return;
+  weaponVisualKind=kind;
+  if(playerWeaponMesh){ playerWeaponMesh.parent&&playerWeaponMesh.parent.remove(playerWeaponMesh); playerWeaponMesh=null; }
+  if(!kind||!GLTF_BONES.hand_r) return;
+  ensureWeaponLoaded(kind,obj=>{
+    if(weaponVisualKind!==kind) return;
+    GLTF_BONES.hand_r.add(obj);
+    playerWeaponMesh=obj;
+  });
+}
+/* Kviesti po: GLB įkėlimo, gear.ginklas pasikeitimo (equipItem/unequipItem),
+   player.mine pradžios/pabaigos (gather / updateMiningPose). Kasimas
+   VISADA laimi prieš užsidėtą ginklą — žr. WEAPON_MODEL_BY_TYPE komentarą. */
+function updatePlayerWeaponVisual(){
+  if(player.mine){ setPlayerWeaponVisual('kirtiklis'); return; }
+  const w=gear.ginklas;
+  setPlayerWeaponVisual(w?(WEAPON_MODEL_BY_TYPE[w.type]||null):null);
+}
 /* v94: absoliutus kelias (ne santykinis) — kad veiktų ir Claude peržiūroje
    (ten nėra greta gulinčio .glb failo), ir pačiame Netlify (nieko
    nekeičia, tas pats domenas). Jei Netlify domeną kada pakeisi — pakeisti
@@ -2892,7 +2951,7 @@ function updateMiningPose(dt){
   if(!playerGltfModel||!player.mine) return;
   player.mine.t+=dt;
   const p=player.mine.t/player.mine.dur;
-  if(p>=1){ player.mine=null; return; }
+  if(p>=1){ player.mine=null; updatePlayerWeaponVisual(); return; }
   poseMining(p);
 }
 /* v96: bendras vienkartinis klipas (kirtis, mirtis, prisikėlimas, kapojimas).
@@ -2973,6 +3032,7 @@ function triggerPlayerSwingClip(crit,interval){
     scene.add(playerGltfModel);
     player.obj.visible=false;
     cacheGltfBones(playerGltfModel);
+    updatePlayerWeaponVisual();              // v142: ginklas plaštakoje pagal užsidėtą daiktą
     playerGltfMixer=new THREE.AnimationMixer(playerGltfModel);
     stripRootMotionXZ(gltf.animations);            // v98
     const byName={}; gltf.animations.forEach(c=>{ byName[c.name]=c; });
@@ -4822,6 +4882,7 @@ function die(overkill){
   const clip=overkill?playerGltfActions.death:(playerGltfActions.deathAlt||playerGltfActions.death);
   triggerPlayerClip(clip,1);
   player.dash=null; player.mine=null;      // v138: kirtiklio poza neperrašo mirties
+  updatePlayerWeaponVisual();              // v142: nerodyti kirtiklio numirus
   log(T('knockedOut'),'lg-h');
   const f=document.getElementById('fade'); f.style.opacity=1;
   setTimeout(()=>{
@@ -5743,6 +5804,26 @@ function buildCatalog(){
     critAlways:true,debug:true,
     d:LANG==='en'?'For testing: every hit is critical (100%). A temporary item — marked debug:true so it doesn\'t count toward the 160-item set.'
       :'Bandymams: visi kirčiai kritiniai (100 %). Laikinas daiktas — pažymėtas debug:true, kad neįskaitytų į 160 daiktų rinkinį.'};
+  /* v142: kirtiklis — SAVAS, atskiras daiktų tipas (type:'kirtiklis', NE
+     pasiskolintas 'kirvis' — v142 pirma versija taip darė, vartotojas
+     teisingai atmetė kaip apgaulingą). Nėra ITEM_TYPES sąraše (nedaugina
+     160 daiktų per 8 medžiagas), tad itemPrice()'s ITEM_TYPES.find(...)
+     jo NIEKADA nemato — o tai saugu, nes itemPrice() kviečiama TIK per
+     buyEquip(), kuris gauna id TIK iš drawShop() sugeneruotų MATERIALS×
+     ITEM_TYPES kombinacijų; 'irankis_kirtiklis' ten niekada nepasirodo
+     (žr. ISTORIJA.md v142). Vaizdas rankoje: WEAPON_MODEL_BY_TYPE dabar
+     turi savo įrašą kirtiklis→'kirtiklis' (Scythe), tad TEISINGAS ir
+     kovoje, jei kas nors jį užsidės kaip ginklą, ir kasant (per player.mine
+     prioritetą updatePlayerWeaponVisual viduje). Sąmoningai be kovos
+     naudos (b:{}) — tai įrankis, ne ginklas; gather() ŠIUO METU
+     nereikalauja, kad kirtiklis būtų turimas/užsidėtas, kasimas veikia
+     vien pagal meistrystę — jei norėsi, kad kasimas jo REIKALAUTŲ, tai
+     atskiras pakeitimas gather() viduje (nr. akmuo šaka), pasakyk. */
+  CATALOG['irankis_kirtiklis']={id:'irankis_kirtiklis',n:LANG==='en'?'Mining pick':'Kirtiklis',i:'⛏',
+    slot:'ginklas',mat:'titnagas',type:'kirtiklis',b:{},tier:.45,c:'#9aa0a6',
+    debug:true,
+    d:LANG==='en'?'A two-handed tool for working stone (flint) — its own kind, shown as the scythe model. Marked debug:true so it doesn\'t count toward the 160-item set.'
+      :'Dvirankis įrankis akmeniui (titnagui) apdirbti — savas tipas, rodomas kaip dalgio modelis. Pažymėtas debug:true, kad neįskaitytų į 160 daiktų rinkinį.'};
 }
 buildCatalog();
 function slotOf(it){ return it.slot==='ziedas'?null:it.slot; }
@@ -5758,6 +5839,7 @@ function equipItem(id){
   owned.splice(owned.indexOf(id),1);
   gear[slot]={...it};
   derive(); refreshUI();
+  if(slot==='ginklas') updatePlayerWeaponVisual();   // v142
   log(T('equipped')+it.n,'lg-a'); sfx('pickup');
   return true;
 }
@@ -5765,6 +5847,7 @@ function unequipItem(slot){
   const it=gear[slot]; if(!it) return false;
   delete gear[slot]; owned.push(it.id);
   derive(); refreshUI();
+  if(slot==='ginklas') updatePlayerWeaponVisual();   // v142
   log(T('unequipped')+it.n,'lg-s');
   return true;
 }
@@ -7335,7 +7418,7 @@ function gather(n){
      šaltinis išsenka (žr. NODE_HITS). Medis — paketo klipas nr38; titnagas —
      sukurta kirtiklio poza (poseMining); žolės — geltona nr5. */
   if(n.kind.key==='mediena') triggerPlayerClip(playerGltfActions.chop,1);
-  else if(n.kind.key==='akmuo') player.mine={t:0,dur:Math.max(.6,gatherCd)};
+  else if(n.kind.key==='akmuo'){ player.mine={t:0,dur:Math.max(.6,gatherCd)}; updatePlayerWeaponVisual(); }
   else if(n.kind.key==='zole') triggerPlayerClip(playerGltfActions.herb,1);
   sfx('chop');
   let qty=gatherMult(n.kind.key);
@@ -7714,7 +7797,8 @@ player.pos.y=heightAt(player.pos.x,player.pos.z);
 buildMerchant();
 buildWarriors();
 bag.sliekas=10; bag.moneta=6;
-owned.push('gelezis_kalavijas','oda_liemene','mediena_skydas','bandymu_kalavijas');
+owned.push('gelezis_kalavijas','oda_liemene','mediena_skydas','bandymu_kalavijas',
+  'gelezis_kirvis','irankis_kirtiklis');   // v142: papildomai kirvis ir kirtiklis, testuoti ginklo vaizdą
 equipItem('gelezis_kalavijas');
 if(START_LEVEL>1) grantLevels(START_LEVEL);
 bindToolTaps();
@@ -7736,8 +7820,11 @@ document.getElementById('loading').style.display='none';
   const box=document.getElementById('titleStyles'), h=document.getElementById('gTitle');
   if(!box||!h||!box.querySelectorAll) return;
   const btns=[...box.querySelectorAll('button')];
-  const THEME_NAMES={lt:['Gintaras','Akmuo','Sakmė','Šešėlis','Rasa','Ugnis','Kalvė','Šerkšnas'],
-    en:['Amber','Stone','Legend','Shadow','Dew','Fire','Forge','Frost']};
+  /* v143: Šešėlis/t4, Kalvė/t7, Šerkšnas/t8 pašalinti vartotojo prašymu —
+     masyvai sutrumpinti, kad indeksai vėl sutaptų su likusiais 5 mygtukais
+     (Gintaras,Akmuo,Sakmė,Rasa,Ugnis) DOM tvarka. */
+  const THEME_NAMES={lt:['Gintaras','Akmuo','Sakmė','Rasa','Ugnis'],
+    en:['Amber','Stone','Legend','Dew','Fire']};
   window.applyThemeNames=function(){
     const arr=THEME_NAMES[LANG]||THEME_NAMES.lt;
     btns.forEach((b,i)=>b.textContent=arr[i]);
@@ -7973,7 +8060,10 @@ document.getElementById('langEn').onclick=()=>chooseLang('en');
 document.getElementById('gvFlagBadge').onclick=()=>chooseLang(LANG==='lt'?'en':'lt');
 document.getElementById('gvDeviceBadge').onclick=()=>{ setDevice(!isTouch); updateGvBadges(); };
 
-document.getElementById('goGuest').onclick=()=>gview('gvGuest');
+/* v142: vartotojo prašymu — be jokio papildomo perspėjimo ekrano (gvGuest),
+   tiesiog iškart į žaidimą, kaip ir guestGo. gvGuest paliktas kode
+   nenaudojamas (negyvas, bet nepavojingas), jei prireiktų grąžinti. */
+document.getElementById('goGuest').onclick=()=>{ SESSION=null; setPlayerName(T('defName')); enterWorld(); };
 document.getElementById('guestBack').onclick=()=>gview('gvStart');
 document.getElementById('guestGo').onclick=()=>{ SESSION=null; setPlayerName(T('defName')); enterWorld(); };
 document.getElementById('goReg').onclick=()=>{ gerr('auErr',''); gview('gvAuth'); };

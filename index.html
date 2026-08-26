@@ -2597,10 +2597,16 @@ const WEAPON_URL={
    nuleisti KOTU ŽEMYN, t. y. neigiamas pos.z (0,10 ≈ pusantro kumščio).
    KIRTIKLIS: rot.y pasuka modelį APIE PATĮ KOTĄ (rot.x jau pasuko modelio Y į
    plaštakos Z, o Euler XYZ tvarkoje Ry taikomas prieš Rx). Smūgio momentu
-   plaštakos vietinė +Y rodo (0,07; −0,74; 0,66) — ŽEMYN PIRMYN, t. y. tiesiai
-   į kasamą taikinį, todėl smailę sukame būtent ten. Paties modelio neturime,
-   tad nežinoma, ar smailė guli ties modelio +X ar −X: JEI SMAILĖ ATSISUKS
-   ATGAL/AUKŠTYN — pakeisti KIRTIKLIS_SPIN ženklą, daugiau nieko. */
+   plaštakos vietinė +Y rodo ŽEMYN PIRMYN, t. y. į kasamą taikinį, todėl
+   smailę sukame būtent ten.
+   v151: Scythe.obj PAGALIAU IŠMATUOTAS (parsisiųstas iš pačios repozitorijos,
+   github.com/Krapai/Giria) — spėlioti nebereikia: kotas eina išilgai modelio Y
+   nuo −2,22 iki 3,37 (plonas, spindulys ≤0,23), ašmenys yra prie +Y galo ir
+   kyšo į modelio +X (iki 2,47), o Z beveik plokščias (±0,14). Taigi modelio +Y
+   TIKRAI rodo į ašmenų galą, o ašmenų statmuo TIKRAI yra +X — WEAPON_FIT su
+   rot.x=PI/2 ir KIRTIKLIS_SPIN=+PI/2 nukreipia juos teisingai (patikrinta:
+   smaigalys idle metu atsiduria (−0,31; 0,59; 0,60), t. y. žemai priekyje).
+   KIRTIKLIS_SPIN ženklo keisti NEBEREIKIA. */
 const KIRTIKLIS_SPIN=Math.PI/2;
 /* v148: „kotas ten, kur pirštai susigniaužia į apskritimą". IŠMATUOTA:
    sugniaužus kumštį (tie patys kampai, kuriuos naudoja poseThunderFingers)

@@ -621,8 +621,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v150';
-const GAME_CHANGES='Kirtiklio smaigalys visą mostą nukreiptas pirmyn, kairė alkūnė nebelūžta atgal';
+const GAME_VERSION='v151';
+const GAME_CHANGES='Kasant kirtiklis nebeapsiverčia — laikysena kaip idle, smūgio kampas 194° su žeme';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2980,13 +2980,36 @@ const ARM_OPEN={x: .55, z:-1.00, elX:   0, elZ:-.10};  // atsivėrusios aukštyn
    IŠMATUOTA po pakeitimo: smaigalio kryptis visose mosto vietose turi
    TEIGIAMĄ pirmyn dedamąją (nuo 0,08 viršuje iki 0,88 smūgio metu) — atgal
    nebeatsisuka niekur. */
-const GRIP_HOLD={x:1.636, z: 1.467, elX:-1.533, elZ:-2.034}; // laiko: kotas ( 0,00; −1,00; 0,06)
-const GRIP_R1  ={x:1.593, z:  .946, elX:-1.545, elZ:-2.020}; // kelia: kotas ( 0,00; −0,80; 0,60)
-const GRIP_R2  ={x:1.572, z:  .514, elX:-1.555, elZ:-1.995}; // kelia: kotas ( 0,00; −0,44; 0,90)
-const GRIP_UP  ={x:1.555, z:  .179, elX:-1.563, elZ:-1.973}; // užsimota: kotas ( 0,00; −0,09; 1,00)
-const GRIP_F1  ={x:1.555, z:  .179, elX:-1.563, elZ:-1.973}; // leidžia: kotas ( 0,00; −0,33; 0,95)
-const GRIP_F2  ={x:1.574, z:  .418, elX:-1.563, elZ:-1.973}; // leidžia: kotas ( 0,00; −0,70; 0,72)
-const GRIP_HIT ={x:1.628, z:  .977, elX:-1.563, elZ:-1.974}; // smūgis: kotas ( 0,00; −0,99; 0,11)
+/* v151: ĮRANKIS NEBEAPSIVERČIA. Vartotojas: idle poza su kirtikliu gera (ašmenys
+   pirmyn), o pradėjus kasti kirtiklis apsiverčia ašmenimis žemyn. IŠMATUOTA
+   (idle klipas nr10 PLIUS poseMining deltos — kaip realiai gaunasi kadre, nes
+   mikseris tuo metu groja idle ir pats hand_r kaulas lieka jo valdomas):
+   idle kotas kyla +28,9° virš žemės ir pasuktas 5,2° į KAIRĘ, o visos senos
+   GRIP_* pozos laikė kotą −83° (galvute ŽEMYN) ir ~20° į dešinę — 111°
+   skirtumas, būtent tas apsivertimas. Kietam įrankiui ašmenų kryptis nėra
+   atskiras derinimas: ji griežtai seka kotą, tad taisyti reikėjo POZAS, ne
+   KIRTIKLIS_SPIN. (Senuose v148/v149 komentaruose koto kryptys buvo matuotos
+   BE idle klipo, todėl ten rašoma šoninė dedamoji 0,00 — tikrovėje ji buvo
+   iki −0,32; nuo šiol matuoti tik kartu su klipu.)
+   DABAR kiekvienas raktas gautas taip: paimta IDLE plaštakos orientacija ir
+   pasukta (a) apie vertikalę, kad kotas atsistotų į kūno plokštumą (t. y.
+   truputį į DEŠINĘ — vartotojo prašymas), (b) apie šoninę ašį iki norimo koto
+   pakilimo. Sukant VISĄ orientaciją, ginklo sukinys apie kotą lieka toks pat
+   kaip idle, todėl ašmenys per visą mostą žiūri ten pat, kur idle.
+   Mostas: 152° (laiko) → 105° (užsimota) → 194° su žeme (smūgis; vartotojo
+   prašyta 190–200°) → atgal. IŠMATUOTA per 101 tašką: sukinio nuokrypis nuo
+   idle ≤7,2°, šoninė koto dedamoji ≤0,069, posūkis ≤6,4°, kairė plaštaka
+   išlaiko 0,30 tarpą ant koto (nenuslysta), dešinė alkūnė lieka savo pusėje
+   (x ≤ −0,15) ir ne arčiau kaip 0,24 nuo galvos.
+   Skaičiai — Euler deltos nuo bind pozos; x ir z sumažinti per 2π (tas pats
+   posūkis, tik gražesnės reikšmės). */
+const GRIP_HOLD={x:-1.260, z:-2.912, elX:-1.442, elZ:-1.739}; // laiko:    kotas (−0,04;  0,47;  0,88) = 152° su žeme
+const GRIP_R1  ={x:-1.345, z:-2.686, elX:-1.505, elZ:-1.718}; // kelia:    kotas (−0,03;  0,69;  0,73) = 137°
+const GRIP_R2  ={x:-1.501, z:-2.446, elX:-1.576, elZ:-1.611}; // kelia:    kotas (−0,05;  0,87;  0,50) = 120°
+const GRIP_UP  ={x:-1.587, z:-2.230, elX:-1.598, elZ:-1.547}; // užsimota: kotas (−0,03;  0,97;  0,26) = 105°
+const GRIP_F1  ={x:-1.387, z:-2.552, elX:-1.536, elZ:-1.698}; // leidžia:  kotas (−0,04;  0,71;  0,71) = 135°
+const GRIP_F2  ={x:-1.211, z:-2.886, elX:-1.397, elZ:-1.803}; // leidžia:  kotas (−0,05;  0,25;  0,97) = 165°
+const GRIP_HIT ={x:-1.096, z:-3.207, elX:-1.261, elZ:-1.794}; // smūgis:   kotas (−0,06; −0,24;  0,97) = 194°
 const GRIP_RISE=[GRIP_HOLD,GRIP_R1,GRIP_R2,GRIP_UP];   // užsimojimo grandinė
 const GRIP_FALL=[GRIP_UP,GRIP_F1,GRIP_F2,GRIP_HIT];    // smūgio grandinė
 /* Grandinė tolygiai išdėstoma per visą fazę: u=0 pirmas raktas, u=1 paskutinis. */

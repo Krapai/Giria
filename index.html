@@ -621,8 +621,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v157';
-const GAME_CHANGES='Kirčio pabaigoje nebeprasišviečia T poza — svoris nebenukrenta žemiau 1';
+const GAME_VERSION='v158';
+const GAME_CHANGES='Paprastas kirtis — A+A_Rec arba B+B_Rec; atakos sparta greitina ir animaciją';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -3347,13 +3347,32 @@ function triggerPlayerClip(act,speed){
   if(prev&&prev!==act) prev.fadeOut(.08);
   playerGltfCurrent=act;
 }
-/* v103: klipai grojami ORIGINALIU greičiu (jokio tempimo pagal atakos spartą —
-   vartotojo sprendimu), o po kirčio klipo automatiškai paleidžiamas jo
-   atsigavimo klipas (A → A_Rec, B → B_Rec). Grandinę paleidžia mikserio
+/* v103/v158: po kirčio klipo automatiškai paleidžiamas jo atsigavimo klipas
+   (A → A_Rec, B → B_Rec). v103 klipai buvo grojami ORIGINALIU greičiu; nuo
+   v158 jie tempiami pagal atakos spartą (žr. swingSpeed žemiau). Grandinę paleidžia mikserio
    'finished' klausytojas, žr. playerSwingChain.
    Grąžina SMŪGIO MOMENTĄ sekundėmis — pagal jį rodomas efektas ir žala. */
 const HIT_FRAC=.45;              // kurioje klipo vietoje ginklas pasiekia taikinį
 let playerSwingChain=[];        // v104: likusi kirčio grandinės dalis
+let playerSwingSpeed=1;         // v158: kokiu greičiu grojama dabartinė grandinė
+/* v158: kurie paprasto kirčio variantai naudojami. Vartotojo sprendimu dabar
+   tik 'a' ir 'b' — kiekvienas su SAVO atsigavimu (A+A_Rec arba B+B_Rec).
+   'ab' (senoji A→B grandinė) ir 'metimas' (atk3) PALIEKAMI kode, jų prireiks
+   vėliau — grąžinama vien pridedant raktą į šį sąrašą, daugiau niekur nieko. */
+const SIMPLE_SWINGS=['a','b'];
+/* v158: atakos sparta dabar tempia IR animaciją (v103 sprendimas „groti
+   originaliu greičiu" atšauktas vartotojo prašymu). Bazė = 1,00 kirčio/s
+   (GROUPS atakosSparta ties 0 rangu duoda lygiai 1,00), tad animacijos
+   greitis = D.atakosSparta / bazė. KODĖL TAI SVARBU: player.atkCd buvo
+   max(interval, swingLen), o swingLen nesikeisdavo — vos sparta viršydavo
+   1/swingLen, kliūtimi tapdavo klipo trukmė ir tolesnis spartos kėlimas
+   nebeduodavo NIEKO (nei dažnesnės žalos, nei greitesnės animacijos). Dabar
+   susitraukia abu, tad kirčių per sekundę auga tiksliai proporcingai spartai. */
+const ATK_SPD_BASE=1.00;
+function swingSpeed(){
+  const s=(D&&D.atakosSparta)||ATK_SPD_BASE;
+  return Math.max(.4,Math.min(3,s/ATK_SPD_BASE));
+}
 function triggerPlayerSwingClip(crit,interval){
   const fallback=[.16];
   if(!playerGltfMixer) return fallback;
@@ -3368,26 +3387,35 @@ function triggerPlayerSwingClip(crit,interval){
   if(own&&playerGltfActions[own]) seq=[[playerGltfActions[own],true]];
   else if(crit) seq=[[playerGltfActions.crit,true],[rec(playerGltfActions.crit),false]];
   else{
-    const chain=[[playerGltfActions.atk1,true],[playerGltfActions.atk2,true],
-                 [rec(playerGltfActions.atk2),false]];
-    const alt=[[playerGltfActions.atk3,true],[rec(playerGltfActions.atk3),false]];  // v129: dabar su atsigavimu, kaip chain/crit
-    const vars=[chain,alt].filter(v=>v[0][0]);
+    /* v158: kiekvienas variantas = kirtis + jo atsigavimas (v129: be _Rec
+       personažas lieka įstrigęs paskutiniame, dažnai pritūpusiame kadre).
+       Kuris variantas gyvas — sprendžia SIMPLE_SWINGS, ne šis objektas. */
+    const SEQS={
+      a:[[playerGltfActions.atk1,true],[rec(playerGltfActions.atk1),false]],
+      b:[[playerGltfActions.atk2,true],[rec(playerGltfActions.atk2),false]],
+      ab:[[playerGltfActions.atk1,true],[playerGltfActions.atk2,true],
+          [rec(playerGltfActions.atk2),false]],
+      metimas:[[playerGltfActions.atk3,true],[rec(playerGltfActions.atk3),false]]
+    };
+    const vars=SIMPLE_SWINGS.map(k=>SEQS[k]).filter(v=>v&&v[0][0]);
     if(!vars.length) return fallback;
     seq=vars[rndI(0,vars.length-1)];
   }
   seq=seq.filter(p=>p[0]);
   const act=seq[0][0];
   if(!act) return fallback;
-  triggerPlayerClip(act,1);
+  const spd=swingSpeed();                              // v158: atakos sparta
+  playerSwingSpeed=spd;                                // ta pati ir grandinės tęsiniui
+  triggerPlayerClip(act,spd);
   playerSwingChain=seq.slice(1).map(p=>p[0]);          // likusi grandinė
   let t=0; const hits=[];
   for(const [a,isHit] of seq){
-    const d=a.getClip().duration||0;
+    const d=(a.getClip().duration||0)/spd;             // v158: greitesnė ataka — trumpesnis klipas
     if(isHit) hits.push(t+d*HIT_FRAC);
     t+=d;
   }
   player.swingLen=t;
-  const eff=seq[0][0].getClip().duration||1;           // pirmo klipo trukmė
+  const eff=(seq[0][0].getClip().duration||1)/spd;     // pirmo klipo trukmė (v158: jau su sparta)
   /* v102: klipo root motion virsta tikru pajudėjimu (kol kas TIK kritiniam —
      paprastiems kirčiams jo nereikia, kitaip personažas šliaužtų pirmyn).
      v137 KLAIDA IŠTAISYTA: čia buvo `clip.__rootXZ`, bet kintamojo `clip`
@@ -3490,7 +3518,7 @@ function triggerPlayerSwingClip(crit,interval){
          narį (dažniausiai *_Rec, kuris grąžina Y į stovėjimo aukštį) —
          personažas likdavo įstrigęs pusiau pritūpęs (prasmengęs iki kelių). */
       if(e.action!==playerGltfCurrent) return;
-      if(playerSwingChain&&playerSwingChain.length){ triggerPlayerClip(playerSwingChain.shift(),1); return; }
+      if(playerSwingChain&&playerSwingChain.length){ triggerPlayerClip(playerSwingChain.shift(),playerSwingSpeed); return; }
       /* v129: bendra apsauga nuo prasmegimo. player.__isSwing (žr. updatePlayer
          „holding") NIEKADA neišjungiamas, kol žaidėjas nepajuda — tad grandinei
          baigus, personažas laiko PASKUTINIO klipo pozą tol, kol stovi ir

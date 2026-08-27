@@ -621,8 +621,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v155';
-const GAME_CHANGES='Žingsnio kalavijas: kirtis nr40, kurio antroje pusėje kojos eina atbulai';
+const GAME_VERSION='v156';
+const GAME_CHANGES='Kojos atgal grįžta tolygiai ir nepakyla; medis, akmuo ir gintaras — kieti';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2783,40 +2783,88 @@ function rootMotionNodeName(trackName){
   if(b>=0&&nm.endsWith(']')) nm=nm.slice(b+1,-1);
   return nm;
 }
-/* ============ v155: KOJŲ VEIDRODIS (antra kirčio pusė atbulai) ============
+/* ====== v155/v156: KOJŲ VEIDRODIS (antra kirčio pusė atbulai) ======
    Vartotojas apie mėlyną nr40 (Sword_Attack, 1,533 s): pirma pusė, kai
-   žengiamas žingsnis viena koja, gera; antra, kai žengiama kita, ne. Prašymas:
-   antroje pusėje KOJŲ animaciją leisti atgaline tvarka — tiek, kiek žengė, kad
-   iki klipo galo kojos identiškai grįžtų į pradžios pozą. Visos kitos kūno
-   dalys (rankos, stuburas, dubuo, šaknis) lieka nepaliestos.
-   KAIP: kojų takeliams laikas sulankstomas per vidurį — t ≤ T/2 rodo į t,
-   t > T/2 rodo į T−t. Praktiškai tai daroma be perskaičiavimo į kadrus:
-   paliekami visi raktai iki T/2, pridedamas raktas ties pačiu T/2, ir tada tie
-   patys raktai kartojami ATBULA tvarka laikais T−t. Vertės — tikslios, ne
-   perimtos iš tinklelio, tad pirma pusė lieka BITAS Į BITĄ tokia pat.
-   IŠMATUOTA tiesiai iš UAL1_Standard_RM.glb (Node, prieš rašant kodą):
-   skirtumas tarp t ir T−t = 0,000000; kojos ties t=T sutampa su t=0
-   (0,000000); [0; T/2] nepakitęs; ne kojų takeliai nepaliesti.
-   BALL_LEAF_* irgi įtraukti — jie yra pėdos vaikai, be jų pirštai neatsuktų. */
+   žengiamas žingsnis viena koja, gera; antra, kai žengiama kita, ne. Prašyta
+   antroje pusėje KOJŲ animaciją leisti atgaline tvarka, kad iki klipo galo
+   kojos identiškai grįžtų į pradžios pozą, o kitos dalys sektų animaciją.
+
+   v156 — DVI VARTOTOJO PASTABOS PO v155, ABI IŠMATUOTOS IR IŠTAISYTOS:
+
+   1) "ANTROJE DALYJE PERSONAŽAS ŠIEK TIEK PAKYLA Į VIRŠŲ". Priežastis: kojos
+      buvo atsukamos, o DUBUO (pelvis.position) sekė originalą. Šiame skelete
+      dubens vietinė vertikalė yra Z (žr. v137), ir klipe ji krenta 0,743 ->
+      0,533 (įtūpstas) ir vėl kyla. Kai kojos jau atsuktos atgal, o dubuo dar
+      kyla, PĖDOS ATSIPLĖŠIA nuo žemės: išmatuota aukščiausia pėda pakildavo
+      iki 0,436 (originale 0,307, stovint 0,10) — abi iškart, todėl atrodė, kad
+      personažas pakyla. TAISYMAS: pelvis.position atsukamas KARTU su kojomis
+      (tik jo padėtis; dubens SUKIMAS ir visas viršus lieka pagal animaciją).
+      Po pataisos aukščiausia pėda 0,214 — žemiau nei originale.
+
+   2) "KOJOS NENATŪRALIAI GREITAI GRĮŽTA; VISA ANIMACIJA TURI BŪTI VIENODO
+      GREIČIO". Priežastis: 1:1 laiko veidrodis atkartoja ir originalo GREIČIO
+      profilį, o originale žingsnis pirmyn yra staigus (0,18 s), o grįžimas
+      lėtas (0,39 s). Todėl atsuktas žingsnis grįždavo staigiuoju greičiu:
+      išmatuota antros pusės kojų sparta 13,92 (originale 4,55). TAISYMAS:
+      antra pusė nebe 1:1 veidrodis, o TOLYGUS atsukimas — laikas parenkamas
+      pagal nueitą kelią, kad kojos atgal keliautų PASTOVIU greičiu per visą
+      antrą pusę. Po pataisos antros pusės sparta 5,71, t. y. artima originalui
+      ir gerokai lėtesnė už žingsnį pirmyn (~16), kaip ir prašyta.
+
+   Pirma pusė ([0; T/2]) abiem atvejais lieka NEPALIESTA — jos raktai
+   perrašomi tiksliai tokie patys. Kojomis laikomi thigh/calf/foot/ball ir
+   ball_leaf (pėdos pirštai — be jų pirštai neatsisuktų). */
 const MIRROR_LEG_BONES=['thigh_l','thigh_r','calf_l','calf_r','foot_l','foot_r',
   'ball_l','ball_r','ball_leaf_l','ball_leaf_r'];
+function isMirroredTrack(tr){
+  const b=rootMotionNodeName(tr.name);
+  if(MIRROR_LEG_BONES.indexOf(b)>=0) return true;
+  return b==='pelvis'&&/\.position$/.test(tr.name);   // v156: tik dubens padėtis, ne sukimas
+}
 function mirrorLegsClip(clip,name){
   const c=clip.clone(); c.name=name||(clip.name+'_LegMirror');
   const T=c.duration, half=T/2;
-  for(const tr of c.tracks){
-    if(MIRROR_LEG_BONES.indexOf(rootMotionNodeName(tr.name))<0) continue;
-    const size=tr.getValueSize();
-    /* interpoliantas pasilieka SENUS masyvus — todėl visas reikšmes
-       susiskaičiuojame PRIEŠ priskirdami naujus (žr. priskyrimą apačioje) */
-    const interp=tr.createInterpolant();
-    const keys=[];
-    for(let i=0;i<tr.times.length;i++) if(tr.times[i]<half) keys.push(tr.times[i]);
+  const sel=c.tracks.filter(isMirroredTrack);
+  if(!sel.length||half<=0) return c;
+  const interp=sel.map(tr=>tr.createInterpolant());
+  const size=sel.map(tr=>tr.getValueSize());
+  /* nueito kelio kreivė per pirmą pusę — pagal ją parenkamas atgalinis laikas */
+  const N=160, cum=[0];
+  const snap=at=>sel.map((tr,i)=>{const r=interp[i].evaluate(at), a=[];
+    for(let k=0;k<size[i];k++) a.push(r[k]); return a;});
+  let prev=snap(0);
+  for(let k=1;k<=N;k++){
+    const cur=snap(half*k/N);
+    let d=0;
+    for(let i=0;i<sel.length;i++){
+      const a=prev[i], b=cur[i];
+      if(size[i]===4){
+        const dot=Math.abs(a[0]*b[0]+a[1]*b[1]+a[2]*b[2]+a[3]*b[3]);
+        d+=2*Math.acos(Math.min(1,dot));                 // posūkis radianais
+      }else{
+        let q=0; for(let m=0;m<size[i];m++) q+=(a[m]-b[m])*(a[m]-b[m]);
+        d+=Math.sqrt(q);
+      }
+    }
+    cum.push(cum[k-1]+d); prev=cur;
+  }
+  const total=cum[N];
+  /* u — kiek kelio dalies dar liko nueiti atgal (1 = ties T/2, 0 = pradžia) */
+  const srcAt=u=>{
+    if(total<=1e-9) return half*u;
+    const want=total*u; let k=1; while(k<N&&cum[k]<want) k++;
+    const a=cum[k-1], b=cum[k], f=(b>a)?(want-a)/(b-a):0;
+    return half*(k-1+f)/N;
+  };
+  const M=Math.max(2,Math.round(half*60));               // antros pusės raktai, ~60/s
+  for(let i=0;i<sel.length;i++){
+    const tr=sel[i], sz=size[i], it=interp[i];
     const outT=[], outV=[];
-    const put=(time,src)=>{ const r=interp.evaluate(src); outT.push(time);
-      for(let k=0;k<size;k++) outV.push(r[k]); };
-    for(const t of keys) put(t,t);
+    const put=(time,src)=>{ const r=it.evaluate(src); outT.push(time);
+      for(let k=0;k<sz;k++) outV.push(r[k]); };
+    for(let k=0;k<tr.times.length;k++) if(tr.times[k]<half) put(tr.times[k],tr.times[k]);
     put(half,half);
-    for(let i=keys.length-1;i>=0;i--) put(T-keys[i],keys[i]);
+    for(let j=1;j<=M;j++) put(half+half*j/M, srcAt(1-j/M));
     tr.times=new Float32Array(outT); tr.values=new Float32Array(outV);
   }
   return c;
@@ -4169,11 +4217,15 @@ const DUMMY_DEF={key:'manekenas', name:'Manekenas', lvl:1, hp:99999, dmg:0, xp:0
 }
 
 /* renkami taškai */
+/* v156: r — susidūrimo spindulys (žr. addBody). Duodamas TIK kietiems
+   daiktams: sausuoliui, titnago luitui ir gintaro sakams. Grybai, uogienojai
+   ir vaistažolės sąmoningai be jo — pro žemus augalus vaikštoma kiaurai, kaip
+   įprasta žaidimuose. Norint pakeisti — užtenka pridėti/nuimti r. */
 const NODE_KINDS=[
-  {key:'mediena',color:0x6b4a2c,geo:()=>new THREE.CylinderGeometry(.34,.46,2.4,6),h:1.2,label:'Sausuolis',xp:16},
+  {key:'mediena',color:0x6b4a2c,geo:()=>new THREE.CylinderGeometry(.34,.46,2.4,6),h:1.2,r:.46,label:'Sausuolis',xp:16},
   {key:'grybas', color:0xb4543f,geo:()=>new THREE.SphereGeometry(.34,7,5,0,TAU,0,Math.PI/2),h:.3,label:'Grybai',xp:11},
-  {key:'gintaras',color:0xd9982f,geo:()=>new THREE.OctahedronGeometry(.4,0),h:.5,label:'Gintaro sakai',xp:24},
-  {key:'akmuo',  color:0x6e6b62,geo:()=>new THREE.DodecahedronGeometry(.52,0),h:.45,label:'Titnago luitas',xp:20},
+  {key:'gintaras',color:0xd9982f,geo:()=>new THREE.OctahedronGeometry(.4,0),h:.5,r:.40,label:'Gintaro sakai',xp:24},
+  {key:'akmuo',  color:0x6e6b62,geo:()=>new THREE.DodecahedronGeometry(.52,0),h:.45,r:.52,label:'Titnago luitas',xp:20},
   {key:'uogos',  color:0x4a5fa0,geo:()=>new THREE.SphereGeometry(.42,8,6),h:.4,label:'Uogienojai',xp:13},
   {key:'zole',   color:0x6f9257,geo:()=>new THREE.ConeGeometry(.36,.7,5),h:.4,label:'Vaistažolės',xp:14}
 ];
@@ -4197,8 +4249,10 @@ function spawnNodes(){
     const m=new THREE.Mesh(k.geo(),mat);
     m.position.set(x,heightAt(x,z)+k.h,z); m.castShadow=true; m.userData.shad=true;
     scene.add(m);
-    nodes.push({obj:m,kind:k,pos:m.position,ready:true,cd:0,
-      tag:makeTag(k.label,'#8fbf7a',false)});
+    const nd={obj:m,kind:k,pos:m.position,ready:true,cd:0,
+      tag:makeTag(k.label,'#8fbf7a',false)};
+    nodes.push(nd);
+    if(k.r) addBody({x,z},k.r,()=>nd.ready);   // v156: paimtas/atvėstantis šaltinis nestabdo
   }
 }
 /* v133: 3 fiksuoti, AMŽINI šaltiniai prie laužo — vartotojo prašymu,
@@ -4221,8 +4275,10 @@ function spawnFireDemoNodes(){
     const m=new THREE.Mesh(k.geo(),mat);
     m.position.set(sp.x,heightAt(sp.x,sp.z)+k.h,sp.z); m.castShadow=true; m.userData.shad=true;
     scene.add(m);
-    nodes.push({obj:m,kind:k,pos:m.position,ready:true,cd:0,infinite:true,
-      tag:makeTag(k.label,'#ffd166',false)});
+    const nd={obj:m,kind:k,pos:m.position,ready:true,cd:0,infinite:true,
+      tag:makeTag(k.label,'#ffd166',false)};
+    nodes.push(nd);
+    if(k.r) addBody({x:sp.x,z:sp.z},k.r,()=>nd.ready);   // v156
   }
 }
 spawnNodes();

@@ -621,8 +621,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v152';
-const GAME_CHANGES='Kasimo poza: rankos nebeišsuktos — posūkį dalinasi riešas, ginklas ten pat';
+const GAME_VERSION='v153';
+const GAME_CHANGES='Rankos grąžintos į v150 padėtį; kasant apverčiamas TIK kirtiklis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2608,6 +2608,25 @@ const WEAPON_URL={
    smaigalys idle metu atsiduria (−0,31; 0,59; 0,60), t. y. žemai priekyje).
    KIRTIKLIS_SPIN ženklo keisti NEBEREIKIA. */
 const KIRTIKLIS_SPIN=Math.PI/2;
+/* v153: KASIMO ORIENTACIJA — VIENINTELIS DALYKAS, KURIS KEIČIASI PRADĖJUS KASTI.
+   Vartotojas: rankų nejudinti, apversti TIK kirtiklį. Kadangi rankos (v150
+   GRIP_*) plaštakos +Z ašį per mostą veda ŽEMYN, o teisingai atrodantis mostas
+   (toks, koks buvo v152, dėl kurio įrankio vartotojas nesiskundė) reikalauja
+   koto AUKŠTYN užsimojant ir PIRMYN smūgio metu — pataisa nėra vien sukinys
+   apie kotą, o kitokia viso modelio tvirtinimo orientacija plaštakoje.
+   KAIP GAUTA: kiekviename mosto taške paimta v152 duota GINKLO orientacija
+   pasaulyje ir padalinta iš v150 plaštakos orientacijos; gautų tvirtinimų
+   vidurkis ir yra šie trys skaičiai. IŠMATUOTA su jais (v150 rankos):
+     užsimojant  kotas ( 0,10; 0,97; 0,21) — galvutė virš galvos,
+                 ašmenys (−0,28; −0,17; 0,94) — smaigalys PIRMYN
+     smūgio metu kotas (−0,05; 0,01; 1,00) — kotas horizontaliai pirmyn,
+                 ašmenys (−0,06; −1,00; 0,01) — smaigalys STAČIAI ŽEMYN
+   Nuokrypis nuo v152 ginklo per patį mostą ≤14°, o kraštuose (persiliejant iš
+   idle) iki 55° — ten poza vis tiek keičiasi.
+   Uždedama TIK kasant ir tuo pačiu svoriu w kaip poza, per kvaternionų slerp
+   (ne Euler tarpinimą — kitaip pakeliui apsiverstų). Rankų šie skaičiai
+   NELIEČIA: jei kirtiklis atrodys ne taip, keisti TIK juos. */
+const KIRTIKLIS_MINE_ROT={x:1.4312, y:-1.3344, z:1.5024};
 /* v148: „kotas ten, kur pirštai susigniaužia į apskritimą". IŠMATUOTA:
    sugniaužus kumštį (tie patys kampai, kuriuos naudoja poseThunderFingers)
    pirštakauliai atsiduria hand_r vietinėje sistemoje taip:
@@ -2665,6 +2684,7 @@ function setPlayerWeaponVisual(kind){
   if(!kind||!GLTF_BONES.hand_r) return;
   ensureWeaponLoaded(kind,obj=>{
     if(weaponVisualKind!==kind) return;
+    const f=WEAPON_FIT[kind]; if(f) obj.rotation.set(f.rot.x,f.rot.y,f.rot.z);  // v153: nulinam kasimo sukinį
     GLTF_BONES.hand_r.add(obj);
     playerWeaponMesh=obj;
   });
@@ -3009,30 +3029,25 @@ const ARM_OPEN={x: .55, z:-1.00, elX:   0, elZ:-.10};  // atsivėrusios aukštyn
    (x ≤ −0,15) ir ne arčiau kaip 0,24 nuo galvos.
    Skaičiai — Euler deltos nuo bind pozos; x ir z sumažinti per 2π (tas pats
    posūkis, tik gražesnės reikšmės). */
-/* v152: RANKOS NEBEIŠSUKTOS. v151 gavo teisingą ĮRANKIO padėtį, bet už ją
-   sumokėjo ranka: riešas (hand_r) tuo metu liko mikserio (idle klipo) valdomas,
-   tad visą koto pasukimą turėjo padaryti petys ir alkūnė. IŠMATUOTA senose
-   v151 pozose: žasto sukinys apie savo ašį siekė 232° (žmogui įmanoma ~90°),
-   alkūnė pakildavo 0,24 VIRŠ peties, dilbis buvo pasuktas −95°. Būtent tai
-   vartotojas ir pamatė: „apversdamas kirtiklį, jis apsivertė kartu su rankomis".
-   DABAR riešas yra trečias grandinės narys (hx/hy/hz, žr. applyArmPose):
-   dalį posūkio padaro jis, todėl petys ir alkūnė lieka natūralūs.
-   Pozos išspręstos iš naujo su ribomis (žasto sukinys ≤55°, dilbio pronacija
-   −100…+60°, alkūnė nekyla virš peties ir nelinksta atgal, riešas ≤65° nuo
-   idle laikysenos). Ginklo padėtis NEPAKITO — kiekvieno rakto koto kryptis
-   sutampa su v151 iki 0,01, sukinys apie kotą nuo idle ≤6,9° (v151 buvo 11,6°).
-   IŠMATUOTA per 101 mosto tašką (naujas ↔ senas): žasto sukinys 30° ↔ 232°,
-   dilbio −16…36° ↔ −95…−22°, alkūnė virš peties −0,00 ↔ +0,24,
-   riešas nuo idle ≤41°. Vienintelis likęs nelygumas — ties p≈0,06 (pozai
-   įsijungiant iš idle) alkūnė trumpam beveik ištiesėja (6°, v151 buvo 25°);
-   tai persiliejimo, ne rakto savybė. */
-const GRIP_HOLD={x:1.634, y:.963, z:.541, elX:-.777, elY:.409, elZ:.552, hx:-.030, hy:.344, hz:-.419}; // laiko:    kotas (−0,04;  0,47;  0,88) = 152° su žeme
-const GRIP_R1  ={x:2.098, y:.798, z:.195, elX:-.814, elY:.470, elZ:.388, hx:-.043, hy:.522, hz:-.237}; // kelia:    kotas (−0,04;  0,68;  0,73) = 137°
-const GRIP_R2  ={x:2.323, y:.679, z:.080, elX:-.721, elY:.616, elZ:-.006, hx:-.183, hy:.550, hz:.012}; // kelia:    kotas (−0,05;  0,87;  0,50) = 120°
-const GRIP_UP  ={x:2.331, y:.692, z:.087, elX:-.257, elY:.668, elZ:-.513, hx:-.355, hy:.380, hz:.075}; // užsimota: kotas (−0,03;  0,97;  0,26) = 105°
-const GRIP_F1  ={x:2.278, y:.857, z:.197, elX:-.435, elY:.677, elZ:-.365, hx:-.388, hy:.294, hz:.046}; // leidžia:  kotas (−0,05;  0,71;  0,71) = 135°
-const GRIP_F2  ={x:2.065, y:.961, z:.346, elX:-.722, elY:.612, elZ:-.000, hx:-.347, hy:.296, hz:-.082}; // leidžia:  kotas (−0,05;  0,25;  0,97) = 165°
-const GRIP_HIT ={x:2.011, y:1.018, z:.423, elX:-1.003, elY:.585, elZ:.070, hx:-.401, hy:.258, hz:-.020}; // smūgis:   kotas (−0,06; −0,24;  0,97) = 194°
+/* v153: RANKOS — TIKSLIAI TOS PAČIOS KAIP v150, NELIESTOS.
+   Vartotojas: „rankų padėtis buvo gera, iki kol neapvertei kirtiklio; palik
+   tokiose pozicijose, kokios buvo PRIEŠ kirtiklio apvertimą, ir apversk TIK
+   KIRTIKLĮ". v151 ir v152 abu bandė ištaisyti įrankį PERSKAIČIUODAMI POZAS,
+   ir abu kartus rankos pasidarė blogesnės. Šios septynios reikšmės paimtos
+   pažodžiui iš v150 (parsisiųsta iš github.com/Krapai/Giria, commit a59cc5d)
+   — jokių naujų sprendinių.
+   IŠMATUOTA (šįkart teisingai — kartu su idle klipu, žr. 4 sk.): su šiomis
+   pozomis žasto sukinys apie savo ašį ≤86°, alkūnė niekada ne virš peties —
+   anatomiškai normaliai, ir vartotojas tai patvirtino akimis. Vienintelis
+   dalykas, kuris buvo blogai, yra ĮRANKIO padėtis plaštakoje.
+   Todėl v153 taiso TIK tai — KIRTIKLIS_MINE_ROT (žr. aukščiau, prie WEAPON_FIT). */
+const GRIP_HOLD={x:1.636, z: 1.467, elX:-1.533, elZ:-2.034}; // laiko:    kotas (−0,32; −0,53;  0,78)
+const GRIP_R1  ={x:1.593, z:  .946, elX:-1.545, elZ:-2.020}; // kelia:    kotas (−0,32; −0,36;  0,88)
+const GRIP_R2  ={x:1.572, z:  .514, elX:-1.555, elZ:-1.995}; // kelia:    kotas (−0,32; −0,24;  0,92)
+const GRIP_UP  ={x:1.555, z:  .179, elX:-1.563, elZ:-1.973}; // užsimota: kotas (−0,31; −0,17;  0,94)
+const GRIP_F1  ={x:1.555, z:  .179, elX:-1.563, elZ:-1.973}; // leidžia:  kotas (−0,31; −0,17;  0,94)
+const GRIP_F2  ={x:1.574, z:  .418, elX:-1.563, elZ:-1.973}; // leidžia:  kotas (−0,28; −0,60;  0,75)
+const GRIP_HIT ={x:1.628, z:  .977, elX:-1.563, elZ:-1.974}; // smūgis:   kotas (−0,09; −0,99; −0,05) — statmenai žemyn
 const GRIP_RISE=[GRIP_HOLD,GRIP_R1,GRIP_R2,GRIP_UP];   // užsimojimo grandinė
 const GRIP_FALL=[GRIP_UP,GRIP_F1,GRIP_F2,GRIP_HIT];    // smūgio grandinė
 /* Grandinė tolygiai išdėstoma per visą fazę: u=0 pirmas raktas, u=1 paskutinis. */
@@ -3048,19 +3063,14 @@ const MINE_POSE={
 const mlerp=(a,b,t)=>a+(b-a)*t;
 /* Suinterpoliuoja dvi rankų pozas ir uždeda jas ant ABIEJŲ rankų. */
 function applyArmPose(A,B,t,w,pairs){
-  const L=k=>mlerp(A[k]||0,B[k]||0,t);   // v152: trūkstamas raktas = 0 (ARM_* pozos Y ir riešo neturi)
-  const x=L('x'), y=L('y'), z=L('z');
-  const ex=L('elX'), ey=L('elY'), ez=L('elZ');
-  if(pairs===false){                     // tik dešinė (vienarankiai burtai, kirtiklis)
-    poseBoneBlend('upperarm_r',x,y,z,w);
-    poseBoneBlend('lowerarm_r',ex,ey,ez,w);
-    /* v152: RIEŠAS. Be jo visą koto posūkį turėdavo padaryti petys su alkūne,
-       ir jos išsisukdavo (žr. GRIP_* komentarą). Uždedamas tik toms pozoms,
-       kurios jį turi — ARM_* burtų pozos lieka tokios, kokios buvo. */
-    if(A.hx!==undefined&&B.hx!==undefined) poseBoneBlend('hand_r',L('hx'),L('hy'),L('hz'),w);
+  const x=mlerp(A.x,B.x,t), z=mlerp(A.z,B.z,t);
+  const ex=mlerp(A.elX,B.elX,t), ez=mlerp(A.elZ,B.elZ,t);
+  if(pairs===false){                     // tik dešinė (vienarankiai burtai)
+    poseBoneBlend('upperarm_r',x,0,z,w);
+    poseBoneBlend('lowerarm_r',ex,0,ez,w);
   }else{
-    poseBonePair('upperarm',x,y,z,w);
-    poseBonePair('lowerarm',ex,ey,ez,w);
+    poseBonePair('upperarm',x,0,z,w);
+    poseBonePair('lowerarm',ex,0,ez,w);
   }
 }
 /* ===== v147: KAIRĖ RANKA ANT KOTO — 2 KAULŲ IK, NE VEIDRODIS =====
@@ -3180,8 +3190,26 @@ function updateMiningPose(dt){
   if(!playerGltfModel||!player.mine) return;
   player.mine.t+=dt;
   const p=player.mine.t/player.mine.dur;
-  if(p>=1){ player.mine=null; updatePlayerWeaponVisual(); return; }
+  if(p>=1){ player.mine=null; resetWeaponSpin(); updatePlayerWeaponVisual(); return; }
   poseMining(p);
+  applyMineSpin(Math.min(1,p/.12,(1-p)/.18));   // v153: tas pats svoris kaip pozos
+}
+/* v153: kirtiklio orientacija kasimo metu. Rankų neliečia — tik paties modelio
+   kvaternionas plaštakoje. */
+const _wqBase=new THREE.Quaternion(), _wqMine=new THREE.Quaternion(), _wqE=new THREE.Euler();
+(function(){
+  const f=WEAPON_FIT.kirtiklis, m=KIRTIKLIS_MINE_ROT;
+  _wqBase.setFromEuler(_wqE.set(f.rot.x,f.rot.y,f.rot.z,'XYZ'));
+  _wqMine.setFromEuler(_wqE.set(m.x,m.y,m.z,'XYZ'));
+})();
+function applyMineSpin(w){
+  if(!playerWeaponMesh||weaponVisualKind!=='kirtiklis') return;
+  playerWeaponMesh.quaternion.copy(_wqBase).slerp(_wqMine,Math.max(0,Math.min(1,w)));
+}
+/* Modelis gyvena WEAPON_CACHE — tas pats objektas grąžinamas kitą kartą, tad
+   pabaigus kasti orientaciją BŪTINA grąžinti, kitaip idle liktų apsuktas. */
+function resetWeaponSpin(){
+  if(playerWeaponMesh&&weaponVisualKind==='kirtiklis') playerWeaponMesh.quaternion.copy(_wqBase);
 }
 /* v96: bendras vienkartinis klipas (kirtis, mirtis, prisikėlimas, kapojimas).
    __isSwing = "šito kadro cikle netrukdyti" — žr. updatePlayer. */

@@ -621,8 +621,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v156';
-const GAME_CHANGES='Kojos atgal grįžta tolygiai ir nepakyla; medis, akmuo ir gintaras — kieti';
+const GAME_VERSION='v157';
+const GAME_CHANGES='Kirčio pabaigoje nebeprasišviečia T poza — svoris nebenukrenta žemiau 1';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -3321,10 +3321,30 @@ function resetWeaponSpin(){
    __isSwing = "šito kadro cikle netrukdyti" — žr. updatePlayer. */
 function triggerPlayerClip(act,speed){
   if(!playerGltfMixer||!act) return;
-  if(playerGltfCurrent&&playerGltfCurrent!==act) playerGltfCurrent.fadeOut(.1);
+  /* v157: „PABAIGOJE ĮSIKELIA NAUJAS ŽMOGELIUKAS" — TRUMPAS MIRKTELĖJIMAS.
+     Priežastis buvo ne klipas (patikrinta: nr40 pradžios ir pabaigos pozos
+     sutampa visuose 195 takeliuose, skiriasi tik root poslinkis, o jis
+     nuimamas), o SVORIS. three.js mikseris tai, ko nepadengia veiksmų svorių
+     suma, užpildo kaulo PRADINE (bind, T) poza — PropertyMixer.apply naudoja
+     1 − cumulativeWeight originaliai reikšmei. Todėl kai svorių suma trumpam
+     nukrenta žemiau 1, prasišviečia T poza — atrodo, lyg mirktelėtų kitas
+     personažas.
+     KAIP SUSIDARYDAVO: žingsnio kalavijo kirtis yra VIENAS veiksmas be _Rec
+     grandinės, o player.atkCd = klipo trukmė, tad kitas kirtis paleisdavo TĄ
+     PATĮ veiksmą iškart po pabaigos. Tada act.reset()+fadeIn(.08) pradėdavo
+     svorį nuo 0, o senojo svorio nebebūdavo (tas pats veiksmas!) — 0,08 s
+     langas su svoriu <1. Tas pat nutikdavo, jei kirtis prasidėdavo tuo metu,
+     kai idle dar tik įsiliedavo (jo svoris irgi dar <1).
+     DABAR: sklandus persiliejimas paliekamas TIK kai ankstesnis veiksmas
+     tikrai turi pilną svorį; kitais atvejais naujas veiksmas gauna svorį 1 iš
+     karto, tad suma niekada nenukrenta ir T poza nebeprasišviečia. */
+  const prev=playerGltfCurrent;
+  const smooth=prev&&prev!==act&&prev.getEffectiveWeight&&prev.getEffectiveWeight()>.99;
   act.reset(); act.setLoop(THREE.LoopOnce,1); act.clampWhenFinished=true;
   act.timeScale=speed||1; act.__isSwing=true;
-  act.fadeIn(.08); act.play();
+  if(smooth) act.fadeIn(.08); else act.setEffectiveWeight(1);
+  act.play();
+  if(prev&&prev!==act) prev.fadeOut(.08);
   playerGltfCurrent=act;
 }
 /* v103: klipai grojami ORIGINALIU greičiu (jokio tempimo pagal atakos spartą —

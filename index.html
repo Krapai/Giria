@@ -621,8 +621,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v153';
-const GAME_CHANGES='Rankos grąžintos į v150 padėtį; kasant apverčiamas TIK kirtiklis';
+const GAME_VERSION='v155';
+const GAME_CHANGES='Žingsnio kalavijas: kirtis nr40, kurio antroje pusėje kojos eina atbulai';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -1192,6 +1192,21 @@ function updateWater(dt,t){
 
 /* ---------- 4. Augalija (instancuota) ---------- */
 const trees=[];
+/* v154: PERSONAŽŲ KŪNAI. Iki šiol collide() žinojo tik medžius, tad pro
+   žmones, priešus, karius ir katalogo manekenus buvo galima praeiti kiaurai.
+   Čia — vienas bendras sąrašas visų kūnų; kas nori, kad pro jį nepraeitų,
+   užsiregistruoja addBody(). Sąrašas pildomas TIK kuriant personažą (ne
+   kiekvieną kadrą), o judesio tikrinimas gyvena collide().
+     p     — pozicijos objektas (Vector3 ar {x,z}); jei personažas juda,
+             paduoti TĄ PATĮ objektą, kurį jis keičia, kad kūnas judėtų kartu;
+     r     — kūno spindulys;
+     live  — nebūtina; jei grąžina false (miręs, dingęs), kūnas nestabdo.
+   Pats savęs kūnas nestumia: collide() praleidžia įrašą, kurio p yra tas
+   pats objektas, kurį dabar tikrina. */
+const bodies=[];
+const BODY_R=.45;                 // vidutinio personažo spindulys
+const MOVER_R=.35;                // to, kas juda, spindulys (žaidėjas/priešas)
+function addBody(p,r,live){ bodies.push({p,r:(r===undefined?BODY_R:r),live:live||null}); return p; }
 function plantForest(){
   const n=CFG.quality==='high'?300:170;
   const trunkG=new THREE.CylinderGeometry(.19,.3,3.1,5);
@@ -1849,6 +1864,9 @@ function setMerchantDetail(hi){
   merchant.pos=obj.position.clone();
   let calls=0; obj.traverse(o=>{ if(o.isMesh) calls++; });
   merchant.calls=calls;
+  /* v154: kūnas registruojamas TIK kartą — setMerchantDetail kviečiama ir
+     perjungiant detalumą, o pirklys nejuda, tad koordinatės tos pačios. */
+  if(!merchant.body) merchant.body=addBody({x:obj.position.x,z:obj.position.z},.55);
   applyQuality();
 }
 function buildMerchant(){
@@ -2205,6 +2223,7 @@ function buildWarriors(){
     obj.rotation.y=Math.atan2(-x,-z);            // veidu į laužą
     scene.add(obj);
     const it=CATALOG[cfg.item];
+    addBody({x,z},.45);                          // v154: pro karius nebepraeisi
     dummies.push({obj,cfg,pos:obj.position.clone(),
       tag:makeTag(Lx(cfg.n)+' <span style="color:#9fb39c">'+(cfg.vendor?T('weaponsMerchantLbl'):(it?it.n:Lx(cfg.era)))+'</span>',
         cfg.vendor?'#e0c060':'#cfe0c8',false)});
@@ -2522,6 +2541,7 @@ const player={
   act:null, cds:{}, actYaw:0, actY:0
 };
 scene.add(player.obj);
+addBody(player.pos,.40,()=>!player.dead);        // v154: priešai nebepereina kiaurai žaidėjo
 
 /* ============ DEMO: molio čerpių tekstūra ant krūtinės (laikina) ============
    Vartotojas atsiuntė tikrą PBR tekstūrą (clay_roof_tiles_02, Poly Haven CC0,
@@ -2711,7 +2731,7 @@ const A_NO={dummyIdle:1, death:8, revive:17, wolfA:18, wolfB:19, atk3:23, chop:3
    galvos žymėse (1-based). Kryžminis retargetinimas veikia, nes abu paketai
    turi TĄ PATĮ UE tipo skeleto vardyną (žr. v93/ISTORIJA.md) — Three.js
    AnimationMixer riša takelius PAGAL MAZGO VARDĄ, ne pagal kilmės failą. */
-const A_NO_UAL1={move:14, sprint:37, deathAlt:5, idle:10};  // v147: idle = mėlyna nr10 (Idle_Loop)
+const A_NO_UAL1={move:14, sprint:37, deathAlt:5, idle:10, swordStep:40};  // v147: idle = mėlyna nr10 (Idle_Loop); v155: nr40 = Sword_Attack
 const WALK_CLIP_MPS=1.5;         // v97: kokiam greičiui (m/s) sukurtas UAL2 ėjimo klipas (atsarginis, kol UAL1 dar neįkeltas)
 /* v136: TIKRI, iš paties UAL1_Standard_RM.glb failo išmatuoti greičiai (žr.
    ISTORIJA.md v136) — šaknies kaulo („root") poslinkis per klipo trukmę:
@@ -2762,6 +2782,44 @@ function rootMotionNodeName(trackName){
   const b=nm.lastIndexOf('[');                 // atsarga formatui „.bones[root]"
   if(b>=0&&nm.endsWith(']')) nm=nm.slice(b+1,-1);
   return nm;
+}
+/* ============ v155: KOJŲ VEIDRODIS (antra kirčio pusė atbulai) ============
+   Vartotojas apie mėlyną nr40 (Sword_Attack, 1,533 s): pirma pusė, kai
+   žengiamas žingsnis viena koja, gera; antra, kai žengiama kita, ne. Prašymas:
+   antroje pusėje KOJŲ animaciją leisti atgaline tvarka — tiek, kiek žengė, kad
+   iki klipo galo kojos identiškai grįžtų į pradžios pozą. Visos kitos kūno
+   dalys (rankos, stuburas, dubuo, šaknis) lieka nepaliestos.
+   KAIP: kojų takeliams laikas sulankstomas per vidurį — t ≤ T/2 rodo į t,
+   t > T/2 rodo į T−t. Praktiškai tai daroma be perskaičiavimo į kadrus:
+   paliekami visi raktai iki T/2, pridedamas raktas ties pačiu T/2, ir tada tie
+   patys raktai kartojami ATBULA tvarka laikais T−t. Vertės — tikslios, ne
+   perimtos iš tinklelio, tad pirma pusė lieka BITAS Į BITĄ tokia pat.
+   IŠMATUOTA tiesiai iš UAL1_Standard_RM.glb (Node, prieš rašant kodą):
+   skirtumas tarp t ir T−t = 0,000000; kojos ties t=T sutampa su t=0
+   (0,000000); [0; T/2] nepakitęs; ne kojų takeliai nepaliesti.
+   BALL_LEAF_* irgi įtraukti — jie yra pėdos vaikai, be jų pirštai neatsuktų. */
+const MIRROR_LEG_BONES=['thigh_l','thigh_r','calf_l','calf_r','foot_l','foot_r',
+  'ball_l','ball_r','ball_leaf_l','ball_leaf_r'];
+function mirrorLegsClip(clip,name){
+  const c=clip.clone(); c.name=name||(clip.name+'_LegMirror');
+  const T=c.duration, half=T/2;
+  for(const tr of c.tracks){
+    if(MIRROR_LEG_BONES.indexOf(rootMotionNodeName(tr.name))<0) continue;
+    const size=tr.getValueSize();
+    /* interpoliantas pasilieka SENUS masyvus — todėl visas reikšmes
+       susiskaičiuojame PRIEŠ priskirdami naujus (žr. priskyrimą apačioje) */
+    const interp=tr.createInterpolant();
+    const keys=[];
+    for(let i=0;i<tr.times.length;i++) if(tr.times[i]<half) keys.push(tr.times[i]);
+    const outT=[], outV=[];
+    const put=(time,src)=>{ const r=interp.evaluate(src); outT.push(time);
+      for(let k=0;k<size;k++) outV.push(r[k]); };
+    for(const t of keys) put(t,t);
+    put(half,half);
+    for(let i=keys.length-1;i>=0;i--) put(T-keys[i],keys[i]);
+    tr.times=new Float32Array(outT); tr.values=new Float32Array(outV);
+  }
+  return c;
 }
 function stripRootMotionXZ(clips){
   for(const c of clips){
@@ -3236,7 +3294,11 @@ function triggerPlayerSwingClip(crit,interval){
      Grąžinamas MASYVAS smūgio momentų, po vieną kiekvienam kertančiam klipui. */
   let seq;
   const rec=a=>a&&a.__rec;
-  if(crit) seq=[[playerGltfActions.crit,true],[rec(playerGltfActions.crit),false]];
+  /* v155: ginklas gali turėti SAVO kirčio klipą (CATALOG įrašo swingClip).
+     Tada jis naudojamas visiems kirčiams — ir paprastiems, ir kritiniams. */
+  const own=gear.ginklas&&gear.ginklas.swingClip;
+  if(own&&playerGltfActions[own]) seq=[[playerGltfActions[own],true]];
+  else if(crit) seq=[[playerGltfActions.crit,true],[rec(playerGltfActions.crit),false]];
   else{
     const chain=[[playerGltfActions.atk1,true],[playerGltfActions.atk2,true],
                  [rec(playerGltfActions.atk2),false]];
@@ -3389,8 +3451,16 @@ function triggerPlayerSwingClip(crit,interval){
     new THREE.GLTFLoader().load(GLB_URL_UAL1, ual1=>{
       const ual1No=no=>ual1.animations[no-1];
       const moveClip=ual1No(A_NO_UAL1.move), sprintClip=ual1No(A_NO_UAL1.sprint),
-            deathAltClip=ual1No(A_NO_UAL1.deathAlt), idleClip=ual1No(A_NO_UAL1.idle);
-      stripRootMotionXZ([moveClip,sprintClip,deathAltClip,idleClip].filter(Boolean));
+            deathAltClip=ual1No(A_NO_UAL1.deathAlt), idleClip=ual1No(A_NO_UAL1.idle),
+            stepClip=ual1No(A_NO_UAL1.swordStep);
+      stripRootMotionXZ([moveClip,sprintClip,deathAltClip,idleClip,stepClip].filter(Boolean));
+      /* v155: nr40 su atsuktomis kojomis antroje pusėje. Naudoja TIK tas ginklas,
+         kurio CATALOG įraše yra swingClip:'stepAtk' (žr. triggerPlayerSwingClip)
+         — įprastiems kirčiams niekas nesikeičia. */
+      if(stepClip){
+        playerGltfActions.stepAtk=playerGltfMixer.clipAction(mirrorLegsClip(stepClip,'Sword_Attack_LegMirror'));
+        playerGltfActions.stepAtk.setLoop(THREE.LoopRepeat);
+      }
       /* v147: vartotojo prašymu įprasta (stovėjimo) būsena — MĖLYNA nr10
          (UAL1 „Idle_Loop"), ne UAL2 „Idle_FoldArms_Loop". Perjungiama TA PAČIA
          asinchronine tvarka kaip ėjimas; jei personažas tuo metu jau stovi
@@ -3437,6 +3507,7 @@ function triggerPlayerSwingClip(crit,interval){
           mx.clipAction(clip).setLoop(THREE.LoopRepeat).play();
           CATALOG_MIXERS.push(mx);
         }
+        addBody({x,z},.42);                        // v154: katalogo manekenai irgi kietí
         const tag=makeTag((i+1)+' · '+name,'#ffd35a',false);
         CATALOG_TAGS.push({tag,x,y:y+2.3,z});
       }, undefined, err=>console.warn('katalogo modelis '+(i+1)+' neįkeltas',err));
@@ -3483,6 +3554,7 @@ function triggerPlayerSwingClip(crit,interval){
           mx.clipAction(clip).setLoop(THREE.LoopRepeat).play();
           CATALOG_MIXERS.push(mx);
         }
+        addBody({x,z},.42);                        // v154: ir antro katalogo
         const tag=makeTag((i+1)+' · '+name,'#8fd0ff',false);
         CATALOG_TAGS.push({tag,x,y:y+2.3,z});
       }, undefined, err=>console.warn('UAL1 katalogo modelis '+(i+1)+' neįkeltas',err));
@@ -4056,6 +4128,7 @@ function spawnEnemy(def,x,z){
     hp:def.hp,maxHp:def.hp,state:'idle',yaw:Math.random()*TAU,atkCd:0,wanderCd:0,
     wx:x,wz:z,dead:false,respawn:0,id:enemies.length,flash:0,stun:0,sink:0,burn:0,burnDps:0,slow:0,
     tag:makeTag(Lx(def.name)+' <span style="color:#9fb39c">'+def.lvl+'</span>','#e59a86',true)};
+  addBody(e.pos,.45*(def.scale||1),()=>!e.dead); // v154: kūnas juda kartu su e.pos
   enemies.push(e); attachEnemyGlb(e); return e;
 }
 /* v96: laikinai pasaulyje paliktas TIK vilkolakis (kaukas/laumė išimti, kad
@@ -6094,6 +6167,14 @@ function buildCatalog(){
      nereikalauja, kad kirtiklis būtų turimas/užsidėtas, kasimas veikia
      vien pagal meistrystę — jei norėsi, kad kasimas jo REIKALAUTŲ, tai
      atskiras pakeitimas gather() viduje (nr. akmuo šaka), pasakyk. */
+  /* v155: kardas, kuris kertant naudoja TIK nr40 su atsuktomis kojomis
+     (žr. mirrorLegsClip). swingClip nurodo playerGltfActions raktą; jokio kito
+     poveikio jis neturi, tad tą patį lauką galima duoti ir kitiems ginklams. */
+  CATALOG['zingsnio_kalavijas']={id:'zingsnio_kalavijas',n:LANG==='en'?'Stepping sword':'Žingsnio kalavijas',i:'🗡️',
+    slot:'ginklas',mat:'gelezis',type:'kalavijas',b:{zala:4},tier:1,c:0xa8d8ff,
+    swingClip:'stepAtk',debug:true,
+    d:LANG==='en'?'Swings with the stepping attack (blue no.40) whose second half rewinds the legs back to the start. Marked debug:true so it does not count toward the 160-item set.'
+      :'Kerta žingsnio ataka (mėlyna nr40), kurios antroje pusėje kojos atsukamos atgal iki pradžios. Pažymėtas debug:true, kad neįskaitytų į 160 daiktų rinkinį.'};
   CATALOG['irankis_kirtiklis']={id:'irankis_kirtiklis',n:LANG==='en'?'Mining pick':'Kirtiklis',i:'⛏',
     slot:'ginklas',mat:'titnagas',type:'kirtiklis',b:{},tier:.45,c:'#9aa0a6',
     debug:true,
@@ -6755,6 +6836,20 @@ function collide(p,prev,swimmer){
   for(const t of trees){
     const dx=p.x-t.x, dz=p.z-t.z, d=Math.hypot(dx,dz), r=t.r+.45;
     if(d<r&&d>0.0001){p.x=t.x+dx/d*r;p.z=t.z+dz/d*r;}
+  }
+  /* v154: personažai. Stumiama TA PAČIA tvarka kaip medžiai — tik išstumiam
+     iš kūno spindulio, greičio neliečiam, tad prisišliejus prie NPC vis tiek
+     galima slysti aplink jį, o ne užstrigti. Prieš vandens/ribų patikras, kad
+     jos liktų paskutinės ir galėtų atšaukti į vandenį įstumtą žingsnį. */
+  for(const b of bodies){
+    if(b.p===p) continue;                       // savęs nestumiam
+    if(b.live&&!b.live()) continue;             // miręs/dingęs nestabdo
+    const dx=p.x-b.p.x, dz=p.z-b.p.z, r=b.r+MOVER_R;
+    const d=Math.hypot(dx,dz);
+    if(d>=r) continue;
+    if(d>1e-4){ p.x=b.p.x+dx/d*r; p.z=b.p.z+dz/d*r; }
+    else if(prev){ p.x=prev.x; p.z=prev.z; }    // tiksliai sutampa — atgal
+    else p.x=b.p.x+r;
   }
   const d=Math.hypot(p.x,p.z);
   if(d>WORLD-5){p.x=p.x/d*(WORLD-5);p.z=p.z/d*(WORLD-5);}
@@ -8108,7 +8203,8 @@ buildMerchant();
 buildWarriors();
 bag.sliekas=10; bag.moneta=6;
 owned.push('gelezis_kalavijas','oda_liemene','mediena_skydas','bandymu_kalavijas',
-  'gelezis_kirvis','irankis_kirtiklis');   // v142: papildomai kirvis ir kirtiklis, testuoti ginklo vaizdą
+  'gelezis_kirvis','irankis_kirtiklis',
+  'zingsnio_kalavijas');   // v142: kirvis ir kirtiklis; v155: žingsnio kalavijas
 equipItem('gelezis_kalavijas');
 if(START_LEVEL>1) grantLevels(START_LEVEL);
 bindToolTaps();

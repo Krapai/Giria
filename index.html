@@ -625,8 +625,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v164';
-const GAME_CHANGES='kirčio dash išjungtas — nebeprisispaudžia prie to, ką muša';
+const GAME_VERSION='v165';
+const GAME_CHANGES='kirčiai nebečiuožia žeme — root fiksuojamas į nulį visiems klipams';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2896,7 +2896,21 @@ function stripRootMotionXZ(clips){
          judesys išlieka, bet niekas nebeatšoka atgal. */
       const dx=v[v.length-3]-x0, dz=v[v.length-1]-z0;
       if(!c.__rootXZ||Math.hypot(dx,dz)>Math.hypot(c.__rootXZ[0],c.__rootXZ[1])) c.__rootXZ=[dx,dz];
-      for(let i=0;i<v.length;i+=3){ v[i]=x0; v[i+1]=y0; v[i+2]=z0; }
+      /* v165: fiksuojama į NULĮ, ne į kiekvieno klipo SAVO pirmą kadrą.
+         Kodėl (išmatuota iš UAL2_Standard_RM.glb, root mazgo Z pirmas kadras):
+           Idle_No_Loop 0,000 · Sword_Regular_A −0,066 · A_Rec +0,758 ·
+           B +0,750 · B_Rec +0,697 · C +0,719   (X ir Y visur 0)
+         Paketo kirčiai iškirpti iš VIENO ilgo dublio, tad kiekvienas prasideda
+         ten, kur baigėsi ankstesnis. Užšaldžius kiekvieną prie SAVO pirmo kadro
+         root likdavo pastovus, bet SKIRTINGAS kiekviename klipe — per A→A_Rec
+         perėjimą modelis crossfade metu nučiuoždavo 0,824 pirmyn, visą
+         atsigavimą stovėdavo 0,758 priekyje, o grįždamas į idle — tiek pat
+         atgal. Tai ir yra „slysta žeme pirmyn per A ataką"; v164 dash
+         išjungimas šito neapėmė (dash buvo antra, atskira to paties simptomo
+         priežastis). Nulis tinka abiem paketams: UAL1 visų klipų root startas
+         jau 0, o root mazgas savo transliacijos neturi, tad 0 = bind padėtis.
+         x0/y0/z0 palikti — jais tebesiremia __rootXZ skaičiavimas. */
+      for(let i=0;i<v.length;i+=3){ v[i]=0; v[i+1]=0; v[i+2]=0; }
     }
   }
 }

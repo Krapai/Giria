@@ -625,8 +625,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v163';
-const GAME_CHANGES='animDbg papildytas horizontalia diagnostika — v159 taisymas nepadėjo';
+const GAME_VERSION='v164';
+const GAME_CHANGES='kirčio dash išjungtas — nebeprisispaudžia prie to, ką muša';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -3455,7 +3455,21 @@ function triggerPlayerSwingClip(crit,interval){
      dash skaičiuojamas VISIEMS kirčiams (ne tik crit), kad tas pats
      poslinkis taptų TIKRU, kolizijos tikrinamu žingsniu — vaizdas ir
      kolizija vėl sutampa. NEPATVIRTINTA VIZUALIAI. */
-  const rm=seq[0][0].getClip().__rootXZ;
+  /* v164: IŠJUNGTA. Išmatuota tiesiai iš UAL2_Standard_RM.glb: „root" mazgo
+     poslinkis Sword_Regular_A 0,825, _B 0,053, _C (kritinis) 1,556 vieneto
+     PIRMYN. stripRootMotionXZ tą poslinkį iš klipo IŠTRINA (visos trys ašys,
+     tik „root" mazgas) — vadinasi modelis pats per pasaulį NEKELIAUJA, ir
+     v159 prielaida („kaulų animacija neša modelį, o collide to nemato") buvo
+     KLAIDINGA. Dash tą ištrintą poslinkį pridėdavo ATGAL kaip tikrą žingsnį:
+     puolama nuo reach=1,9, o po vieno kirčio žaidėjas atsiduria prispaustas
+     prie taikinio kūno (0,45+0,35=0,80 nuo centro) ir ten lieka — tai ir
+     matėsi kaip „sulenda į tai, ką muša" (v163 skaičiai: pos 5,379/7,747,
+     manekenas 6,1/7,4 → atstumas lygiai 0,800, „artimiausias kūnas 0,000").
+     KOLIZIJA VEIKĖ — tik dash kiekvienu kirčiu į ją įspausdavo.
+     GRĄŽINTI (jei norėsis įsibėgėjimo kritiniam) = SWING_DASH true, bet tada
+     dash reikia RIBOTI, kad nepriartintų arčiau nei kirčio nuotolis. */
+  const SWING_DASH=false;
+  const rm=SWING_DASH&&seq[0][0].getClip().__rootXZ;
   if(rm&&Math.hypot(rm[0],rm[1])>.05){
     const c0=Math.cos(player.yaw), s0=Math.sin(player.yaw);
     const wx=(c0*rm[0]+s0*rm[1])/eff, wz=(-s0*rm[0]+c0*rm[1])/eff;
@@ -8286,6 +8300,13 @@ function frame(now){
       const clip=playerGltfCurrent&&playerGltfCurrent.getClip&&playerGltfCurrent.getClip();
       const rmc=clip&&clip.__rootXZ;
       let nearest=Infinity, nearId='-';
+      /* v164: atstumas iki PAŽYMĖTO taikinio ir jo kirčio nuotolis — kad iš
+         karto matytųsi, ar personažas stovi kirčio nuotoliu (~1,9), ar
+         prispaustas prie kūno (0,80). */
+      let dbgTgt=null, dbgReach=0;
+      { const te=player.targetId!==null?enemies[player.targetId]:null;
+        if(te&&!te.dead){ dbgTgt=Math.hypot(player.pos.x-te.pos.x,player.pos.z-te.pos.z);
+                          dbgReach=1.9*(te.def.scale||1); } }
       for(const b of bodies){
         if(b.p===player.pos) continue;
         if(b.live&&!b.live()) continue;
@@ -8300,7 +8321,8 @@ function frame(now){
         '\npos x/z: '+player.pos.x.toFixed(3)+' / '+player.pos.z.toFixed(3)+
         '\nrootXZ dydis: '+(rmc?Math.hypot(rmc[0],rmc[1]).toFixed(3):'nėra')+
         '\ndash: '+(player.dash?('vx='+player.dash.vx.toFixed(2)+' vz='+player.dash.vz.toFixed(2)+' left='+player.dash.left.toFixed(2)):'—')+
-        '\nartimiausias kūnas: '+(nearest===Infinity?'—':nearest.toFixed(3))+' (neig.=sulindo)';
+        '\nartimiausias kūnas: '+(nearest===Infinity?'—':nearest.toFixed(3))+' (neig.=sulindo)'+
+        '\niki taikinio: '+(dbgTgt===null?'—':dbgTgt.toFixed(3)+' (nuotolis '+dbgReach.toFixed(2)+')');
     }
   }
   for(const A of ENEMY_GLB) A.mixer.update(dt);

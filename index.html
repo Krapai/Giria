@@ -625,8 +625,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v165';
-const GAME_CHANGES='kirčiai nebečiuožia žeme — root fiksuojamas į nulį visiems klipams';
+const GAME_VERSION='v166';
+const GAME_CHANGES='auto-priėjimas nebenukerta kirčio animacijos; nepataikius rodo „nepataikė"';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2553,6 +2553,7 @@ const player={
   mana:30, maxMana:30, stam:60, maxStam:60, workStam:40, maxWorkStam:40, castCd:0,
   shield:0, maxShield:0, shieldCd:0, fish:null,
   combo:0, comboT:0, hitCount:0, reviveCd:0, moving:false, swimming:false, approach:false,
+  swingT:0,                    // v166: kiek sekundžių dar trunka pradėtas kirtis
   act:null, cds:{}, actYaw:0, actY:0
 };
 scene.add(player.obj);
@@ -4710,6 +4711,7 @@ function playerAttack(e,echo){
   player.obj.userData.swing=1;
   const crit=Math.random()<D.kritSansas;          // lemia ir animaciją (kritinis klipas)
   const hits=triggerPlayerSwingClip(crit,interval);
+  player.swingT=player.swingLen||0;               // v166: kol tiek, automatika nejudina
   const tok=player.swingToken;                    // v103: nutraukto kirčio žymė
   /* v104: kitas kirtis nepradedamas, kol nesibaigė visa grandinė (A+B+B_Rec) */
   if(!echo) player.atkCd=Math.max(interval,player.swingLen||0);
@@ -4736,7 +4738,10 @@ function landHit(e,tok,crit,allowChain){
   const hp=new THREE.Vector3(e.pos.x,e.pos.y+1.9,e.pos.z);
   /* v97: kirčio lankas rodomas TIK smūgio momentu. */
   slashArc(player.pos.x,player.pos.y+1.25,player.pos.z,player.yaw,0xffe3a8);
-  splat(hp,(crit&&!miss?'✦':'')+dmg,miss?'#8fb6d9':crit?'#ffe6a8':'#ffd489');
+  /* v166: nepataikius anksčiau rodydavo „0" — atrodė kaip kirtis be žalos.
+     Priešų nepataikymai jau seniai rodo T('splatMissed'), dabar ir žaidėjo.
+     Pats dažnis nepakeistas: D.taiklumas ties 0 rangu 0,77, t. y. ~23 %. */
+  splat(hp,miss?T('splatMissed'):((crit?'✦':'')+dmg),miss?'#8fb6d9':crit?'#ffe6a8':'#ffd489');
   burst(hp.x,hp.y,hp.z,miss?3:crit?19:11,miss?0x8fb6d9:0xc4462f,crit?3.6:2.6);
   if(!miss){ flashEnemy(e,crit?0xffcc55:0xcc3322); addShake(crit?.16:.07);
     if(crit) shockRing(e.pos.x,e.pos.y+.1,e.pos.z,0xffc861,.6); }
@@ -7695,11 +7700,17 @@ function animateBody(g,speed,dt){
 const prevP={x:0,z:0}, prevE={x:0,z:0}, prevW={x:0,z:0};
 function updatePlayer(dt){
   if(player.dead){animateBody(player.obj,0,dt);return;}
+  if(player.swingT>0) player.swingT=Math.max(0,player.swingT-dt);   // v166
   const dir=new THREE.Vector3();
   let kx=0,kz=0;
   if(keys.KeyW||keys.ArrowUp)kz-=1; if(keys.KeyS||keys.ArrowDown)kz+=1;
   if(keys.KeyA||keys.ArrowLeft)kx-=1; if(keys.KeyD||keys.ArrowRight)kx+=1;
   if(Math.hypot(stickVec.x,stickVec.y)>.12){kx+=stickVec.x;kz+=stickVec.y;}
+  /* v166: SAVAS judesys (klavišai, svirtis, spustelėjimas ant žemės) — jis ir
+     tik jis nutraukia pradėtą kirtį. Automatinis priėjimas prie taikinio ar
+     mazgo TAIP PAT duoda sp>0, bet kirčio nutraukti neturi (ta pati klaidos
+     rūšis kaip v126 su autoAtk, žr. PROJEKTAS.md 4 sk.). */
+  const selfMove=!!(kx||kz)||!!player.moveTo;
   if(kx||kz){
     player.moveTo=null;
     /* v98: savas judesys atšaukia automatinį priėjimą — anksčiau paėjus į šoną
@@ -7734,7 +7745,16 @@ function updatePlayer(dt){
          pats pajudi — todėl paėjus ir vėl atsisukus į taikinį personažas
          nebepradeda pulti savaime; taikinys lieka pažymėtas. */
       if(player.atkCd<=0&&!player.act&&!dir.lengthSq()&&player.autoAtk) playerAttack(tgt);
-    }else if(!dir.lengthSq()&&player.approach){
+    /* v166: kol vyksta pradėtas kirtis, prie taikinio NEEINAM. Kodėl: landHit
+       atmeta priešą per D.atatranka (0,15 m), o auto-priėjimas žaidėją palieka
+       tiksliai ties kirčio riba (reach), tad po kiekvieno pataikymo atstumas
+       tapdavo didesnis už reach ir automatika žengdavo pirmyn DAR NEPASIBAIGUS
+       animacijai. Tas žingsnis nukirsdavo kirtį (žr. žemiau: swingToken++,
+       grandinė išvaloma) — matėsi kaip „pradėjus kovą personažas parodo tik
+       dalį animacijos", o kartu dingdavo ir dar neįvykę smūgiai (0 žalos).
+       Po kelių kirčių savaime susitvarkydavo, nes priešas priartėdavo pats.
+       IŠMATUOTA: stovint ties riba — 2 nutraukimai per 2 s; 0,5 arčiau — 0. */
+    }else if(!dir.lengthSq()&&player.approach&&player.swingT<=0){
       /* prie taikinio artėjam TIK jei aiškiai to paprašyta: antru paspaudimu
          ant jau pažymėto priešo arba paleidus vienam taikiniui skirtą kirtį.
          Vien pažymėjimas nebeverčia personažo bėgti pulti. */
@@ -7790,8 +7810,8 @@ function updatePlayer(dt){
      nepasiekus taikinio — personažas priartėdavo, bet nepradėdavo pulti.
      Tikras savas judesys jau išjungia autoAtk aukščiau (6653 eil., kx||kz),
      to pakanka pagal v104 aprašytą sumanymą. */
-  if(sp>0&&playerGltfCurrent&&playerGltfCurrent.__isSwing){
-    player.swingToken++; playerSwingChain=[]; player.dash=null;
+  if(sp>0&&selfMove&&playerGltfCurrent&&playerGltfCurrent.__isSwing){
+    player.swingToken++; playerSwingChain=[]; player.dash=null; player.swingT=0;
     playerGltfCurrent.__isSwing=false;
   }
   if(player.reviveCd>0) player.reviveCd-=dt;

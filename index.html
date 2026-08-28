@@ -625,8 +625,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v162';
-const GAME_CHANGES='Optimizacijų/kokybės mygtukai perkelti į kairę nuo ☰, visada matomi';
+const GAME_VERSION='v163';
+const GAME_CHANGES='animDbg papildytas horizontalia diagnostika — v159 taisymas nepadėjo';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -8270,17 +8270,37 @@ function frame(now){
   if(playerGltfMixer) playerGltfMixer.update(dt);
   /* v132: LAIKINA diagnostika — žr. PROJEKTAS.md 5 sk. Rodo TIKRĄ personažo
      modelio Y ir root/pelvis kaulų vietinę Y kiekviename kadre, kad
-     A→B kirčio grandinės metu matytųsi realūs skaičiai, ne spėjimas. */
+     A→B kirčio grandinės metu matytųsi realūs skaičiai, ne spėjimas.
+     v163: papildyta HORIZONTALIA diagnostika — v159 taisymas (dash visiems
+     kirčiams) NEPADĖJO ("vis dar sulenda"), tad pagal 5 sk. taisyklę antrą
+     kartą nebespėjama, o rodomi tikri skaičiai: player.pos x/z, ar dash
+     šiuo metu aktyvus ir kokia jo kryptis/greitis, dabartinio klipo
+     __rootXZ dydis (ar apskritai užfiksuotas root poslinkis), ir atstumas
+     iki artimiausio kūno (bodies[]) — jei per kirtį šis atstumas nukrenta
+     žemiau MOVER_R+kūno spindulio, TAI IR YRA sulindimas, matomas skaičiais. */
   if(playerGltfModel){
     const dbg=document.getElementById('animDbg');
     if(dbg){
       const rb=playerGltfModel.getObjectByName('root');
       const pb=playerGltfModel.getObjectByName('pelvis');
       const clip=playerGltfCurrent&&playerGltfCurrent.getClip&&playerGltfCurrent.getClip();
+      const rmc=clip&&clip.__rootXZ;
+      let nearest=Infinity, nearId='-';
+      for(const b of bodies){
+        if(b.p===player.pos) continue;
+        if(b.live&&!b.live()) continue;
+        const dd=Math.hypot(player.pos.x-b.p.x,player.pos.z-b.p.z)-(b.r+MOVER_R);
+        if(dd<nearest){nearest=dd;}
+      }
       dbg.textContent='klipas: '+(clip?clip.name:'-')+
         '\nmodelio Y: '+playerGltfModel.position.y.toFixed(3)+
         '\nroot vietinė Y: '+(rb?rb.position.y.toFixed(3):'nėra tokio mazgo')+
-        '\npelvis vietinė Y: '+(pb?pb.position.y.toFixed(3):'nėra tokio mazgo');
+        '\npelvis vietinė Y: '+(pb?pb.position.y.toFixed(3):'nėra tokio mazgo')+
+        '\n--- v163 horizontali ---'+
+        '\npos x/z: '+player.pos.x.toFixed(3)+' / '+player.pos.z.toFixed(3)+
+        '\nrootXZ dydis: '+(rmc?Math.hypot(rmc[0],rmc[1]).toFixed(3):'nėra')+
+        '\ndash: '+(player.dash?('vx='+player.dash.vx.toFixed(2)+' vz='+player.dash.vz.toFixed(2)+' left='+player.dash.left.toFixed(2)):'—')+
+        '\nartimiausias kūnas: '+(nearest===Infinity?'—':nearest.toFixed(3))+' (neig.=sulindo)';
     }
   }
   for(const A of ENEMY_GLB) A.mixer.update(dt);

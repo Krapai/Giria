@@ -485,6 +485,10 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
   <div id="tools">
     <!-- v105: krepšio, žvejybos ir nustatymų mygtukai pakeisti vienu meniu,
          kuris išskleidžia mygtukus Į VIRŠŲ (paspausto mygtuko neuždengia). -->
+    <!-- v161: mLod/mQual — VISADA matomi, į kairę nuo ☰ (vartotojo prašymu),
+         ne viduje išskleidžiamo meniu. -->
+    <button class="tbtn" id="mLod" title="Optimizacijos">🚀</button>
+    <button class="tbtn" id="mQual" title="Grafikos kokybė">🖼</button>
     <div id="menuWrap">
       <div id="menuStack">
         <button class="tbtn mItem" id="mSet" title="Nustatymai">⚙</button>
@@ -621,8 +625,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v158';
-const GAME_CHANGES='Paprastas kirtis — A+A_Rec arba B+B_Rec; atakos sparta greitina ir animaciją';
+const GAME_VERSION='v162';
+const GAME_CHANGES='Optimizacijų/kokybės mygtukai perkelti į kairę nuo ☰, visada matomi';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -668,6 +672,8 @@ const I18N={
     rzHint:'↔ plotis · ↕ mastelis', chatPh:'rašyk ir spausk Enter',
     ttSettings:'Nustatymai', ttSpells:'Burtai', ttActive:'Aktyvūs įgūdžiai', ttBag:'Krepšys',
     ttMenu:'Meniu', ttSprint:'Sprintas (Shift)', ttMeditate:'Meditacija (Tarpas)', ttClose:'Uždaryti',
+    ttLodOn:'Optimizacijos: įjungtos (kaip dabar)', ttLodOff:'Optimizacijos: išjungtos (kaip buvo anksčiau)',
+    ttQualHigh:'Grafikos kokybė: aukšta', ttQualLow:'Grafikos kokybė: žema',
     pBag:'Krepšys', pGearBag:'Aprangos daiktai', gearHint:'Bakstelėk daiktą — pamatysi, ką jis duoda. 2× arba dešiniu pelės mygtuku — iškart užsidedi.',
     pFish:'Žvejyba', pSet:'Nustatymai',
     sLang:'Kalba', sGraphics:'Grafika', sMusic:'Muzika', sSound:'Garsai', sPlaying:'Skamba',
@@ -792,6 +798,8 @@ const I18N={
     rzHint:'↔ width · ↕ scale', chatPh:'type and press Enter',
     ttSettings:'Settings', ttSpells:'Spells', ttActive:'Active skills', ttBag:'Bag',
     ttMenu:'Menu', ttSprint:'Sprint (Shift)', ttMeditate:'Meditate (Space)', ttClose:'Close',
+    ttLodOn:'Optimizations: on (current)', ttLodOff:'Optimizations: off (as before)',
+    ttQualHigh:'Graphics quality: high', ttQualLow:'Graphics quality: low',
     pBag:'Bag', pGearBag:'Gear items', gearHint:'Tap an item to see what it does. Double-click or right-click equips it at once.',
     pFish:'Fishing', pSet:'Settings',
     sLang:'Language', sGraphics:'Graphics', sMusic:'Music', sSound:'Sound', sPlaying:'Playing',
@@ -927,6 +935,7 @@ function applyStaticLang(){
   setTx('rzHint','rzHint'); setPh('chatIn','chatPh');
   setTt('mSet','ttSettings'); setTt('mSpells','ttSpells'); setTt('mActive','ttActive');
   setTt('mBag','ttBag'); setTt('bMenu','ttMenu'); setTt('bSprint','ttSprint'); setTt('bCast','ttMeditate');
+  setTt('mLod', LOD_ON?'ttLodOn':'ttLodOff'); setTt('mQual', CFG.quality==='high'?'ttQualHigh':'ttQualLow');
   document.querySelectorAll('.pClose').forEach(b=>b.title=T('ttClose'));
   setTx('pBagTitle','pBag'); setTx('pGearBagTitle','pGearBag'); setTx('pFishTitle','pFish'); setTx('pSetTitle','pSet');
   setTx('tCharTravel','charTabTraveler'); setTx('tCharMastery','charTabMastery');
@@ -990,6 +999,10 @@ function setDevice(phone){
 const WORLD=118;            // pusė krašto
 const WATER=-1.15;
 const CFG={ quality: isTouch?'low':'high', sound:true };
+/* v160: mLod mygtukas — perjungia VISŲ renderinimo/animacijos optimizacijų
+   (katalogo LOD + STRESS.lod) būseną tarp „kaip buvo anksčiau“ (be jokio
+   LOD, viskas animuojama kas kadrą) ir „kaip dabar“ (LOD pagal atstumą). */
+let LOD_ON=true;
 
 /* --- upė, intakai, brastos --- */
 const RIVER=z=>26+38*Math.sin(z*0.021)+12*Math.sin(z*0.055+1.3);
@@ -1078,6 +1091,8 @@ function applyQuality(){
   if(typeof plantGrass==='function'&&grassMesh){ plantGrass(); buildMist(); }
 buildMist();
   document.getElementById('oQual').textContent=hi?T('valHigh'):T('valLow');
+  const mq=document.getElementById('mQual');
+  if(mq){ mq.textContent=hi?'🖼':'🌫'; setTt('mQual', hi?'ttQualHigh':'ttQualLow'); }
 }
 
 /* --- dangaus kupolas --- */
@@ -2886,7 +2901,7 @@ function stripRootMotionXZ(clips){
   }
 }
 let playerGltfModel=null, playerGltfMixer=null, playerGltfActions={}, playerGltfCurrent=null;
-const CATALOG_MIXERS=[], CATALOG_TAGS=[];
+const CATALOG_MIXERS=[], CATALOG_TAGS=[];    // v160: CATALOG_MIXERS = {mx,x,z}, žr. LOD frame() cikle
 let playerGltfSwingToggle=0;
 
 /* ============ v93: DETALESNĖ PERKŪNO SMŪGIO POZA (dešinė ranka) ============
@@ -3416,17 +3431,31 @@ function triggerPlayerSwingClip(crit,interval){
   }
   player.swingLen=t;
   const eff=(seq[0][0].getClip().duration||1)/spd;     // pirmo klipo trukmė (v158: jau su sparta)
-  /* v102: klipo root motion virsta tikru pajudėjimu (kol kas TIK kritiniam —
-     paprastiems kirčiams jo nereikia, kitaip personažas šliaužtų pirmyn).
-     v137 KLAIDA IŠTAISYTA: čia buvo `clip.__rootXZ`, bet kintamojo `clip`
+  /* v102: klipo root motion virsta tikru pajudėjimu (iki v158 — TIK
+     kritiniam, paprastiems kirčiams manyta, kad jo nereikia). v137
+     KLAIDA IŠTAISYTA: čia buvo `clip.__rootXZ`, bet kintamojo `clip`
      šioje funkcijoje NIEKADA nebuvo — kiekvienas KRITINIS kirtis mesdavo
      ReferenceError. Kadangi tai įvyksta PRIEŠ `return hits`, playerAttack
      gaudavo undefined, tada `hits.forEach` irgi mesdavo — vadinasi (a)
      kritiniai smūgiai NEPADARYDAVO JOKIOS ŽALOS, ir (b) player.atkCd taip
      ir nebūdavo nustatytas, tad jau KITAME kadre puolimas startuodavo iš
      naujo — klipas be perstojo persileisdavo iš pradžių. Būtent tai ir
-     atrodė kaip „šokinėjimas pirmyn ir atgal". */
-  const rm=crit?seq[0][0].getClip().__rootXZ:null;
+     atrodė kaip „šokinėjimas pirmyn ir atgal“ (v159: patikslinta —
+     tiksliau čiuožimas/slydimas, žr. žemiau).
+     v159: IŠMATUOTA tiesiai iš žaliavos (UAL2 FBX versijos, tas pats
+     kaulynas, žr. ISTORIJA.md v159) — Sword_Regular_A/B TAIP PAT turi
+     tikrą „root“ kaulo poslinkį per kirtį (FBX: root Y ašis, horizontali,
+     delta ~0,84 vieneto — GLB pusėje tai atitinka Z, žr. v137 pastabą
+     „root: Z neša locomotion“). Kol dash buvo taikomas TIK kritiniam,
+     šis poslinkis liko GRYNAI VIZUALINIS: playerGltfModel liko surištas
+     su player.pos (kolizijos pozicija), o paties kaulo animacija toliau
+     nešė MODELĮ per pasaulį — atrodė kaip čiuožimas pirmyn/atgal, o
+     collide() šio judesio nematydavo, tad personažas galėjo vizualiai
+     susilieti su medžiu/NPC, nors player.pos stovėjo vietoje. TAISYTA:
+     dash skaičiuojamas VISIEMS kirčiams (ne tik crit), kad tas pats
+     poslinkis taptų TIKRU, kolizijos tikrinamu žingsniu — vaizdas ir
+     kolizija vėl sutampa. NEPATVIRTINTA VIZUALIAI. */
+  const rm=seq[0][0].getClip().__rootXZ;
   if(rm&&Math.hypot(rm[0],rm[1])>.05){
     const c0=Math.cos(player.yaw), s0=Math.sin(player.yaw);
     const wx=(c0*rm[0]+s0*rm[1])/eff, wz=(-s0*rm[0]+c0*rm[1])/eff;
@@ -3601,7 +3630,7 @@ function triggerPlayerSwingClip(crit,interval){
         if(clip){
           const mx=new THREE.AnimationMixer(m);
           mx.clipAction(clip).setLoop(THREE.LoopRepeat).play();
-          CATALOG_MIXERS.push(mx);
+          CATALOG_MIXERS.push({mx,x,z});          // v160: x,z reikalingi LOD atstumui
         }
         addBody({x,z},.42);                        // v154: katalogo manekenai irgi kietí
         const tag=makeTag((i+1)+' · '+name,'#ffd35a',false);
@@ -3648,7 +3677,7 @@ function triggerPlayerSwingClip(crit,interval){
         if(clip){
           const mx=new THREE.AnimationMixer(m);
           mx.clipAction(clip).setLoop(THREE.LoopRepeat).play();
-          CATALOG_MIXERS.push(mx);
+          CATALOG_MIXERS.push({mx,x,z});          // v160: x,z reikalingi LOD atstumui
         }
         addBody({x,z},.42);                        // v154: ir antro katalogo
         const tag=makeTag((i+1)+' · '+name,'#8fd0ff',false);
@@ -5593,6 +5622,20 @@ document.getElementById('mBag').onclick=()=>{toggleToolMenu(false);togglePanel('
 document.getElementById('mActive').onclick=()=>{toggleToolMenu(false);openSkillTab('active');};
 document.getElementById('mSpells').onclick=()=>{toggleToolMenu(false);openSkillTab('spells');};
 document.getElementById('mSet').onclick=()=>{toggleToolMenu(false);togglePanel('pSet',null);};
+/* v160: mLod — VISŲ optimizacijų (katalogo LOD + STRESS.lod) jungiklis
+   „kaip buvo“/„kaip dabar“. mQual — greitas grafikos kokybės maks/min
+   jungiklis, naudoja TĄ PATĮ CFG.quality/applyQuality kaip Nustatymų
+   „Grafika“ (žr. oQual), kad būsena visur sutaptų. */
+document.getElementById('mLod').onclick=()=>{
+  LOD_ON=!LOD_ON;
+  if(typeof STRESS!=='undefined') STRESS.lod=LOD_ON;
+  document.getElementById('mLod').textContent=LOD_ON?'🚀':'🐌';
+  setTt('mLod', LOD_ON?'ttLodOn':'ttLodOff');
+};
+document.getElementById('mQual').onclick=()=>{
+  CFG.quality=CFG.quality==='high'?'low':'high';
+  applyQuality();
+};
 document.getElementById('timeBadge').onclick=()=>nextPhase();
 
 /* --- įgūdžių juosta --- */
@@ -6068,7 +6111,7 @@ function bindPanelClose(){
   });
 }
 function bindToolTaps(){
-  for(const id of ['bMenu','mBag','mActive','mSpells','mSet','bCast','bSprint']){
+  for(const id of ['bMenu','mBag','mActive','mSpells','mSet','mLod','mQual','bCast','bSprint']){
     const b=document.getElementById(id);
     if(!b||b._tap) continue;
     const fn=b.onclick; b.onclick=null; b._tap=true;
@@ -8243,7 +8286,24 @@ function frame(now){
   for(const A of ENEMY_GLB) A.mixer.update(dt);
   updateSpellPose();             // v140: buvo updateThunderCastPose — dabar ir „heal"
   updateMiningPose(dt);          // v138: kirtiklio poza — irgi PO mikserio
-  for(const mx of CATALOG_MIXERS) mx.update(dt);
+  /* v160: katalogo (v96/v127) manekenai liko svarbūs — vartotojo sprendimu jie
+     lieka kaip vizualus būsimo NPC/žaidėjų kiekio pavyzdys, tad NEIŠIMAMI.
+     Bet iki šiol VISI ~86 buvo animuojami KIEKVIENĄ kadrą, nepriklausomai nuo
+     atstumo — būtent tai ir buvo lagas prie laužo (katalogas guli šalia
+     kaimavietės). Pritaikytas TAS PATS LOD principas, kuris jau patikrintas
+     STRESS sistemoje (žr. žemiau, ~8163 eil.): toliau esantys animuojami
+     rečiau, o praleistas dt kompensuojamas (mx.update(dt*skip)), kad
+     animacijos greitis nesikeistų. Žemos kokybės (isTouch/telefono) atveju
+     ribos griežtesnės. */
+  {
+    const camX=player.pos.x, camZ=player.pos.z, low=CFG.quality!=='high';
+    for(let i=0;i<CATALOG_MIXERS.length;i++){
+      const cm=CATALOG_MIXERS[i];
+      const dist=Math.hypot(cm.x-camX,cm.z-camZ);
+      const skip=!LOD_ON?1:(low?(dist>26?6:dist>14?3:1):(dist>34?3:dist>18?2:1));
+      if((frameNo+i)%skip===0) cm.mx.update(dt*skip);
+    }
+  }
   for(const ct of CATALOG_TAGS) placeTag(ct.tag,ct.x,ct.y,ct.z,60);
   updateFx(dt);
   updateActs(dt);

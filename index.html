@@ -625,8 +625,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v166';
-const GAME_CHANGES='auto-priėjimas nebenukerta kirčio animacijos; nepataikius rodo „nepataikė"';
+const GAME_VERSION='v167';
+const GAME_CHANGES='kasimas: kairė ranka ant koto, greitesnis smūgis, nebepersisuka kirtiklis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -3194,8 +3194,26 @@ function gripSeg(list,u){
 const MINE_POSE={
   leanBack:-.12,   // liemuo atgal užsimojant (−X = atgal)
   leanFwd:  .45,   // liemuo PIRMYN kertant   (+X = pirmyn)
-  clav:     .10    // pečiai truputį pirmyn
+  clav:     .10,   // pečiai truputį pirmyn
+  /* v167: SMŪGIS TURI BŪTI GREITESNIS UŽ KĖLIMĄ. Iki v167 kritimas truko
+     0,20 mosto (0,38→0,58) su pow 0,65 — t. y. LĖTĖJO artėdamas prie akmens,
+     ir jo greitis pike (837 °/s) buvo MAŽESNIS nei kėlimo (1230 °/s). Todėl
+     mostas atrodė vientiso greičio, be svorio. Dabar kritimas trumpesnis ir
+     GREITĖJANTIS: 0,38→0,53, pow 1,6 → pikas 2191 °/s (1,8× už kėlimą),
+     pats kritimas trunka 0,09 s (kai visa animacija 0,6 s). Kėlimas
+     NEPALIESTAS (vartotojo prašymu). Derinti TIK šiuos du skaičius:
+     fallEnd mažinti = trumpesnis kritimas, fallPow didinti = smarkiau
+     greitėja gale. */
+  fallEnd:  .53,   // kada kotas pasiekia akmenį (mosto dalis)
+  fallPow:  1.6    // >1 = greitėja link smūgio, <1 = lėtėja (buvo 0,65)
 };
+/* v167: kasimo pozos persiliejimo trukmės SEKUNDĖMIS (buvo mosto dalys, todėl
+   kartodavosi kas mostą — žr. updateMiningPose). */
+const MINE_FADE_IN=.12, MINE_FADE_OUT=.18;
+/* v167: kiek dar laikoma kirtiklio poza pasibaigus mostui. Be šito tarpas
+   tarp dviejų mostų (mostas baigiasi tą patį kadrą, kai gather() dar tik
+   ruošiasi kitam) nuleisdavo svorį ~9 % — išmatuota kastest: 0,907. */
+const MINE_HOLD=.20;
 const mlerp=(a,b,t)=>a+(b-a)*t;
 /* Suinterpoliuoja dvi rankų pozas ir uždeda jas ant ABIEJŲ rankų. */
 function applyArmPose(A,B,t,w,pairs){
@@ -3240,14 +3258,29 @@ const _gk={ax:new THREE.Vector3(),base:new THREE.Vector3(),sh:new THREE.Vector3(
   qw:new THREE.Quaternion(),qp:new THREE.Quaternion(),qa:new THREE.Quaternion(),
   q1w:new THREE.Quaternion(),q1l:new THREE.Quaternion(),q2w:new THREE.Quaternion(),
   q2l:new THREE.Quaternion(),qi:new THREE.Quaternion(),save:new THREE.Quaternion()};
-function poseGripLeftIK(w){
+function poseGripLeftIK(w,axisLocal,fitPos){
   const hr=GLTF_BONES.hand_r, ua=GLTF_BONES.upperarm_l,
         la=GLTF_BONES.lowerarm_l, hl=GLTF_BONES.hand_l;
   if(!hr||!ua||!la||!hl||!ua.parent||!playerGltfModel||w<=0) return;
   playerGltfModel.updateMatrixWorld(true);      // dešinė ranka jau pastatyta
   const g=_gk, l1=la.position.length(), l2=hl.position.length(), L=l1+l2;
-  g.ax.setFromMatrixColumn(hr.matrixWorld,2).normalize();
+  /* v167: KOTO AŠIS IMAMA IŠ TIKROJO GINKLO TVIRTINIMO, ne iš hand_r +Z.
+     Iki v167 čia visada buvo plaštakos vietinė +Z — tai teisinga TIK su
+     baziniu WEAPON_FIT. Kasant v153 uždeda KIRTIKLIS_MINE_ROT, ir kotas
+     plaštakos sistemoje atsistoja ties (−0,23; 0,97; −0,07), t. y. 93,9°
+     NUO +Z. Tad kairė plaštaka buvo statoma ant linijos, kuria koto nebėra:
+     IŠMATUOTA nuokrypa nuo tikro koto 0,327 (0,30 VIRŠ dešinės plaštakos) —
+     būtent tai vartotojas ir matė („laikosi virš koto"). Su tikra ašimi
+     nuokrypa 0,000 per visą mostą; tarpas tarp plaštakų nusistovi ties 0,195
+     (IK pats slysta kotu, nes 0,30 kairei rankai jau per toli — riba 0,96·L).
+     Ašies NEIMTI iš mesh'o kvaterniono: poza skaičiuojama PRIEŠ applyMineSpin,
+     tad reikia to paties svorio w (žr. mineShaftLocal). */
+  hr.getWorldQuaternion(g.qw);
+  if(axisLocal) g.ax.copy(axisLocal).applyQuaternion(g.qw).normalize();
+  else g.ax.setFromMatrixColumn(hr.matrixWorld,2).normalize();
   g.base.setFromMatrixPosition(hr.matrixWorld);
+  /* kotas eina ne per kaulo pradžią, o per kumščio žiedą (WEAPON_FIT.pos) */
+  if(fitPos) g.base.add(g.v.copy(fitPos).applyQuaternion(g.qw));
   g.sh.setFromMatrixPosition(ua.matrixWorld);
   /* taškas ant koto: pastovus tarpas; slenkamas TIK jei kairė nepasiektų —
      taip plaštaka niekada nepalieka koto, nebent truputį pakinta tarpas */
@@ -3297,38 +3330,69 @@ function poseGripLeftIK(w){
   ua.quaternion.copy(g.save).slerp(g.q1l,Math.min(1,w));
   la.quaternion.slerp(g.q2l,Math.min(1,w));
 }
-function poseMining(p){
+/* wIn — svoris iš išorės (kasimas jį veda pats, žr. updateMiningPose); be jo
+   skaičiuojamas senuoju būdu (taip kviečia Ugnies pūga). spin — ar plaštakoje
+   kirtiklis su kasimo orientacija (tada koto ašis kita, žr. mineShaftLocal). */
+/* v167: mosto ETAPAS atskirai nuo kaulų — kad tą pačią eigą galėtų
+   permatuoti testas (kastest), o ne kartoti kreives pas save. */
+function miningPhase(p){
   const M=MINE_POSE;
   let A,B,t,lean;
   if(p<.38){                       // UŽSIMOJIMAS — tolygus, be skubos
     const u=easeOutCubic(p/.38); lean=M.leanBack*u;
     [A,B,t]=gripSeg(GRIP_RISE,u);
-  }else if(p<.58){                 // SMŪGIS — staigus, greitėjantis
-    const u=Math.pow((p-.38)/.20,.65); lean=mlerp(M.leanBack,M.leanFwd,u);
+  }else if(p<M.fallEnd){           // SMŪGIS — greitėjantis (v167)
+    const u=Math.pow((p-.38)/(M.fallEnd-.38),M.fallPow); lean=mlerp(M.leanBack,M.leanFwd,u);
     [A,B,t]=gripSeg(GRIP_FALL,u);
   }else{                           // ATSITIESIMAS
-    A=GRIP_HIT; B=GRIP_HOLD; t=easeOutCubic((p-.58)/.42); lean=M.leanFwd*(1-t);
+    A=GRIP_HIT; B=GRIP_HOLD; t=easeOutCubic((p-M.fallEnd)/(1-M.fallEnd)); lean=M.leanFwd*(1-t);
   }
+  return [A,B,t,lean];
+}
+function poseMining(p,wIn,spin){
+  const M=MINE_POSE;
+  const [A,B,t,lean]=miningPhase(p);
   /* svoris: švelniai ateina ir švelniai atsitraukia, kad nebūtų trūktelėjimo
      iš/į mikserio grojamą idle klipą (žr. poseBoneBlend paaiškinimą) */
-  const w=Math.min(1,p/.12,(1-p)/.18);
+  const w=wIn===undefined?Math.min(1,p/.12,(1-p)/.18):wIn;
   if(w<=0) return;
   applyArmPose(A,B,t,w,false);              // v147: TIK dešinė — kairę stato IK
   poseBonePair('clavicle',M.clav,0,0,w);
   poseBoneBlend('spine_01',lean*.30,0,0,w);
   poseBoneBlend('spine_02',lean*.34,0,0,w);
   poseBoneBlend('spine_03',lean*.36,0,0,w);
-  poseGripLeftIK(w);                        // PO stuburo/pečių — IK skaito pasaulio matricas
+  /* PO stuburo/pečių — IK skaito pasaulio matricas */
+  poseGripLeftIK(w, spin?mineShaftLocal(w,_gripAx):null, spin?_gripFit:null);
 }
 /* Kviečiama kadre PO playerGltfMixer.update() — kaip ir Perkūno poza, kitaip
    mikseris perrašytų mūsų kaulus. player.mine nustatomas gather() metu. */
+/* v167: KASIMO SVORIS GYVENA ATSKIRAI NUO MOSTO. Iki v167 jis buvo
+   skaičiuojamas iš mosto dalies — min(1, p/0,12, (1−p)/0,18) — tad KIEKVIENO
+   mosto pradžioje ir gale nukrisdavo į nulį. Nulinis svoris reiškia ne tik
+   pozos atsitraukimą į idle: applyMineSpin tuo pačiu svoriu grąžindavo
+   kirtiklį iš kasimo orientacijos į WEAPON_FIT ir vėl atgal, o tarp jų 93,9°,
+   ir slerp kelias eina per šoną (ties svoriu 0,5 kotas atsiduria ties
+   (−0,77; 0,38; 0,51) plaštakos sistemoje). Kasant be perstojo tai ir buvo
+   vartotojo matytas „keistas persisukimas" mosto gale ir kito pradžioje.
+   DABAR: svoris kyla pradėjus kasti, LIEKA 1 tarp mostų (gather() spėja
+   įrašyti naują player.mine anksčiau, nei jis nublanksta) ir mažėja tik tada,
+   kai kasimas tikrai baigėsi. Ginklo modelis grąžinamas ne mosto gale, o kai
+   svoris pasiekia nulį — todėl ir vaizdas nebešokteli. */
+let mineW=0, mineOn=false, mineHold=0;
 function updateMiningPose(dt){
-  if(!playerGltfModel||!player.mine) return;
-  player.mine.t+=dt;
-  const p=player.mine.t/player.mine.dur;
-  if(p>=1){ player.mine=null; resetWeaponSpin(); updatePlayerWeaponVisual(); return; }
-  poseMining(p);
-  applyMineSpin(Math.min(1,p/.12,(1-p)/.18));   // v153: tas pats svoris kaip pozos
+  if(!playerGltfModel) return;
+  if(player.mine){
+    player.mine.t+=dt;
+    if(player.mine.t>=player.mine.dur) player.mine=null;   // mostas baigėsi, svoris dar ne
+    mineHold=MINE_HOLD; mineOn=true;
+  }else if(mineHold>0) mineHold=Math.max(0,mineHold-dt);
+  mineW=(player.mine||mineHold>0)?Math.min(1,mineW+dt/MINE_FADE_IN):Math.max(0,mineW-dt/MINE_FADE_OUT);
+  if(mineW<=0){
+    if(mineOn){ mineOn=false; resetWeaponSpin(); updatePlayerWeaponVisual(); }
+    return;
+  }
+  poseMining(player.mine?player.mine.t/player.mine.dur:1,mineW,true);
+  applyMineSpin(mineW);                          // v153: tas pats svoris kaip pozos
 }
 /* v153: kirtiklio orientacija kasimo metu. Rankų neliečia — tik paties modelio
    kvaternionas plaštakoje. */
@@ -3338,6 +3402,16 @@ const _wqBase=new THREE.Quaternion(), _wqMine=new THREE.Quaternion(), _wqE=new T
   _wqBase.setFromEuler(_wqE.set(f.rot.x,f.rot.y,f.rot.z,'XYZ'));
   _wqMine.setFromEuler(_wqE.set(m.x,m.y,m.z,'XYZ'));
 })();
+/* v167: koto ašis PLAŠTAKOS vietinėje sistemoje, esant tam pačiam svoriui w.
+   Modelio ilgis yra jo vietinė +Y (žr. WEAPON_FIT komentarą), tad pasukus ją
+   tuo pačiu kvaternionu, kurį applyMineSpin uždeda ginklui, gaunama TIKRA
+   koto kryptis — ja naudojasi kairės rankos IK (poseGripLeftIK). */
+const _gripAx=new THREE.Vector3(), _wqNow=new THREE.Quaternion(),
+      _gripFit=new THREE.Vector3(WEAPON_FIT.kirtiklis.pos.x,WEAPON_FIT.kirtiklis.pos.y,WEAPON_FIT.kirtiklis.pos.z);
+function mineShaftLocal(w,out){
+  _wqNow.copy(_wqBase).slerp(_wqMine,Math.max(0,Math.min(1,w)));
+  return out.set(0,1,0).applyQuaternion(_wqNow);
+}
 function applyMineSpin(w){
   if(!playerWeaponMesh||weaponVisualKind!=='kirtiklis') return;
   playerWeaponMesh.quaternion.copy(_wqBase).slerp(_wqMine,Math.max(0,Math.min(1,w)));
@@ -5396,6 +5470,7 @@ function die(overkill){
   const clip=overkill?playerGltfActions.death:(playerGltfActions.deathAlt||playerGltfActions.death);
   triggerPlayerClip(clip,1);
   player.dash=null; player.mine=null;      // v138: kirtiklio poza neperrašo mirties
+  mineW=0; mineOn=false; mineHold=0; resetWeaponSpin();  // v167: svoris nebeperneša kasimo į mirtį
   updatePlayerWeaponVisual();              // v142: nerodyti kirtiklio numirus
   log(T('knockedOut'),'lg-h');
   const f=document.getElementById('fade'); f.style.opacity=1;

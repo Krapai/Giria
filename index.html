@@ -665,8 +665,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v182';
-const GAME_CHANGES='muzika: Giria tapo Naktimi ir pagerinta, Kova perdaryta (liko tik barškučiai)';
+const GAME_VERSION='v183';
+const GAME_CHANGES='trys nauji takeliai (Aušra, Sutartinė, Skudučiai), Naktis be fleitos aido';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -6090,10 +6090,25 @@ const TRACKS={
          plkG:.095,mel:.7,melEvery:2,drum:.5,cut:3000,name:{lt:'Kaimavietė',en:'Village'}},
   naktis:{bpm:72,sc:DOR,oct:1,chords:[0,5,3,4],pad:.034,pluck:[1,0,1,1,0,1,0,1],
          plkG:.085,mel:.55,melEvery:2,drum:0,cut:2400,
-         swing:.055,vel:[1,.72,.88,1,.7,.92,.76,.86],echo:{d:.75,g:.42},shimmer:.012,fifth:2,
-         name:{lt:'Naktis',en:'Night'}},
+         swing:.055,vel:[1,.72,.88,1,.7,.92,.76,.86],shimmer:.012,fifth:2,
+         name:{lt:'Naktis',en:'Night'}},   /* v183: fleitos aidas išimtas — netiko */
+  /* v183: AUŠRA — šviesėjimas. Reti, aukšti varpeliai (bell) ir lėtas padas;
+     akordai kyla 0→3→5→4, tad frazė visą laiką traukia į viršų. */
+  ausra:{bpm:62,sc:DOR,oct:1,chords:[0,3,5,4],pad:.040,pluck:[1,0,0,1,0,1,0,0],
+         plkG:.070,mel:.45,melEvery:2,drum:0,cut:2000,
+         vel:[1,.6,.6,.85,.6,.9,.6,.6],shimmer:.016,fifth:2,bell:{deg:[7,9,11],gain:.038},
+         name:{lt:'Aušra',en:'Dawn'}},
+  /* v183: SUTARTINĖ — sava funkcija. Dvi giesmininkės gieda TĄ PAČIĄ frazę,
+     antroji įstoja puse takto vėliau ir sekunda aukščiau; susidūrusios sekundos
+     ir yra visas šitos muzikos garsas. */
+  sutartine:{bpm:96,sc:DOR,oct:1,chords:[0,0,4,4],cut:2200,own:'sutartine',
+         name:{lt:'Sutartinė',en:'Sutartinė round song'}},
+  /* v183: SKUDUČIAI — irgi sava funkcija. Hoketas: kiekvienas dūdelė turi vieną
+     natą, tad melodija šokinėja tarp registrų, o po ja eina dronas ir barškis. */
+  skuduciai:{bpm:104,sc:DOR,oct:1,chords:[0,4,5,4],cut:2600,own:'skuduciai',
+         name:{lt:'Skudučiai',en:'Panpipes'}},
   /* barškučių raštas šešioliktinėmis: 1 — akcentas, .5 — tylus, 0 — pauzė */
-  kova:{bpm:116,sc:AEOL,oct:1,chords:[0,0,5,4],cut:2000,own:true,
+  kova:{bpm:116,sc:AEOL,oct:1,chords:[0,0,5,4],cut:2000,own:'kova',
         rattle:[1,0,.5,1,0,.5,1,0,1,0,.5,0,1,.5,1,.5],
         name:{lt:'Kova',en:'Battle'}}
 };
@@ -6131,14 +6146,18 @@ function scheduleBar(tr,t){
     let off=0;
     for(const [d,len] of m){
       if(off>=4) break;
-      const f=deg(tr.sc,root+d+7,tr.oct);
-      tone(t+off*beat, f, len*beat*.85,
+      tone(t+off*beat, deg(tr.sc,root+d+7,tr.oct), len*beat*.85,
         {type:'sine',gain:.055*tr.mel,a:.07,cut:2600,vib:5.2,vibAmt:3.4,bus:B});
-      /* v182: tylus aidas — fleita nebeatrodo grojanti tuščiame kambaryje */
-      if(tr.echo) tone(t+(off+tr.echo.d)*beat, f, len*beat*.6,
-        {type:'sine',gain:.055*tr.mel*tr.echo.g,a:.09,cut:1700,bus:B});
       off+=len;
     }
+  }
+  /* v183: varpeliai — reta aukšta nata, ilgai užgęstanti (naudoja „Aušra") */
+  if(tr.bell){
+    const d=tr.bell.deg[MUS.bar%tr.bell.deg.length];
+    tone(t+beat*.5, deg(tr.sc,root+d,tr.oct+1), bar*.8,
+      {type:'sine',gain:tr.bell.gain,a:.02,cut:5600,cutEnd:1800,bus:B});
+    if(MUS.bar%2===1) tone(t+beat*2.5, deg(tr.sc,root+d+2,tr.oct+1), bar*.55,
+      {type:'sine',gain:tr.bell.gain*.7,a:.02,cut:5200,cutEnd:1600,bus:B});
   }
   /* būgnas */
   if(tr.drum){
@@ -6183,18 +6202,72 @@ function scheduleKova(tr,t){
   }
   MUS.bar++;
 }
+/* v183: SUTARTINĖ. Dviejų balsų kanonas sekundos atstumu — abu gieda tą pačią
+   frazę, antrasis puse takto vėliau ir viena pakopa aukščiau. Susidūrusios
+   sekundos skamba aštriai ir yra visas šito takelio charakteris; jokių akordų
+   po jomis nededama, tik ramus dronas ir medinis pukštelėjimas. */
+const SUT_PHRASE=[[0,1],[1,1],[0,1],[2,1],[1,2],[0,2]];   // [pakopa, ilgis aštuntinėmis]
+function scheduleSutartine(tr,t){
+  const beat=60/tr.bpm, bar=beat*4, ei=beat/2, B=SND.mus;
+  const root=tr.chords[MUS.bar%tr.chords.length];
+  const balsas=(delay,step,gain,type)=>{
+    let off=0;
+    for(const [d,len] of SUT_PHRASE){
+      if(off*ei>=bar) break;
+      tone(t+delay+off*ei, deg(tr.sc,root+d+step,tr.oct), len*ei*.92,
+        {type:type,gain:gain,a:.05,cut:tr.cut,cutEnd:900,vib:4.6,vibAmt:2.2,bus:B});
+      off+=len;
+    }
+  };
+  balsas(0,0,.070,'triangle');            // pirmoji giesmininkė
+  balsas(bar*.5,1,.062,'triangle');       // antroji — puse takto vėliau, sekunda aukščiau
+  /* ramus dronas ir kas ketvirtame takte žemesnė atrama */
+  tone(t,deg(tr.sc,root,tr.oct-1),bar*.98,{type:'sine',gain:.05,a:bar*.25,cut:320,bus:B});
+  if(MUS.bar%4===3) tone(t+bar*.5,deg(tr.sc,root+4,tr.oct-1),bar*.45,
+    {type:'sine',gain:.04,a:.15,cut:300,bus:B});
+  /* medinis pukštelėjimas — tik antras ir ketvirtas taktų ketvirčiai */
+  for(const b of [1,3]) noiseHit(t+b*beat,.05,{cut:2400,gain:.030,shape:2.6,bus:B});
+  MUS.bar++;
+}
+/* v183: SKUDUČIAI. Hoketas — kiekviena dūdelė pučia po vieną natą, tad melodija
+   šokinėja tarp dviejų registrų. Po ja — dronas, barškis nelyginėms ir lengvas
+   medinis pukštelėjimas; darbo tempas, ne mūšio. */
+const SKU_STEPS=[0,4,2,5,4,2,4,0,2,4,0,5,4,2,0,4];
+function scheduleSkuduciai(tr,t){
+  const beat=60/tr.bpm, bar=beat*4, ei=beat/2, B=SND.mus;
+  const root=tr.chords[MUS.bar%tr.chords.length];
+  for(let i=0;i<8;i++){
+    const d=SKU_STEPS[(MUS.bar*8+i)%SKU_STEPS.length];
+    const auksta=i%2===0;                       // hoketas: pakaitomis dvi dūdelės
+    tone(t+i*ei, deg(tr.sc,root+d,tr.oct+(auksta?1:0)), ei*.8,
+      {type:'sine',gain:auksta?.060:.048,a:.02,cut:tr.cut,cutEnd:1200,bus:B});
+  }
+  tone(t,deg(tr.sc,root,tr.oct-1),bar*.98,{type:'sine',gain:.048,a:bar*.2,cut:330,bus:B});
+  for(let i=0;i<8;i++) if(i%2===1) noiseHit(t+i*ei,.045,{cut:8200,hp:true,gain:.022,shape:2.4,bus:B});
+  for(const b of [0,2]) noiseHit(t+b*beat,.05,{cut:2000,gain:.032,shape:2.4,bus:B});
+  MUS.bar++;
+}
 /* kuris takelis kaip grojamas — vienoje vietoje, kad updateMusic nežinotų vardų */
 function musicBar(key,t){
   const tr=TRACKS[key]||TRACKS.naktis;
-  if(tr.own) scheduleKova(tr,t); else scheduleBar(tr,t);
+  if(tr.own==='sutartine') scheduleSutartine(tr,t);
+  else if(tr.own==='skuduciai') scheduleSkuduciai(tr,t);
+  else if(tr.own) scheduleKova(tr,t);
+  else scheduleBar(tr,t);
 }
+/* v183: šeši takeliai, kiekvienas su savo vieta:
+     kova — mūšis; kaimas — prie laužo; skudučiai — kai dirbi (kerti, kasi, renki);
+     aušra — auštant; naktis — naktį; sutartinė — dieną girioje. */
 function pickTrack(){
   if(player.dead) return 'naktis';
   if(player.targetId!==null) return 'kova';
   for(const e of enemies) if(!e.dead&&e.state==='chase'&&
     Math.hypot(e.pos.x-player.pos.x,e.pos.z-player.pos.z)<15) return 'kova';
   if(Math.hypot(player.pos.x,player.pos.z)<14) return 'kaimas';
-  return 'naktis';        // v182: lauke — vienas takelis, ir dieną, ir naktį
+  if(player.gatherId!==null||player.mine) return 'skuduciai';
+  if(isDawn()) return 'ausra';
+  if(isNight()) return 'naktis';
+  return 'sutartine';
 }
 function updateMusic(dt){
   if(!SND.ctx||!SND.musOn) return;

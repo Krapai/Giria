@@ -702,8 +702,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v192';
-const GAME_CHANGES='GLB kraunamas kartą ir klonuojamas; blyksnis ir taikinio didėjimas išimti';
+const GAME_VERSION='v193';
+const GAME_CHANGES='pataisytas krovimas; žymės ant drobės, vienas kūnas priešui, siluetai, mikserių biudžetas, laikini daiktai';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -1173,7 +1173,10 @@ function applyModelQuality(){
   }
   if(typeof ENEMY_GLB!=='undefined') for(const A of ENEMY_GLB){
     if(A.model) A.model.visible=hi;
-    if(A.e&&A.e.obj&&!A.e.dead) A.e.obj.traverse(o=>{ if(o.isMesh) o.visible=!hi; });
+    if(A.e&&A.e.obj&&!A.e.dead){
+      if(!hi&&typeof enemyProcBuild==='function') enemyProcBuild(A.e);  // v193
+      A.e.obj.traverse(o=>{ if(o.isMesh) o.visible=!hi; });
+    }
   }
   if(typeof CATALOG_MODELS!=='undefined') for(const m of CATALOG_MODELS) m.visible=hi;
 }
@@ -4140,6 +4143,59 @@ function triggerPlayerSwingClip(crit,interval){
   return hits.length?hits:[eff*HIT_FRAC];
 }
 
+/* v193 SVARBU: šis blokas TURI būti aukščiau už pirmą loadGlbOnce() kvietimą.
+   funkcija pakyla (hoisting), BET const GLB_CACHE — ne (TDZ), tad laikant jį
+   žemiau žaidėjo krovimo IIFE visas scenarijus nutrūkdavo ties pačiu startu
+   („ReferenceError: Cannot access GLB_CACHE before initialization") ir žaidimas
+   NEUŽSIKRAUDAVO IŠ VISO. Testai to nepagavo: jų netikrame THREE nėra
+   GLTFLoader, tad visos GLB šakos iškart grįždavo atgal. */
+/* ===================== GLB: KRAUNAM KARTĄ, KLONUOJAM (v192) =====================
+   Iki šiol kiekvienas personažas kvietė savo GLTFLoader().load() — žaidėjas,
+   11 priešų ir ~86 katalogo manekenai, t. y. apie 99 pilnas to paties failo
+   analizes, kiekviena su savo klipų rinkiniu atmintyje. Failas parsisiunčiamas
+   kartą (naršyklės talpykla), bet IŠANALIZUOJAMAS kaskart.
+   Dabar paketas analizuojamas vieną kartą, o kiekvienam personažui daromas
+   SKELETO KLONAS. SkeletonUtils puslapyje nėra (žr. komentarą ties GLB_URL), tad
+   klonuotojas savas: Object3D.clone() padaro hierarchiją, bet SkinnedMesh lieka
+   pririštas prie SENO skeleto — todėl kiekvienam suklonuotam tinkleliui
+   surišama nauja Skeleton iš klonuotų kaulų.
+   MEDŽIAGOS klonuojamos atskirai: three.js klonas jas dalinasi, o dalijamasi
+   medžiaga reiškia, kad bet koks spalvos keitimas persimestų ant visų
+   personažų vienu metu. */
+const GLB_CACHE={}, GLB_WAIT={};
+function loadGlbOnce(url,cb,errCb){
+  if(GLB_CACHE[url]){ cb(GLB_CACHE[url]); return; }
+  if(!GLB_WAIT[url]) GLB_WAIT[url]=[];
+  GLB_WAIT[url].push({cb,errCb});
+  if(GLB_WAIT[url].length>1) return;              // krovimas jau vyksta
+  new THREE.GLTFLoader().load(url,g=>{
+    GLB_CACHE[url]=g;
+    const eile=GLB_WAIT[url]||[]; GLB_WAIT[url]=null;
+    for(const x of eile) x.cb(g);
+  },undefined,err=>{
+    const eile=GLB_WAIT[url]||[]; GLB_WAIT[url]=null;
+    for(const x of eile) if(x.errCb) x.errCb(err);
+  });
+}
+function cloneGlbScene(src){
+  const klonas=src.clone(true);
+  const seni=[], nauji=[];
+  src.traverse(o=>seni.push(o));
+  klonas.traverse(o=>nauji.push(o));
+  const pagalSena=new Map();
+  seni.forEach((o,i)=>pagalSena.set(o,nauji[i]));
+  klonas.traverse(o=>{
+    if(o.isMesh&&o.material)
+      o.material=Array.isArray(o.material)?o.material.map(m=>m.clone()):o.material.clone();
+    if(!o.isSkinnedMesh) return;
+    const o0=seni[nauji.indexOf(o)];
+    if(!o0||!o0.skeleton) return;
+    const kaulai=o0.skeleton.bones.map(b=>pagalSena.get(b)||b);
+    o.bind(new THREE.Skeleton(kaulai,o0.skeleton.boneInverses.map(m=>m.clone())),
+           o0.bindMatrix.clone());
+  });
+  return klonas;
+}
 (function(){
   if(typeof THREE==='undefined'||!THREE.GLTFLoader){
     /* NEGALIMA čia kviesti log() — logEl dar neinicijuotas (TDZ), nes šis
@@ -4393,6 +4449,84 @@ function triggerPlayerSwingClip(crit,interval){
    e.obj poziciją/pasukimą/mastelį. Kiekvienam priešui — atskiras load()
    (skeletiniam modeliui .clone() netinka be SkeletonUtils). */
 const ENEMY_GLB=[];
+/* ============ v193: MIKSERIŲ BIUDŽETAS ============
+   v160 LOD praleisdinėjo atnaujinimus pagal ATSTUMĄ — bet minioje kaina vis
+   tiek augo tiesiškai (500 NPC × net ir retas atnaujinimas = 500 skaičiavimų).
+   Dabar kaina PASTOVI: arti esantys atnaujinami visada, o visi likusieji —
+   ratu, kiek telpa į biudžetą. Praleistas laikas kaupiamas (__acc) ir
+   atiduodamas mikseriui vienu kartu, tad animacijos greitis nesikeičia; acc
+   ribojamas, kad iš toli grįžus nebūtų šuolio per pusę klipo. */
+const MIX_NEAR=14;          // m — arčiau nei tiek visada atnaujinam
+const MIX_DROP=70;          // m — toliau nei tiek nebeatnaujinam iš viso
+const mixPtr={};
+function mixBudget(key,list,dt,budget,getMx,getX,getZ){
+  const N=list.length; if(!N) return 0;
+  const camX=player.pos.x, camZ=player.pos.z;
+  let used=0;
+  for(let i=0;i<N;i++){
+    const it=list[i];
+    it.__acc=(it.__acc||0)+dt; if(it.__acc>.5) it.__acc=.5;
+    it.__d=Math.hypot(getX(it)-camX,getZ(it)-camZ);
+    if(!LOD_ON||it.__d<MIX_NEAR){ getMx(it).update(it.__acc); it.__acc=0; used++; }
+  }
+  if(!LOD_ON) return used;
+  let p=mixPtr[key]||0;
+  for(let k=used;k<budget;k++){
+    const it=list[p%N]; p++;
+    if(!it) break;
+    if(it.__d<MIX_NEAR||it.__d>MIX_DROP) continue;
+    getMx(it).update(it.__acc); it.__acc=0; used++;
+  }
+  mixPtr[key]=p%N;
+  return used;
+}
+
+/* ============ v193: TOLIMI PERSONAŽAI — VIENAS SILUETŲ DEBESIS ============
+   Toliau nei FAR_DIST skeleto niekas neįžiūri, bet kiekvienas modelis vis tiek
+   kainuoja atskirą piešimo iškvietimą. Dabar toks modelis paslepiamas, o jo
+   vietoje į BENDRĄ THREE.Points debesį įrašomas taškas su siluetu — visi
+   tolimieji kartu kainuoja VIENĄ iškvietimą. */
+const FAR_DIST=42, FAR_MAX=768;
+let farPts=null, farPos=null, farGeo=null, farN=0;
+function farSilhouetteTex(){
+  const S=64, c=document.createElement('canvas'); c.width=S; c.height=S;
+  const x=c.getContext&&c.getContext('2d'); if(!x) return null;
+  x.fillStyle='#2b3026';
+  x.beginPath(); x.arc(S/2,S*.22,S*.115,0,Math.PI*2); x.fill();     // galva
+  x.beginPath();                                                      // liemuo
+  x.moveTo(S*.36,S*.36); x.lineTo(S*.64,S*.36);
+  x.lineTo(S*.60,S*.70); x.lineTo(S*.40,S*.70); x.closePath(); x.fill();
+  x.fillRect(S*.42,S*.68,S*.06,S*.24);                                // kojos
+  x.fillRect(S*.52,S*.68,S*.06,S*.24);
+  x.fillRect(S*.30,S*.38,S*.05,S*.24);                                // rankos
+  x.fillRect(S*.65,S*.38,S*.05,S*.24);
+  return new THREE.CanvasTexture(c);
+}
+function farInit(){
+  if(farPts||typeof THREE==='undefined'||!THREE.Points) return;
+  const tex=farSilhouetteTex();
+  farPos=new Float32Array(FAR_MAX*3);
+  farGeo=new THREE.BufferGeometry();
+  farGeo.setAttribute('position',new THREE.BufferAttribute(farPos,3));
+  farGeo.setDrawRange(0,0);
+  const mat=new THREE.PointsMaterial({size:2.5,sizeAttenuation:true,transparent:true,
+    depthWrite:false,alphaTest:.4,opacity:.95,color:0xffffff});
+  if(tex) mat.map=tex;
+  farPts=new THREE.Points(farGeo,mat);
+  farPts.frustumCulled=false;
+  scene.add(farPts);
+}
+function farReset(){ farN=0; }
+function farAdd(x,y,z){
+  if(!farPos||farN>=FAR_MAX) return;
+  farPos[farN*3]=x; farPos[farN*3+1]=y; farPos[farN*3+2]=z; farN++;
+}
+function farFlush(){
+  if(!farGeo) return;
+  farGeo.setDrawRange(0,farN);
+  farGeo.attributes.position.needsUpdate=true;
+  if(farPts) farPts.visible=farN>0;
+}
 function glbActionsFor(mixer,anims,def){
   const by={}; anims.forEach(c=>{ by[c.name]=c; });
   const mk=n=>{ const c=by[n]; return c?mixer.clipAction(c):null; };
@@ -4419,53 +4553,6 @@ function glbOnce(A,act,speed,next){
   act.reset(); act.setLoop(THREE.LoopOnce,1); act.clampWhenFinished=true;
   act.timeScale=speed||1; act.__once=true; act.fadeIn(.06).play();
   A.current=act; A.chain=next||null;
-}
-/* ===================== GLB: KRAUNAM KARTĄ, KLONUOJAM (v192) =====================
-   Iki šiol kiekvienas personažas kvietė savo GLTFLoader().load() — žaidėjas,
-   11 priešų ir ~86 katalogo manekenai, t. y. apie 99 pilnas to paties failo
-   analizes, kiekviena su savo klipų rinkiniu atmintyje. Failas parsisiunčiamas
-   kartą (naršyklės talpykla), bet IŠANALIZUOJAMAS kaskart.
-   Dabar paketas analizuojamas vieną kartą, o kiekvienam personažui daromas
-   SKELETO KLONAS. SkeletonUtils puslapyje nėra (žr. komentarą ties GLB_URL), tad
-   klonuotojas savas: Object3D.clone() padaro hierarchiją, bet SkinnedMesh lieka
-   pririštas prie SENO skeleto — todėl kiekvienam suklonuotam tinkleliui
-   surišama nauja Skeleton iš klonuotų kaulų.
-   MEDŽIAGOS klonuojamos atskirai: three.js klonas jas dalinasi, o dalijamasi
-   medžiaga reiškia, kad bet koks spalvos keitimas persimestų ant visų
-   personažų vienu metu. */
-const GLB_CACHE={}, GLB_WAIT={};
-function loadGlbOnce(url,cb,errCb){
-  if(GLB_CACHE[url]){ cb(GLB_CACHE[url]); return; }
-  if(!GLB_WAIT[url]) GLB_WAIT[url]=[];
-  GLB_WAIT[url].push({cb,errCb});
-  if(GLB_WAIT[url].length>1) return;              // krovimas jau vyksta
-  new THREE.GLTFLoader().load(url,g=>{
-    GLB_CACHE[url]=g;
-    const eile=GLB_WAIT[url]||[]; GLB_WAIT[url]=null;
-    for(const x of eile) x.cb(g);
-  },undefined,err=>{
-    const eile=GLB_WAIT[url]||[]; GLB_WAIT[url]=null;
-    for(const x of eile) if(x.errCb) x.errCb(err);
-  });
-}
-function cloneGlbScene(src){
-  const klonas=src.clone(true);
-  const seni=[], nauji=[];
-  src.traverse(o=>seni.push(o));
-  klonas.traverse(o=>nauji.push(o));
-  const pagalSena=new Map();
-  seni.forEach((o,i)=>pagalSena.set(o,nauji[i]));
-  klonas.traverse(o=>{
-    if(o.isMesh&&o.material)
-      o.material=Array.isArray(o.material)?o.material.map(m=>m.clone()):o.material.clone();
-    if(!o.isSkinnedMesh) return;
-    const o0=seni[nauji.indexOf(o)];
-    if(!o0||!o0.skeleton) return;
-    const kaulai=o0.skeleton.bones.map(b=>pagalSena.get(b)||b);
-    o.bind(new THREE.Skeleton(kaulai,o0.skeleton.boneInverses.map(m=>m.clone())),
-           o0.bindMatrix.clone());
-  });
-  return klonas;
 }
 function attachEnemyGlb(e){
   if(typeof THREE==='undefined'||!THREE.GLTFLoader) return;   // testų aplinka — praleidžiam
@@ -5022,22 +5109,131 @@ const SHOP=[['sliekas',5,2],['duona',5,2],['kukuruzai',5,3],['muse',3,6],['blizg
 const enemies=[]; const drops=[]; const nodes=[]; const wanderers=[];
 const worldLayer=document.getElementById('world');
 
-function makeTag(name,color,withHp){
-  const d=document.createElement('div'); d.className='tag';
-  d.innerHTML='<div class="nm" style="color:'+color+'">'+name+'</div>'+
-    (withHp?'<div class="hp"><span style="width:100%"></span></div>':'');
-  worldLayer.appendChild(d);
-  return {el:d,bar:withHp?d.querySelector('.hp span'):null};
+/* ================= v193: VARDŲ JUOSTOS ANT VIENOS DROBĖS =================
+   Iki šiol kiekvienas objektas turėjo savo <div class="tag">, o placeTag()
+   kas kadrą kiekvienam perrašinėjo style.transform. Kaimavietėje tai ~140
+   DOM elementų, kuriems naršyklė kas kadrą perskaičiuoja stilių — būtent tai
+   pirmiausia sustotų su daug žaidėjų. Dabar visos žymės piešiamos į VIENĄ
+   drobę virš scenos: nulis DOM pakeitimų, o tekstas kiekvienai žymei
+   nupiešiamas KARTĄ į savo mažą paveiksliuką (bmp) ir toliau tik
+   perstumdomas (drawImage — daug pigiau nei fillText).
+   Žymės išvaizda palikta tokia pat kaip CSS: 11px (daiktams 9.5px) pusjuodis
+   Karla, juodas šešėlis, po vardu 52×3 px sveikatos juostelė. */
+const TAGS=[];
+let tagCv=null, tagCtx=null, tagMeas=null, tagDpr=1, TAG_OK=false;
+const TAG_HP_BG='rgba(0,0,0,.65)', TAG_HP_FILL='#c4462f';   // --rowan
+function tagFont(t){ return '700 '+(t.small?9.5:11)+'px Karla, system-ui, sans-serif'; }
+/* Vardas gali turėti vieną įdėtą <span style="color:..."> (lygis, rangas) —
+   išskaidom į gabalus, kad drobėje liktų tos pačios dvi spalvos. */
+function tagSegments(html){
+  const out=[], re=/<span[^>]*color:\s*([^;"']+)[^>]*>([\s\S]*?)<\/span>/gi;
+  let last=0,m;
+  while((m=re.exec(String(html)))){
+    if(m.index>last) out.push({t:String(html).slice(last,m.index),c:null});
+    out.push({t:m[2],c:m[1].trim()});
+    last=re.lastIndex;
+  }
+  if(last<String(html).length) out.push({t:String(html).slice(last),c:null});
+  return out.map(o=>({t:o.t.replace(/<[^>]*>/g,''),c:o.c})).filter(o=>o.t.length);
+}
+(function initTagCanvas(){
+  if(typeof document==='undefined'||!worldLayer) return;
+  tagCv=document.createElement('canvas');
+  tagCv.id='tagCv';
+  tagCv.style.position='absolute'; tagCv.style.left='0'; tagCv.style.top='0';
+  tagCv.style.pointerEvents='none';
+  worldLayer.appendChild(tagCv);
+  tagCtx=tagCv.getContext&&tagCv.getContext('2d');
+  const mc=document.createElement('canvas');
+  tagMeas=mc.getContext&&mc.getContext('2d');
+  TAG_OK=!!(tagCtx&&tagMeas&&tagCtx.drawImage&&tagMeas.measureText);
+  resizeTagCanvas();
+})();
+function resizeTagCanvas(){
+  if(!tagCv) return;
+  tagDpr=Math.min((typeof devicePixelRatio!=='undefined'?devicePixelRatio:1)||1,2);
+  tagCv.width=Math.max(1,Math.round(innerWidth*tagDpr));
+  tagCv.height=Math.max(1,Math.round(innerHeight*tagDpr));
+  tagCv.style.width=innerWidth+'px'; tagCv.style.height=innerHeight+'px';
+  for(const t of TAGS) t.bmp=null;          // perpiešti nauju masteliu
+}
+function buildTagBmp(t){
+  if(!TAG_OK) return;
+  const fsz=t.small?9.5:11, pad=4, font=tagFont(t);
+  tagMeas.font=font;
+  let w=0; for(const g of t.segs) w+=tagMeas.measureText(g.t).width;
+  const W=Math.ceil(w)+pad*2, H=Math.ceil(fsz*1.5)+pad*2;
+  const c=document.createElement('canvas');
+  c.width=Math.max(1,Math.round(W*tagDpr)); c.height=Math.max(1,Math.round(H*tagDpr));
+  const x=c.getContext&&c.getContext('2d'); if(!x) return;
+  x.scale(tagDpr,tagDpr);
+  x.font=font; x.textBaseline='middle'; x.textAlign='left';
+  x.shadowColor='rgba(0,0,0,.85)'; x.shadowBlur=3; x.shadowOffsetY=1;
+  let cx=pad;
+  for(const g of t.segs){
+    x.fillStyle=g.c||t.color;
+    x.fillText(g.t,cx,H/2);
+    cx+=x.measureText(g.t).width;
+  }
+  t.bmp=c; t.bw=W; t.bh=H;
+}
+function makeTag(name,color,withHp,small){
+  const t={name:name,color:color||'#e8dfc8',withHp:!!withHp,small:!!small,
+           hp:1,vis:false,sx:0,sy:0,bmp:null,bw:0,bh:0,segs:tagSegments(name)};
+  t.hide=function(){ t.vis=false; };
+  t.setHp=function(v){ t.hp=v<0?0:v>1?1:v; };
+  t.setText=function(v){ if(v===t.name) return; t.name=v; t.segs=tagSegments(v); t.bmp=null; };
+  t.remove=function(){ const i=TAGS.indexOf(t); if(i>=0) TAGS.splice(i,1); t.vis=false; };
+  TAGS.push(t);
+  return t;
+}
+function drawTags(){
+  if(!TAG_OK) return;
+  const x=tagCtx;
+  x.clearRect(0,0,tagCv.width,tagCv.height);
+  x.save(); x.scale(tagDpr,tagDpr);
+  for(let i=0;i<TAGS.length;i++){
+    const t=TAGS[i];
+    if(!t.vis) continue;
+    if(!t.bmp) buildTagBmp(t);
+    if(!t.bmp) continue;
+    const visa=t.bh+(t.withHp?5:0);
+    const py=Math.round(t.sy-visa), px=Math.round(t.sx-t.bw/2);
+    x.drawImage(t.bmp,px,py,t.bw,t.bh);
+    if(t.withHp){
+      const w=52,h=3,bx=Math.round(t.sx-w/2),by=py+t.bh+1;
+      x.fillStyle=TAG_HP_BG; x.fillRect(bx,by,w,h);
+      x.fillStyle=TAG_HP_FILL; x.fillRect(bx,by,w*t.hp,h);
+    }
+  }
+  x.restore();
 }
 
+/* v193: iki šiol KIEKVIENAS priešas turėjo DU kūnus — procedūrinį piešinį
+   (dešimtys tinklelių) ir GLB kloną; piešinys tik paslepiamas, bet geometrija
+   lieka atmintyje. Dabar e.obj yra tuščias laikiklis, o piešinys pastatomas
+   tik prireikus (žema kokybė arba nėra GLTFLoader — pvz. testuose).
+   e.obj.userData sulyginamas su piešinio userData, nes kodas per jį perduoda
+   swing/flinch/lookAt (žr. animateBody). */
+function enemyProcBuild(e){
+  if(e.proc||!e.obj) return;
+  const g=humanoid(e.procCfg);
+  e.proc=g; e.obj.add(g); e.obj.userData=g.userData;
+}
+function enemyProcNeeded(){
+  return CFG.quality!=='high'||typeof THREE==='undefined'||!THREE.GLTFLoader;
+}
 function spawnEnemy(def,x,z){
-  const g=humanoid({type:def.type,skin:def.skin,cloth:def.cloth,horns:def.horns,
-    hair:def.hair,eyes:def.eyes,sleeves:def.sleeves,weapon:def.weapon,scale:def.scale});
-  scene.add(g);
-  const e={def,obj:g,pos:new THREE.Vector3(x,0,z),home:new THREE.Vector2(x,z),
+  const holder=new THREE.Group();
+  scene.add(holder);
+  const e={def,obj:holder,proc:null,
+    procCfg:{type:def.type,skin:def.skin,cloth:def.cloth,horns:def.horns,
+      hair:def.hair,eyes:def.eyes,sleeves:def.sleeves,weapon:def.weapon},
+    pos:new THREE.Vector3(x,0,z),home:new THREE.Vector2(x,z),
     hp:def.hp,maxHp:def.hp,state:'idle',yaw:Math.random()*TAU,atkCd:0,wanderCd:0,
     wx:x,wz:z,dead:false,respawn:0,id:enemies.length,flash:0,stun:0,sink:0,burn:0,burnDps:0,slow:0,
     tag:makeTag(Lx(def.name)+' <span style="color:#9fb39c">'+def.lvl+'</span>','#e59a86',true)};
+  if(enemyProcNeeded()) enemyProcBuild(e);       // v193: piešinys tik jei reikia
   addBody(e.pos,.45*(def.scale||1),()=>!e.dead); // v154: kūnas juda kartu su e.pos
   enemies.push(e); attachEnemyGlb(e); return e;
 }
@@ -5368,12 +5564,16 @@ function worldClick(sx,sy){
     }
   }
   const alive=enemies.filter(e=>!e.dead);
-  const eObjs=alive.map(e=>e.obj);
+  /* v193: taikom į TAI, KAS MATOMA — aukštoje kokybėje tai GLB modelis
+     (anksčiau spindulys eidavo į nematomą procedūrinį kūną, o dabar jo gali
+     iš viso nebūti). */
+  const eObjs=alive.map(e=>(e.glb&&e.glb.model&&e.glb.model.visible)?e.glb.model:e.obj);
   const hitE=ray.intersectObjects(eObjs,true)[0];
   let e=null;
   if(hitE){
-    let o=hitE.object; while(o.parent&&!eObjs.includes(o)) o=o.parent;
-    e=enemies.find(x=>x.obj===o)||null;
+    let o=hitE.object; while(o.parent&&eObjs.indexOf(o)<0) o=o.parent;
+    const idx=eObjs.indexOf(o);
+    e=idx>=0?alive[idx]:null;
   }
   /* jei tiksliai nepataikė — imam artimiausią ekrane per TAP_RADIUS_PX */
   if(!e) e=nearestByScreen(alive,
@@ -6111,7 +6311,7 @@ function magicHit(e,at){
 function killEnemy(e){
   if(e.def.dummy){ e.hp=e.maxHp; return; }        // v96: taikinio manekenas nemiršta
   if(e.glb) glbOnce(e.glb,e.glb.acts.death,1);    // v96: mirties animacija (nr8)
-  e.dead=true; e.respawn=14; e.sink=1.2; e.tag.el.style.display='none';
+  e.dead=true; e.respawn=14; e.sink=1.2; e.tag.hide();
   shockRing(e.pos.x,e.pos.y+.1,e.pos.z,0x7a5c3a,.8);
   addShake(.12);
   if(player.targetId===e.id) player.targetId=null;
@@ -6640,6 +6840,7 @@ document.getElementById('mSet').onclick=()=>{toggleToolMenu(false);togglePanel('
 document.getElementById('mLod').onclick=()=>{
   LOD_ON=!LOD_ON;
   if(typeof STRESS!=='undefined') STRESS.lod=LOD_ON;
+  applyModelQuality();      // v193: išjungus LOD grąžinam paslėptus tolimuosius
   document.getElementById('mLod').textContent=LOD_ON?'🚀':'🐌';
   setTt('mLod', LOD_ON?'ttLodOn':'ttLodOff');
 };
@@ -8448,14 +8649,17 @@ function drawMap(dt){
 
 /* pasaulio etiketės */
 const tmp=new THREE.Vector3();
+/* v193: atstumas tikrinamas PRIEŠ projekciją (toli esančiam nieko
+   neskaičiuojam), o rezultatas tik įrašomas — piešia drawTags(). */
 function placeTag(tag,x,y,z,maxDist){
-  tmp.set(x,y,z);
-  const d=camera.position.distanceTo(tmp);
-  tmp.project(camera);
-  if(tmp.z>1||d>maxDist){tag.el.style.display='none';return;}
-  tag.el.style.display='block';
-  tag.el.style.transform='translate(-50%,-100%) translate('+
-    ((tmp.x*.5+.5)*innerWidth)+'px,'+((-tmp.y*.5+.5)*innerHeight)+'px)';
+  if(!tag) return;
+  const dx=x-camera.position.x, dy=y-camera.position.y, dz=z-camera.position.z;
+  if(dx*dx+dy*dy+dz*dz>maxDist*maxDist){ tag.vis=false; return; }
+  tmp.set(x,y,z); tmp.project(camera);
+  if(tmp.z>1){ tag.vis=false; return; }
+  const sx=(tmp.x*.5+.5)*innerWidth, sy=(-tmp.y*.5+.5)*innerHeight;
+  if(sx<-160||sx>innerWidth+160||sy<-80||sy>innerHeight+80){ tag.vis=false; return; }
+  tag.vis=true; tag.sx=sx; tag.sy=sy;
 }
 
 /* ---------- 13. Judėjimo logika ---------- */
@@ -9440,8 +9644,7 @@ const NODE_HITS={mediena:5, akmuo:5};
 const nodeHits=key=>NODE_HITS[key]||1;
 /* Matomas nusidėvėjimas: objektas mažėja, o žymėje rodoma, kiek dar liko. */
 function nodeLabel(n,left,total){
-  const nm=n.tag&&n.tag.el&&n.tag.el.querySelector&&n.tag.el.querySelector('.nm');
-  if(nm) nm.textContent=n.kind.label+(total>1?' ('+left+'/'+total+')':'');
+  if(n.tag&&n.tag.setText) n.tag.setText(n.kind.label+(total>1?' ('+left+'/'+total+')':''));
 }
 function updateNodeWear(n){
   const total=nodeHits(n.kind.key);
@@ -9518,7 +9721,7 @@ function gather(n){
     if(n.hits===undefined) n.hits=nodeHits(n.kind.key);
     n.hits--;
     if(n.hits>0){ updateNodeWear(n); return; }
-    n.ready=false; n.cd=rnd(9,16); n.obj.visible=false; n.tag.el.style.display='none';
+    n.ready=false; n.cd=rnd(9,16); n.obj.visible=false; n.tag.hide();
     n.hits=undefined;
     player.gatherId=null;
     return;
@@ -9536,7 +9739,7 @@ function updateEnemies(dt){
       e.obj.scale.setScalar(e.def.scale);       // v192: be blyksnio ir be didėjimo
       if(e.glb) glbLoop(e.glb,e.glb.acts.dummyIdle||e.glb.acts.idle);
       placeTag(e.tag,e.pos.x,e.pos.y+2.45*e.def.scale,e.pos.z,46);
-      if(e.tag.bar) e.tag.bar.style.width='100%';
+      e.tag.setHp(1);
       continue;
     }
     if(e.dead){
@@ -9571,9 +9774,9 @@ function updateEnemies(dt){
       e.stun-=dt;
       collide(e.pos,prevE); e.pos.y=heightAt(e.pos.x,e.pos.z);
       e.obj.position.copy(e.pos); e.obj.rotation.y=e.yaw;
-      animateBody(e.obj,0,dt);
+      if(e.proc) animateBody(e.proc,0,dt);
       placeTag(e.tag,e.pos.x,e.pos.y+2.45*e.def.scale,e.pos.z,46);
-      if(e.tag.bar) e.tag.bar.style.width=(clamp(e.hp/e.maxHp,0,1)*100)+'%';
+      e.tag.setHp(clamp(e.hp/e.maxHp,0,1));
       continue;
     }
     if(!player.dead&&dist<e.def.aggro) e.state='chase';
@@ -9635,7 +9838,7 @@ function updateEnemies(dt){
     e.obj.rotation.y=e.yaw;
     groundAlign(e.obj,e.pos.x,e.pos.z,e.yaw);
     e.obj.userData.lookAt=(e.state==='chase'&&!player.dead)?player.pos:null;
-    animateBody(e.obj,sp,dt);
+    if(e.proc) animateBody(e.proc,sp,dt);
     e.obj.scale.setScalar(e.def.scale);        // v192: be blyksnio ir be didėjimo
 
     if(e.glb){                       // v96: ėjimas/stovėjimas, kai nevyksta vienkartinis klipas
@@ -9643,13 +9846,16 @@ function updateEnemies(dt){
       if(!busy) glbLoop(A, sp>.1?(A.acts.walk||A.acts.idle):A.acts.idle);
     }
     placeTag(e.tag,e.pos.x,e.pos.y+2.45*e.def.scale,e.pos.z,46);
-    if(e.tag.bar) e.tag.bar.style.width=(clamp(e.hp/e.maxHp,0,1)*100)+'%';
+    e.tag.setHp(clamp(e.hp/e.maxHp,0,1));
   }
   for(const A of ENEMY_GLB){           // v96: modelis seka procedūrinį kūną
     A.model.position.copy(A.e.obj.position);
     A.model.rotation.copy(A.e.obj.rotation);
     A.model.scale.copy(A.e.obj.scale);
-    A.model.visible=A.e.obj.visible;
+    /* v193 TAISYMAS: ši eilutė kas kadrą perrašinėjo kokybės nustatymą, tad
+       ŽEMOJE kokybėje priešo GLB modelis vis tiek likdavo matomas — piešinys
+       būdavo piešiamas ANT jo. Klaida nuo v191, pastebėta tik dabar naršyklėje. */
+    A.model.visible=A.e.obj.visible&&CFG.quality==='high';
   }
 }
 
@@ -9695,7 +9901,51 @@ function gearShadowTex(ic,key){
   GEAR_SHADOW[key]=t;
   return t;
 }
+/* ============ v193: DAIKTAI ANT ŽEMĖS — PIGIAI ============
+   Iki šiol kiekvienas išmestas daiktas kūrė SAVO PlaneGeometry ir SAVO
+   medžiagą, o dingdavo tik pakeltas — MMO grindys per parą prisipildytų.
+   Dabar: viena bendra geometrija, po vieną medžiagą TIPUI (tekstūra ir taip
+   jau buvo kešuojama), nenaudojami tinkleliai grąžinami į baseiną, toliau nei
+   GEAR_VIEW scenoje iš viso nelaikomi (lieka tik duomenys), o nepakeltas
+   daiktas dingsta po GEAR_LIFE sekundžių. */
 const gearDrops=[];
+const GEAR_MAT={};          // tipas → bendra medžiaga
+const GEAR_POOL=[];         // laisvi tinkleliai
+let GEAR_GEO=null;
+const GEAR_LIFE=60;         // s — nepakeltas daiktas dingsta po minutės
+const GEAR_VIEW=45;         // m — toliau scenoje nelaikom
+function gearMat(it){
+  const key=it.type||it.id;
+  if(GEAR_MAT[key]) return GEAR_MAT[key];
+  const tex=gearShadowTex(it.i,key);
+  GEAR_MAT[key]=tex
+    ?new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:.82,depthWrite:false})
+    :new THREE.MeshBasicMaterial({color:0x0b1210,transparent:true,opacity:.7,depthWrite:false});
+  return GEAR_MAT[key];
+}
+function gearShow(d){
+  if(d.obj) return;
+  const it=CATALOG[d.id]; if(!it) return;
+  const mat=gearMat(it);
+  let m=GEAR_POOL.pop();
+  if(!m){
+    if(!GEAR_GEO) GEAR_GEO=new THREE.PlaneGeometry(.78,.78);
+    m=new THREE.Mesh(GEAR_GEO,mat);
+  }else m.material=mat;
+  m.rotation.x=-Math.PI/2; m.rotation.z=d.rot; m.visible=true;
+  m.position.set(d.x,heightAt(d.x,d.z)+.045,d.z);
+  scene.add(m); d.obj=m;
+}
+function gearHide(d){
+  if(!d.obj) return;
+  scene.remove(d.obj);
+  if(GEAR_POOL.length<40) GEAR_POOL.push(d.obj);
+  d.obj=null;
+}
+function gearRemove(i){
+  const d=gearDrops[i];
+  gearHide(d); d.tag.remove(); gearDrops.splice(i,1);
+}
 /* Išmeta daiktą iš krepšio ant žemės priešais personažą. */
 function dropGear(id){
   const it=CATALOG[id]; if(!it) return false;
@@ -9703,36 +9953,33 @@ function dropGear(id){
   owned.splice(i,1);
   const dx=Math.sin(player.yaw)*1.1, dz=Math.cos(player.yaw)*1.1;
   const x=player.pos.x+dx, z=player.pos.z+dz;
-  const tex=gearShadowTex(it.i,it.type||it.id);
-  const mat=tex?new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:.82,depthWrite:false})
-               :new THREE.MeshBasicMaterial({color:0x0b1210,transparent:true,opacity:.7,depthWrite:false});
-  const m=new THREE.Mesh(new THREE.PlaneGeometry(.78,.78),mat);
-  m.rotation.x=-Math.PI/2;
-  m.rotation.z=rnd(0,Math.PI*2);
-  m.position.set(x,heightAt(x,z)+.045,z);
-  scene.add(m);
-  const tag=makeTag(it.n,'#cfd8c8',false);
-  tag.el.classList.add('tagItem');            // mažesnės raidės (žr. CSS)
-  gearDrops.push({obj:m,tag,id,t:0,x,z});
+  const tag=makeTag(it.n,'#cfd8c8',false,true);   // small=true — mažesnės raidės
+  const d={obj:null,tag,id,t:0,x,z,rot:rnd(0,Math.PI*2)};
+  gearDrops.push(d);
+  gearShow(d);
   log(T('itemDropped')+it.n,'lg-s');
   sfx('pickup');
   drawGearBag(); drawCharPanel();
   return true;
 }
 function updateGearDrops(dt){
+  const px=player.pos.x, pz=player.pos.z;
   for(let i=gearDrops.length-1;i>=0;i--){
     const d=gearDrops[i]; d.t+=dt;
+    const dist=Math.hypot(d.x-px,d.z-pz);
     /* pakelti galima priėjus — bet ne tą pačią akimirką, kai išmetei */
-    const arti=Math.hypot(d.x-player.pos.x,d.z-player.pos.z)<1.25;
-    if(d.t>1.2&&arti){
+    if(d.t>1.2&&dist<1.25){
       giveItem(d.id);
       burst(d.x,heightAt(d.x,d.z)+.4,d.z,10,0xffc861,1.6);
       sfx('pickup');
-      scene.remove(d.obj); d.tag.el.remove(); gearDrops.splice(i,1);
+      gearRemove(i);
       drawGearBag(); drawCharPanel();
       continue;
     }
-    placeTag(d.tag,d.x,heightAt(d.x,d.z)+.55,d.z,22);
+    if(d.t>GEAR_LIFE){ gearRemove(i); continue; }   // nepakeltas — dingsta
+    if(dist<GEAR_VIEW) gearShow(d); else gearHide(d);
+    if(dist<24) placeTag(d.tag,d.x,heightAt(d.x,d.z)+.55,d.z,22);
+    else d.tag.hide();
   }
 }
 function updateDrops(dt){
@@ -9756,7 +10003,7 @@ const STRESS={on:false,n:0,auto:false,tags:true,lod:true,list:[],
 const DUMMY_NAMES=['Rimtautas','Aušrinė','Girėnas','Vaidilutė','Skalvis','Eglė','Kęstas','Rasa',
                    'Mindaugas','Živilė','Tautvydas','Gintarė'];
 function stressClear(){
-  for(const d of STRESS.list){ scene.remove(d.obj); if(d.tag) d.tag.el.remove(); }
+  for(const d of STRESS.list){ scene.remove(d.obj); if(d.tag) d.tag.remove(); }
   STRESS.list.length=0; STRESS.n=0;
 }
 function stressAdd(count){
@@ -9796,7 +10043,7 @@ function updateStress(dt){
     }
     if(d.tag){
       placeTag(d.tag,x,d.pos.y+2.5,z,STRESS.lod?42:120);
-      if(d.tag.bar) d.tag.bar.style.width=(60+((i*17)%40))+'%';
+      d.tag.setHp((60+((i*17)%40))/100);
     }
   }
   /* automatinis režimas: kas 4 s +10 personažų, kol FPS nukrenta */
@@ -9858,8 +10105,12 @@ function frame(now){
   }
   /* v191: žemoje kokybėje GLB skeletų iš viso nesukam — jų niekas nemato */
   const glbOn=CFG.quality==='high';
+  if(!farPts&&glbOn) farInit();
+  farReset();
   if(glbOn&&playerGltfMixer) playerGltfMixer.update(dt);
-  if(glbOn) for(const A of ENEMY_GLB) A.mixer.update(dt);
+  /* priešai: arti — visada, toliau — ratu pagal biudžetą (v193) */
+  if(glbOn) mixBudget('priesai',ENEMY_GLB,dt,LOD_ON?24:1e9,
+                      A=>A.mixer, A=>A.e.pos.x, A=>A.e.pos.z);
   updateMeditatePose(dt);        // v191: meditacijos Y poza
   updateSpellClips();            // v184: burtų klipai 33/35/36/34
   updateSpellPose();             // v140: buvo updateThunderCastPose — dabar ir „heal"
@@ -9874,14 +10125,29 @@ function frame(now){
      animacijos greitis nesikeistų. Žemos kokybės (isTouch/telefono) atveju
      ribos griežtesnės. */
   if(glbOn){
-    const camX=player.pos.x, camZ=player.pos.z, low=CFG.quality!=='high';
-    for(let i=0;i<CATALOG_MIXERS.length;i++){
-      const cm=CATALOG_MIXERS[i];
-      const dist=Math.hypot(cm.x-camX,cm.z-camZ);
-      const skip=!LOD_ON?1:(low?(dist>26?6:dist>14?3:1):(dist>34?3:dist>18?2:1));
-      if((frameNo+i)%skip===0) cm.mx.update(dt*skip);
+    /* v193: vietoj „praleisk kas N-tą" — pastovus biudžetas (žr. mixBudget) */
+    mixBudget('katalogas',CATALOG_MIXERS,dt,LOD_ON?(CFG.quality==='high'?34:16):1e9,
+              cm=>cm.mx, cm=>cm.x, cm=>cm.z);
+    /* v193: toli esantys manekenai — vienas siluetas vietoj viso modelio */
+    if(LOD_ON){
+      const camX=player.pos.x, camZ=player.pos.z;
+      for(let i=0;i<CATALOG_MODELS.length;i++){
+        const m=CATALOG_MODELS[i];
+        const d=Math.hypot(m.position.x-camX,m.position.z-camZ);
+        const toli=d>FAR_DIST;
+        m.visible=!toli;
+        if(toli) farAdd(m.position.x,m.position.y+1.15,m.position.z);
+      }
+      for(const A of ENEMY_GLB){
+        const e=A.e; if(!e||e.dead||!A.model) continue;
+        const d=Math.hypot(e.pos.x-camX,e.pos.z-camZ);
+        const toli=d>FAR_DIST;
+        A.model.visible=!toli;
+        if(toli) farAdd(e.pos.x,e.pos.y+1.2*e.def.scale,e.pos.z);
+      }
     }
   }
+  farFlush();
   for(const ct of CATALOG_TAGS) placeTag(ct.tag,ct.x,ct.y,ct.z,60);
   updateFx(dt);
   updateGearDrops(dt);          // v189: ant žemės gulintys daiktai
@@ -9932,13 +10198,20 @@ function frame(now){
     }
     fpsAcc=0; fpsN=0;
   }
+  drawTags();                    // v193: visos vardų juostos — vienu piešimu
   renderer.render(scene,camera);
 }
 
 addEventListener('resize',()=>{
   camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
+  resizeTagCanvas();                       // v193: žymių drobė kartu su langu
 });
+
+/* v193: kol Karla dar neužsikrovusi, tekstas išmatuojamas atsarginiu šriftu —
+   užsikrovus perpiešiam visas žymes. */
+if(typeof document!=='undefined'&&document.fonts&&document.fonts.ready&&document.fonts.ready.then)
+  document.fonts.ready.then(()=>{ for(const t of TAGS) t.bmp=null; });
 
 /* ---------- 15. Startas ---------- */
 player.pos.y=heightAt(player.pos.x,player.pos.z);
@@ -10016,7 +10289,7 @@ function mpAdd(id,name){
 function mpRemove(id){
   const r=MP.others[id]; if(!r) return;
   scene.remove(r.obj);
-  if(r.tag&&r.tag.el&&r.tag.el.remove) r.tag.el.remove();
+  if(r.tag&&r.tag.remove) r.tag.remove();
   delete MP.others[id];
 }
 
@@ -10068,8 +10341,7 @@ function mpStart(){
     const r=MP.others[d.id]||mpAdd(d.id,d.n);
     if(d.n&&r.name!==d.n){
       r.name=d.n;
-      const nm=r.tag&&r.tag.el&&r.tag.el.querySelector&&r.tag.el.querySelector('.nm');
-      if(nm) nm.textContent=d.n;
+      if(r.tag&&r.tag.setText) r.tag.setText(d.n);
     }
     r.tgt.set(d.x||0,0,d.z||0);
     if(!r.init){ r.pos.copy(r.tgt); r.yaw=d.yaw||0; r.init=true; }

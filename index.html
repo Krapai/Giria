@@ -625,8 +625,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v173';
-const GAME_CHANGES='alkūnės nebelenda į liemenį — abi rankos pagal tą pačią taisyklę';
+const GAME_VERSION='v174';
+const GAME_CHANGES='kairė sauja pagaliau ant koto — taikoma į kumščio žiedą, ne delną';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -3368,7 +3368,16 @@ const _gk={ax:new THREE.Vector3(),base:new THREE.Vector3(),sh:new THREE.Vector3(
    (−0,006; 0,072; −0,007) — veidrodis TIK per X, Y ir Z sutampa.
    Iki v168 IK ant koto statydavo kaulo PRADŽIĄ (riešą), tad delnas likdavo
    0,072 — visą plaštakos plotį — šalia koto: ranka koto neliesdavo. */
-const GRIP_PALM_L=new THREE.Vector3(.006,.072,-.007);
+/* v174: NE DELNO CENTRAS, O KUMŠČIO ŽIEDAS. Vartotojas: „kairė plaštaka nelaiko
+   už koto". v168 taikiniu paėmiau tinklelio centrą (0,006; 0,072; −0,007) — tai
+   plaštakos VIDURYS, o kotas eina pro kumščio žiedą, kuris dešinėje aprašytas
+   WEAPON_FIT.kirtiklis.pos = (−0,049; 0,101; 0,019). Skirtumas 0,05 — pusė
+   plaštakos, todėl kotas eidavo pro delno šoną, ne pro saują.
+   Kairės žiedas = dešinės VEIDRODIS per X (IŠMATUOTA v168: hand_l tinklelis
+   nuo hand_r skiriasi tik X ženklu). Imamas tiesiai iš WEAPON_FIT, kad
+   pakeitus ginklo tvirtinimą kairė ranka pasitaisytų pati. */
+const GRIP_PALM_L=new THREE.Vector3(
+  -WEAPON_FIT.kirtiklis.pos.x, WEAPON_FIT.kirtiklis.pos.y, WEAPON_FIT.kirtiklis.pos.z);
 /* Vienas IK ratas: kairė ranka pastatoma taip, kad RIEŠAS atsidurtų g.tgt.
    Iškelta iš poseGripLeftIK, nes v168 skaičiuoja du ratus (žr. ten). */
 function gripArmTo(ua,la,hl,l1,l2,L,w,poleWorld){
@@ -3600,20 +3609,26 @@ function poseGripLeftIK(w,axisLocal,fitPos){
      kad ant koto atsidurtų DELNO CENTRAS. Nieko nespėjama: poslinkis imamas
      iš išmatuoto GRIP_PALM_L ir dabartinio kvaterniono. Patikrinta per 101
      tašką — delno nuokrypis nuo koto ≤0,002 (buvo 0,072). */
-  /* v173: kairė alkūnė — pagal tą pačią taisyklę kaip dešinė (žr.
-     mineElbowPole). Be kasimo (Ugnies pūga) lieka senas GRIP_POLE. */
+  /* v174: KETURI RATAI, o alkūnės plokštuma parenkama TIK PIRMAME.
+     Kodėl keturi: IK stato RIEŠĄ, o ant koto turi atsidurti kumščio žiedas,
+     kuris nuo riešo nutolęs 0,114. Perkėlus riešą, plaštaka pasisuka, tad
+     žiedas nueina šalia — vieno pataisymo (v168) neužtenka. IŠMATUOTA
+     nuokrypa nuo koto ašies: 2 ratai 0,032 · 3 ratai 0,004 · 4 ratai 0,002.
+     Kodėl polius tik pirmame: v173 alkūnės sukimas kas ratą pasuka ir
+     plaštaką, todėl iteracija nustoja artėti ir įstringa ties 0,035
+     (IŠMATUOTA). Užfiksavus polių — 0,002. */
   g.pole.copy(GRIP_POLE).applyQuaternion(playerGltfModel.quaternion).normalize();
   g.tgt.copy(g.ring);
-  if(!gripArmTo(ua,la,hl,l1,l2,L,1,
-      axisLocal?mineElbowPole(g.sh,g.tgt,l1,l2,g.pole):null)) return;
-  la.updateMatrixWorld(true);
-  hl.getWorldQuaternion(g.qh);
-  g.tgt.copy(g.ring).sub(g.v.copy(GRIP_PALM_L).applyQuaternion(g.qh));
-  ua.quaternion.copy(g.saveUA); la.quaternion.copy(g.saveLA);
-  ua.updateMatrixWorld(true);
-  g.pole.copy(GRIP_POLE).applyQuaternion(playerGltfModel.quaternion).normalize();
-  gripArmTo(ua,la,hl,l1,l2,L,w,
-    axisLocal?mineElbowPole(g.sh,g.tgt,l1,l2,g.pole):null);
+  if(axisLocal) g.pole.copy(mineElbowPole(g.sh,g.tgt,l1,l2,g.pole));
+  for(let pass=0;pass<4;pass++){
+    if(pass){ ua.quaternion.copy(g.saveUA); la.quaternion.copy(g.saveLA); ua.updateMatrixWorld(true); }
+    const last=pass===3;
+    if(!gripArmTo(ua,la,hl,l1,l2,L,last?w:1,g.pole)) return;
+    if(last) break;
+    la.updateMatrixWorld(true);
+    hl.getWorldQuaternion(g.qh);
+    g.tgt.copy(g.ring).sub(g.v.copy(GRIP_PALM_L).applyQuaternion(g.qh));
+  }
 }
 /* wIn — svoris iš išorės (kasimas jį veda pats, žr. updateMiningPose); be jo
    skaičiuojamas senuoju būdu (taip kviečia Ugnies pūga). spin — ar plaštakoje

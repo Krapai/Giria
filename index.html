@@ -625,8 +625,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v169';
-const GAME_CHANGES='kasant kotas per vidurį, dešinė už koto galo, kairė virš jos';
+const GAME_VERSION='v170';
+const GAME_CHANGES='kertant dirba visas kūnas: klubai leidžiasi, keliai lenkiasi, pečiai';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2945,7 +2945,11 @@ function cacheGltfBones(model){
     /* v138: KAIRĖ ranka ir žemesnis stuburas — reikalinga dviem rankomis
        atliekamai kirtiklio (rūdos kasimo) pozai, žr. poseMining(). */
     'clavicle_l','upperarm_l','lowerarm_l','hand_l','spine_01','spine_02',
-    'Head'];   // v140: galva — Gyvasties versmės pozai
+    'Head',   // v140: galva — Gyvasties versmės pozai
+    /* v170: dubuo ir kojos — kirtimo mostui (žr. poseMineBody). Dubens
+       vietinė Z yra PASAULIO VERTIKALĖ (išmatuota: +0,10 → +0,10 y), o
+       vietinė Y rodo ATGAL (+0,10 → −0,10 z). Žr. ir v137 pamoką. */
+    'pelvis','thigh_r','calf_r','foot_r','thigh_l','calf_l','foot_l'];
   let found=0;
   for(const n of names){
     const b=model.getObjectByName(n);
@@ -3214,7 +3218,21 @@ const MINE_POSE={
      fallEnd mažinti = trumpesnis kritimas, fallPow didinti = smarkiau
      greitėja gale. */
   fallEnd:  .53,   // kada kotas pasiekia akmenį (mosto dalis)
-  fallPow:  1.6    // >1 = greitėja link smūgio, <1 = lėtėja (buvo 0,65)
+  fallPow:  1.6,   // >1 = greitėja link smūgio, <1 = lėtėja (buvo 0,65)
+  /* v170: KŪNAS. Vartotojas: „liemuo nusileidžia žemiau, dirba pečiai, kojos,
+     juda ne tik pelvis". Taip ir kertama iš tikrųjų: klubai leidžiasi ir
+     traukiasi atgal, keliai lenkiasi, kirvis krenta kūno svoriu, o lankstas
+     yra KLUBUOSE, ne nugaroje (žr. ISTORIJA.md v170 šaltinius).
+     Todėl per hinge sukamas DUBUO, o iš stuburo linkimo tiek pat ATIMAMA — nugara
+     lieka tiesesnė, o krūtinės kampas (taigi ir ginklo kryptis) nepakinta.
+     IŠMATUOTA su šiais skaičiais: dubuo nusileidžia 7 cm, galva 7,6 cm,
+     kelio lenkimas iki 53°, pėdos nepaslenka NĖ 0,0000, ginklo krypties
+     pokytis per visą mostą ≤4,2°. */
+  squat:    .10,   // dubuo žemyn ties smūgiu
+  hipsBack: .05,   // dubuo atgal (sėdmenys išsikiša)
+  hinge:    .15,   // klubų lankstas (iš stuburo linkimo atimama tiek pat)
+  clavAdd:  .12,   // pečiai dirba kartu
+  rise:     .04    // truputį atsitiesia užsimojant
 };
 /* v167: kasimo pozos persiliejimo trukmės SEKUNDĖMIS (buvo mosto dalys, todėl
    kartodavosi kas mostą — žr. updateMiningPose). */
@@ -3224,6 +3242,57 @@ const MINE_FADE_IN=.12, MINE_FADE_OUT=.18;
    ruošiasi kitam) nuleisdavo svorį ~9 % — išmatuota kastest: 0,907. */
 const MINE_HOLD=.20;
 const mlerp=(a,b,t)=>a+(b-a)*t;
+/* v170: kūno gylio kreivė. 0 = stovi, 1 = giliausiai (ties smūgiu),
+   neigiama = truputį atsitiesęs užsimojant. Ta pati eiga kaip mosto, tad
+   kūnas ir įrankis juda kartu. */
+function mineBodyCurve(p){
+  const M=MINE_POSE;
+  if(p<.38) return -M.rise*easeOutCubic(p/.38);
+  if(p<M.fallEnd) return mlerp(-M.rise,1,Math.pow((p-.38)/(M.fallEnd-.38),M.fallPow));
+  return 1-easeOutCubic((p-M.fallEnd)/(1-M.fallEnd));
+}
+/* v170: DUBUO IR KOJOS. Dubuo nuleidžiamas, patraukiamas atgal ir pasukamas
+   (klubų lankstas), o kojos dviejų kaulų IK grąžinamos taip, kad PĖDOS liktų
+   TIKSLIAI ten, kur buvo — kitaip personažas arba pakiltų, arba prasmegtų
+   (v137 saga). Pėdos posūkis irgi grąžinamas, kad neatsistotų ant pirštų.
+   Kviesti PIRMĄ, prieš rankas: visa viršutinė dalis kabo ant dubens. */
+const _mb={fp:[new THREE.Vector3(),new THREE.Vector3()],
+  fq:[new THREE.Quaternion(),new THREE.Quaternion()],
+  pole:new THREE.Vector3(),qp:new THREE.Quaternion(),qd:new THREE.Quaternion()};
+const MINE_LEGS=[['thigh_r','calf_r','foot_r'],['thigh_l','calf_l','foot_l']];
+function poseMineBody(c,w){
+  const M=MINE_POSE, pv=GLTF_BONES.pelvis;
+  if(!pv||!playerGltfModel||w<=0) return;
+  for(const [th,cf,ft] of MINE_LEGS)
+    if(!GLTF_BONES[th]||!GLTF_BONES[cf]||!GLTF_BONES[ft]) return;
+  const a=c*Math.min(1,w);
+  playerGltfModel.updateMatrixWorld(true);
+  /* 1. kur pėdos yra DABAR — prieš judinant dubenį */
+  MINE_LEGS.forEach(([th,cf,ft],i)=>{
+    const b=GLTF_BONES[ft];
+    _mb.fp[i].setFromMatrixPosition(b.matrixWorld);
+    b.getWorldQuaternion(_mb.fq[i]);
+  });
+  /* 2. dubuo: žemyn (vietinė Z), atgal (vietinė Y), klubų lankstas (X) */
+  pv.position.z-=M.squat*a;
+  pv.position.y+=M.hipsBack*a;
+  _mb.qd.setFromEuler(_pbE.set(M.hinge*a,0,0,'XYZ'));
+  pv.quaternion.multiply(_mb.qd);
+  pv.updateMatrixWorld(true);
+  /* 3. kojos atgal prie savo pėdų; kelias lenkiasi PIRMYN */
+  _mb.pole.set(0,0,1).applyQuaternion(playerGltfModel.quaternion);
+  MINE_LEGS.forEach(([th,cf,ft],i)=>{
+    const t=GLTF_BONES[th], cl=GLTF_BONES[cf], f=GLTF_BONES[ft];
+    const l1=cl.position.length(), l2=f.position.length();
+    _gk.sh.setFromMatrixPosition(t.matrixWorld);
+    _gk.tgt.copy(_mb.fp[i]);
+    gripArmTo(t,cl,f,l1,l2,l1+l2,w,_mb.pole);
+    cl.updateMatrixWorld(true);
+    f.parent.getWorldQuaternion(_mb.qp);
+    _mb.qp.invert().multiply(_mb.fq[i]);
+    f.quaternion.slerp(_mb.qp,Math.min(1,w));
+  });
+}
 /* Suinterpoliuoja dvi rankų pozas ir uždeda jas ant ABIEJŲ rankų. */
 function applyArmPose(A,B,t,w,pairs){
   const x=mlerp(A.x,B.x,t), z=mlerp(A.z,B.z,t);
@@ -3461,11 +3530,16 @@ function poseMining(p,wIn,spin){
      iš/į mikserio grojamą idle klipą (žr. poseBoneBlend paaiškinimą) */
   const w=wIn===undefined?Math.min(1,p/.12,(1-p)/.18):wIn;
   if(w<=0) return;
+  const c=spin?mineBodyCurve(p):0;          // v170: kūno gylis (0 burtams)
+  if(spin) poseMineBody(c,w);               // PIRMA dubuo ir kojos
   applyArmPose(A,B,t,w,false);              // v147: TIK dešinė — kairę stato IK
-  poseBonePair('clavicle',M.clav,0,0,w);
-  poseBoneBlend('spine_01',lean*.30,0,0,w);
-  poseBoneBlend('spine_02',lean*.34,0,0,w);
-  poseBoneBlend('spine_03',lean*.36,0,0,w);
+  poseBonePair('clavicle',M.clav+M.clavAdd*c,0,0,w);
+  /* v170: klubų lankstą DUBUO jau padarė, tad iš nugaros jį atimame —
+     linksta klubai, ne nugara, o krūtinės kampas lieka toks pat */
+  const lb=lean-M.hinge*c;
+  poseBoneBlend('spine_01',lb*.30,0,0,w);
+  poseBoneBlend('spine_02',lb*.34,0,0,w);
+  poseBoneBlend('spine_03',lb*.36,0,0,w);
   if(spin) poseMineCenter(w);               // v169: kotas per kūno vidurį
   /* PO stuburo/pečių IR po pastūmimo — IK skaito pasaulio matricas */
   poseGripLeftIK(w, spin?mineShaftLocal(w,_gripAx):null, spin?_gripFit:null);

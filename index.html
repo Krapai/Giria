@@ -114,6 +114,9 @@ input,textarea{user-select:text;-webkit-user-select:text}
 ::-webkit-scrollbar-corner{background:transparent}
 /* v184: garsumo slankikliai — Nustatymų eilutėje šalia įjungimo mygtuko */
 /* v189: paimtas daiktas seka pelę/pirštą, o gulintis ant žemės turi mažą vardą */
+/* v190: valgomas daiktas krepšyje — matyti, kad jį galima paspausti */
+.slot.usable{cursor:pointer;border-color:rgba(143,208,122,.55)}
+.slot.usable:hover{border-color:#8fd07a;background:#1a2a1c}
 .dragGhost{position:fixed;z-index:80;transform:translate(-50%,-50%);font-size:26px;
   pointer-events:none;filter:drop-shadow(0 3px 6px rgba(0,0,0,.6));opacity:.92}
 .tag.tagItem .nm{font-size:9.5px;letter-spacing:.02em;opacity:.9;text-shadow:0 1px 3px #000}
@@ -313,7 +316,11 @@ body.touch #log{bottom:200px}
 #attrPopup{position:fixed;z-index:60;max-width:230px;background:#141d18;
   border:1px solid rgba(217,152,47,.55);border-radius:9px;padding:9px 26px 9px 11px;
   font-size:12px;line-height:1.4;color:#dce8d6;box-shadow:0 6px 22px rgba(0,0,0,.5);
-  pointer-events:none}
+  /* v190: TIKRA KLAIDA — čia buvo pointer-events:none, tad kompiuteryje aprašymo
+     mygtukų („Nusiimti", „Užsidėti", „Išmesti") NEBUVO KAIP PASPAUSTI: pelė jų
+     tiesiog nepasiekdavo. Dabar popup priima pelę, o kad nedingtų vos nuo jo
+     nutraukus žvilgsnį, slėpimas atidedamas (hideAttrPopupSoon). */
+  pointer-events:auto}
 #attrPopupClose{position:absolute;top:4px;right:5px;width:18px;height:18px;border:0;
   border-radius:5px;background:transparent;color:#9fb39c;font-size:11px;cursor:pointer;
   pointer-events:auto;display:none}
@@ -695,8 +702,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v189';
-const GAME_CHANGES='daiktai metami ant žemės su šešėliais; ištvermės juosta; kumščio kirtis 50/50';
+const GAME_VERSION='v192';
+const GAME_CHANGES='GLB kraunamas kartą ir klonuojamas; blyksnis ir taikinio didėjimas išimti';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -772,7 +779,7 @@ const I18N={
     shopWares:' prekės · ', haveCoins:'Turi: ', gearHeader:'Apranga', unusedPoints:'Nepanaudota taškų: ',
     levelLbl:'Lygis ', toNext:'% iki ',
     combatPtsLbl:'kovos taškų', gatherPtsLbl:'rinkimo taškų', craftPtsLbl:'amatų taškų', primaryPtsLbl:'pagrindinių taškų',
-    treeHint:'Vilk — stumdai žemėlapį, ratukas arba +/− — mastelis. Užvesk ant taško — aprašymas, spustelėk — kelk rangą (telefone: bakstelk, tada dar kartą).', atPrimaryInfo:'Pagrindinė savybė — nuo jos priklauso grupių talpa. Dabar:', atClickRaise:'Spustelėk — pakelsi savybę', atGroupInfo:'Grupė — kiek joje telpa rangų, lemia pagrindinės savybės.', atCapLbl:'užimta: ', craftHint:'Receptas rodo, ko reikia. Žalia — turi, raudona — trūksta. Amatas parenkamas pagal tai, ko daikte daugiausia.', itemDropped:'Numesta ant žemės: ', dropItem:'Išmesti', craftDo:'Gaminti', craftNone:'Šiam amatui receptų dar nėra.', craftMade:'Pagaminta: ', craftTwice:' (dvigubai!)', craftNoRes:'Trūksta žaliavos: ', craftNeedLvl:'Per žemas amato lygis — reikia: ', craftNeedsLbl:'Reikia: ', craftSkillLbl:'Amatas: ', ttCraft:'Dirbtuvė', craftTitle:'Dirbtuvė', atRanksSum:'rangų iš viso: ', atRisesBy:'kyla darant: ', atEarnedGroup:'Šios grupės atributai neperkami — jie kyla patys, kai dirbi tą darbą.', atNoPrimaryHere:'Pagrindinės savybės čia nekeliamos — tik kovos lange.', atEarnedTree:'Taškų čia nėra: rangai kyla patys, kai renki, žvejoji, kerti ar gamini.', atSpendHint:'Spustelėk mazgą — išleisi tašką.',
+    treeHint:'Vilk — stumdai žemėlapį, ratukas arba +/− — mastelis. Užvesk ant taško — aprašymas, spustelėk — kelk rangą (telefone: bakstelk, tada dar kartą).', atPrimaryInfo:'Pagrindinė savybė — nuo jos priklauso grupių talpa. Dabar:', atClickRaise:'Spustelėk — pakelsi savybę', atGroupInfo:'Grupė — kiek joje telpa rangų, lemia pagrindinės savybės.', atCapLbl:'užimta: ', craftHint:'Receptas rodo, ko reikia. Žalia — turi, raudona — trūksta. Amatas parenkamas pagal tai, ko daikte daugiausia.', gotGatherPt:'Gavai rinkimo tašką!', gotCraftPt:'Gavai amatų tašką!', used:'Panaudota: ', clickToUse:'spustelėk, kad panaudotum', itemDropped:'Numesta ant žemės: ', dropItem:'Išmesti', craftDo:'Gaminti', craftNone:'Šiam amatui receptų dar nėra.', craftMade:'Pagaminta: ', craftTwice:' (dvigubai!)', craftNoRes:'Trūksta žaliavos: ', craftNeedLvl:'Per žemas amato lygis — reikia: ', craftNeedsLbl:'Reikia: ', craftSkillLbl:'Amatas: ', ttCraft:'Dirbtuvė', craftTitle:'Dirbtuvė', atRanksSum:'rangų iš viso: ', atRisesBy:'kyla darant: ', atEarnedGroup:'Šios grupės atributai neperkami — jie kyla patys, kai dirbi tą darbą.', atNoPrimaryHere:'Pagrindinės savybės čia nekeliamos — tik kovos lange.', atEarnedTree:'Taškų čia nėra: rangai kyla patys, kai renki, žvejoji, kerti ar gamini.', atSpendHint:'Spustelėk mazgą — išleisi tašką.',
     resetAllAttrs:'↺ Atstatyti visas savybes', capReached:'riba pasiekta — daugiau nebeauga',
     nextRank:'kitas rangas: ', groupLocked:'grupė dar neatrakinta', ranksLbl:' · rangų: ',
     charTabTraveler:'Keliautojas', charTabMastery:'Meistrystės', charTabCombat:'Kovos', charTabGather:'Rinkimas', charTabCraft:'Amatai',
@@ -898,7 +905,7 @@ const I18N={
     shopWares:' wares · ', haveCoins:'You have: ', gearHeader:'Gear', unusedPoints:'Unused points: ',
     levelLbl:'Level ', toNext:'% to ',
     combatPtsLbl:'combat points', gatherPtsLbl:'gathering points', craftPtsLbl:'crafting points', primaryPtsLbl:'primary points',
-    treeHint:'Drag to move the map, wheel or +/− to zoom. Hover a node for its description, click to raise its rank (on phone: tap, then tap again).', atPrimaryInfo:'Primary attribute — group capacity depends on it. Now:', atClickRaise:'Click to raise it', atGroupInfo:'Group — its capacity comes from the primary attributes.', atCapLbl:'used: ', craftHint:'The recipe shows what it takes. Green — you have it, red — you are missing it. The craft is picked by whatever the item needs most.', itemDropped:'Dropped on the ground: ', dropItem:'Drop', craftDo:'Craft', craftNone:'No recipes for this craft yet.', craftMade:'Crafted: ', craftTwice:' (double!)', craftNoRes:'Not enough: ', craftNeedLvl:'Craft level too low — needs: ', craftNeedsLbl:'Needs: ', craftSkillLbl:'Craft: ', ttCraft:'Workshop', craftTitle:'Workshop', atRanksSum:'ranks in total: ', atRisesBy:'rises by: ', atEarnedGroup:'These attributes are not bought — they grow as you do the work.', atNoPrimaryHere:'Primary attributes are raised in the combat window only.', atEarnedTree:'No points here: ranks grow on their own as you gather, fish, chop or craft.', atSpendHint:'Click a node to spend a point.',
+    treeHint:'Drag to move the map, wheel or +/− to zoom. Hover a node for its description, click to raise its rank (on phone: tap, then tap again).', atPrimaryInfo:'Primary attribute — group capacity depends on it. Now:', atClickRaise:'Click to raise it', atGroupInfo:'Group — its capacity comes from the primary attributes.', atCapLbl:'used: ', craftHint:'The recipe shows what it takes. Green — you have it, red — you are missing it. The craft is picked by whatever the item needs most.', gotGatherPt:'You earned a gathering point!', gotCraftPt:'You earned a crafting point!', used:'Used: ', clickToUse:'click to use', itemDropped:'Dropped on the ground: ', dropItem:'Drop', craftDo:'Craft', craftNone:'No recipes for this craft yet.', craftMade:'Crafted: ', craftTwice:' (double!)', craftNoRes:'Not enough: ', craftNeedLvl:'Craft level too low — needs: ', craftNeedsLbl:'Needs: ', craftSkillLbl:'Craft: ', ttCraft:'Workshop', craftTitle:'Workshop', atRanksSum:'ranks in total: ', atRisesBy:'rises by: ', atEarnedGroup:'These attributes are not bought — they grow as you do the work.', atNoPrimaryHere:'Primary attributes are raised in the combat window only.', atEarnedTree:'No points here: ranks grow on their own as you gather, fish, chop or craft.', atSpendHint:'Click a node to spend a point.',
     resetAllAttrs:'↺ Reset all attributes', capReached:'cap reached — no further growth',
     nextRank:'next rank: ', groupLocked:'group not unlocked yet', ranksLbl:' · ranks: ',
     charTabTraveler:'Traveler', charTabMastery:'Masteries', charTabCombat:'Combat', charTabGather:'Gathering', charTabCraft:'Crafting',
@@ -1153,8 +1160,26 @@ renderer.toneMapping=THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=0.98;
 document.body.appendChild(renderer.domElement);
 
+/* v191: ŽEMA KOKYBĖ = seni piešti personažai. GLB modeliai (žaidėjo, priešų ir
+   katalogo manekenų) paslepiami, o vietoj jų vėl matomi procedūriniai kūnai —
+   jie visą laiką tebeanimuojami animateBody(), tik nuo v91 buvo nematomi.
+   Kartu praleidžiami VISI mikserių atnaujinimai (žr. frame ciklą) — tai ir yra
+   pagrindinis sutaupymas telefone. */
+function applyModelQuality(){
+  const hi=CFG.quality==='high';
+  if(typeof playerGltfModel!=='undefined'&&playerGltfModel){
+    playerGltfModel.visible=hi;
+    if(player&&player.obj) player.obj.visible=!hi;
+  }
+  if(typeof ENEMY_GLB!=='undefined') for(const A of ENEMY_GLB){
+    if(A.model) A.model.visible=hi;
+    if(A.e&&A.e.obj&&!A.e.dead) A.e.obj.traverse(o=>{ if(o.isMesh) o.visible=!hi; });
+  }
+  if(typeof CATALOG_MODELS!=='undefined') for(const m of CATALOG_MODELS) m.visible=hi;
+}
 function applyQuality(){
   const hi=CFG.quality==='high';
+  applyModelQuality();
   renderer.setPixelRatio(Math.min(devicePixelRatio, hi?2:1.25));
   renderer.shadowMap.enabled=hi;
   renderer.shadowMap.type=THREE.PCFSoftShadowMap;
@@ -2836,7 +2861,8 @@ function updatePlayerWeaponVisual(){
    JEI KADA PASIKEIS GLB (kita klipų tvarka) — čia vienintelė vieta taisyti. */
 /* v184: 18 ir 19 (geltoni) — kova BE GINKLO; iki tol jie čia gulėjo be naudos
    (vardais wolfA/wolfB). */
-const A_NO={dummyIdle:1, death:8, revive:17, fistA:18, fistB:19, atk3:23, chop:38, herb:5};
+/* v190: 4 (geltona) — valgymo/gėrimo judesys (žr. useConsumable) */
+const A_NO={dummyIdle:1, death:8, revive:17, use:4, fistA:18, fistB:19, atk3:23, chop:38, herb:5};
 /* v135: vartotojo prašymu — TRYS klipai imami iš ANTRO paketo (UAL1_Standard_RM,
    žr. GLB_URL_UAL1), ne iš žaidėjo paties UAL2. Numeriai — kaip katalogo
    galvos žymėse (1-based). Kryžminis retargetinimas veikia, nes abu paketai
@@ -3073,8 +3099,10 @@ function stripRootMotionXZ(clips){
 let playerGltfModel=null, playerGltfMixer=null, playerGltfActions={}, playerGltfCurrent=null;
 /* v186: kumščių kirtis — viena seka ir ginklui, ir plikoms rankoms */
 const FIST_SEQ=['fist1','fist1m'];
-const FIST_MIN=0.45;    // v189: trumpiausia VIENO smūgio trukmė (v186 buvo poros 0,85)
+const FIST_MIN=0.45;      // v189: trumpiausia VIENO smūgio trukmė (v186 buvo poros 0,85)
+const FIST_INTERVAL=1.0;  // v190: kumščiais — vienas kirtis per sekundę, nepriklausomai nuo spartos
 const CATALOG_MIXERS=[], CATALOG_TAGS=[];    // v160: CATALOG_MIXERS = {mx,x,z}, žr. LOD frame() cikle
+const CATALOG_MODELS=[];                     // v191: patys manekenai — slepiami žemoje kokybėje
 let playerGltfSwingToggle=0;
 
 /* ============ v93: DETALESNĖ PERKŪNO SMŪGIO POZA (dešinė ranka) ============
@@ -3169,6 +3197,22 @@ const ARM_ASIDE={x:.25, z:.95, elX:0, elZ:-.40};
    burtas ilgas), 36 paleidimas, 34 pabaiga. Procedūrinė poza (updateSpellPose)
    lieka atsargai: jei mėlynas paketas neįsikeltų, viskas veikia kaip anksčiau. */
 function spellClipsReady(){ return !!(playerGltfActions.spellIn&&playerGltfActions.spellShoot); }
+/* v191: meditacijos poza ant GLB modelio. Procedūriniame kūne ji buvo nuo v100
+   (rankos Y forma, galva atlošta), bet GLB personažas jos neturėjo — medituojant
+   jis tiesiog stovėdavo. Svoris auga ir gęsta tolygiai, tad poza neatsiranda
+   trūkčiodama. */
+let medPoseW=0;
+function updateMeditatePose(dt){
+  if(!playerGltfModel) return;
+  const want=player.meditating?1:0;
+  medPoseW+=(want-medPoseW)*Math.min(1,(dt||.016)*4.5);
+  if(medPoseW<.01) return;
+  const kvep=Math.sin((player.medTick||0)*1.6)*.045;      // lėtas kvėpavimas
+  poseArmSide( 1,ARM_Y,medPoseW);
+  poseArmSide(-1,ARM_Y,medPoseW);
+  poseBoneBlend('Head',-.30+kvep,0,0,medPoseW*.9);        // galva atlošta į dangų
+  poseBoneBlend('spine_03',-.12,0,0,medPoseW*.6);
+}
 function updateSpellClips(){
   if(!playerGltfModel||!spellClipsReady()) return;
   const A=player.act;
@@ -3289,6 +3333,10 @@ const ARM_HIT ={x:1.80, z:  .80, elX:   0, elZ:   0};  // žemai priekyje,
 const ARM_PRAY={x:2.00, z:  .80, elX:   0, elZ:-.80};  // delnai kartu prie
                                                        // krūtinės, TARPAS=0,00
 const ARM_OPEN={x: .55, z:-1.00, elX:   0, elZ:-.10};  // atsivėrusios aukštyn
+/* v191: MEDITACIJOS Y poza — rankos į viršų ir plačiai, kaip procedūriniame kūne.
+   Skaičiai ne iš akies: paieška per .glb (žr. ISTORIJA.md v191) — plaštakos
+   0,294 m VIRŠ galvos ir 1,010 m viena nuo kitos (pečiai — 0,364). */
+const ARM_Y   ={x:-.20, z: -.90, elX:-.10, elZ:   0};
 /* v141: DVIRANKĖ KOTO SERIJA (kirtikliui / kirviui). v140 klaida: paieškoje
    liepiau ieškoti MAŽIAUSIO tarpo tarp plaštakų, tad ji nusuko rankas PRO
    kūno ašį — viršuje plaštakos susikryžiuodavo per riešus (tarpas 0,00), o
@@ -4098,11 +4146,12 @@ function triggerPlayerSwingClip(crit,interval){
        blokas vykdomas anksčiau nei jo paskelbimas žemiau faile. Rasta v92. */
     console.warn('GLTFLoader neužsikrovė — 3D modelis neįkeliamas.'); return;
   }
-  new THREE.GLTFLoader().load(GLB_URL, gltf=>{
+  loadGlbOnce(GLB_URL, gltf=>{
     /* --- žaidėjo vizualas --- */
-    playerGltfModel=gltf.scene;
+    playerGltfModel=cloneGlbScene(gltf.scene);   // v192: originalas lieka talpykloje
     scene.add(playerGltfModel);
     player.obj.visible=false;
+    applyModelQuality();                                    // v191: žemoje kokybėje lieka piešinys
     cacheGltfBones(playerGltfModel);
     updatePlayerWeaponVisual();              // v142: ginklas plaštakoje pagal užsidėtą daiktą
     playerGltfMixer=new THREE.AnimationMixer(playerGltfModel);
@@ -4139,6 +4188,7 @@ function triggerPlayerSwingClip(crit,interval){
     playerGltfActions.herb =mkActionNo(A_NO.herb);     // v138: 5 (geltona) — žolių skynimas
     /* v184: kova be ginklo — 18 ir 19, o jų veidrodiniai duoda tą patį smūgį
        KITA ranka (žr. mirrorSideClip). */
+    playerGltfActions.use  =mkActionNo(A_NO.use);      // v190: maisto/vaistų judesys
     playerGltfActions.fist1=mkActionNo(A_NO.fistA);
     playerGltfActions.fist2=mkActionNo(A_NO.fistB);
     const cF1=gltf.animations[A_NO.fistA-1], cF2=gltf.animations[A_NO.fistB-1];
@@ -4210,7 +4260,7 @@ function triggerPlayerSwingClip(crit,interval){
        PAKEIČIAMI — kitas idle↔walk/sprint perėjimas ar mirtis jau naudos
        naują klipą. v137: jokių papildomų Y suvaržymų (v134 lockToIdleY
        pašalinta — varžė ne tą ašį); pakanka šaknies mazgo neutralizavimo. */
-    new THREE.GLTFLoader().load(GLB_URL_UAL1, ual1=>{
+    loadGlbOnce(GLB_URL_UAL1, ual1=>{
       const ual1No=no=>ual1.animations[no-1];
       const moveClip=ual1No(A_NO_UAL1.move), sprintClip=ual1No(A_NO_UAL1.sprint),
             deathAltClip=ual1No(A_NO_UAL1.deathAlt), idleClip=ual1No(A_NO_UAL1.idle),
@@ -4267,11 +4317,13 @@ function triggerPlayerSwingClip(crit,interval){
       const row=Math.floor(i/perRow), col=i%perRow;
       const x=baseX+(col-(perRow-1)/2)*spacing;
       const z=baseZ+row*spacing;
-      new THREE.GLTFLoader().load(GLB_URL, g2=>{
-        const m=g2.scene;
+      loadGlbOnce(GLB_URL, g2=>{
+        const m=cloneGlbScene(g2.scene);
         const y=heightAt(x,z);
         m.position.set(x,y,z);
         scene.add(m);
+        CATALOG_MODELS.push(m);                     // v191
+        if(CFG.quality!=='high') m.visible=false;
         const clip=g2.animations.find(c=>c.name===name);
         if(clip){
           const mx=new THREE.AnimationMixer(m);
@@ -4307,18 +4359,20 @@ function triggerPlayerSwingClip(crit,interval){
    masyvus kaip UAL2 — jie jau atnaujinami bendrame kadro cikle (frame()). */
 (function(){
   if(typeof THREE==='undefined'||!THREE.GLTFLoader) return;
-  new THREE.GLTFLoader().load(GLB_URL_UAL1, gltf=>{
+  loadGlbOnce(GLB_URL_UAL1, gltf=>{
     const names=gltf.animations.map(c=>c.name);
     const perRow=7, spacing=3.4, baseX=24, baseZ=46;
     names.forEach((name,i)=>{
       const row=Math.floor(i/perRow), col=i%perRow;
       const x=baseX+(col-(perRow-1)/2)*spacing;
       const z=baseZ+row*spacing;
-      new THREE.GLTFLoader().load(GLB_URL_UAL1, g2=>{
-        const m=g2.scene;
+      loadGlbOnce(GLB_URL_UAL1, g2=>{
+        const m=cloneGlbScene(g2.scene);
         const y=heightAt(x,z);
         m.position.set(x,y,z);
         scene.add(m);
+        CATALOG_MODELS.push(m);                     // v191
+        if(CFG.quality!=='high') m.visible=false;
         const clip=g2.animations.find(c=>c.name===name);
         if(clip){
           const mx=new THREE.AnimationMixer(m);
@@ -4366,10 +4420,57 @@ function glbOnce(A,act,speed,next){
   act.timeScale=speed||1; act.__once=true; act.fadeIn(.06).play();
   A.current=act; A.chain=next||null;
 }
+/* ===================== GLB: KRAUNAM KARTĄ, KLONUOJAM (v192) =====================
+   Iki šiol kiekvienas personažas kvietė savo GLTFLoader().load() — žaidėjas,
+   11 priešų ir ~86 katalogo manekenai, t. y. apie 99 pilnas to paties failo
+   analizes, kiekviena su savo klipų rinkiniu atmintyje. Failas parsisiunčiamas
+   kartą (naršyklės talpykla), bet IŠANALIZUOJAMAS kaskart.
+   Dabar paketas analizuojamas vieną kartą, o kiekvienam personažui daromas
+   SKELETO KLONAS. SkeletonUtils puslapyje nėra (žr. komentarą ties GLB_URL), tad
+   klonuotojas savas: Object3D.clone() padaro hierarchiją, bet SkinnedMesh lieka
+   pririštas prie SENO skeleto — todėl kiekvienam suklonuotam tinkleliui
+   surišama nauja Skeleton iš klonuotų kaulų.
+   MEDŽIAGOS klonuojamos atskirai: three.js klonas jas dalinasi, o dalijamasi
+   medžiaga reiškia, kad bet koks spalvos keitimas persimestų ant visų
+   personažų vienu metu. */
+const GLB_CACHE={}, GLB_WAIT={};
+function loadGlbOnce(url,cb,errCb){
+  if(GLB_CACHE[url]){ cb(GLB_CACHE[url]); return; }
+  if(!GLB_WAIT[url]) GLB_WAIT[url]=[];
+  GLB_WAIT[url].push({cb,errCb});
+  if(GLB_WAIT[url].length>1) return;              // krovimas jau vyksta
+  new THREE.GLTFLoader().load(url,g=>{
+    GLB_CACHE[url]=g;
+    const eile=GLB_WAIT[url]||[]; GLB_WAIT[url]=null;
+    for(const x of eile) x.cb(g);
+  },undefined,err=>{
+    const eile=GLB_WAIT[url]||[]; GLB_WAIT[url]=null;
+    for(const x of eile) if(x.errCb) x.errCb(err);
+  });
+}
+function cloneGlbScene(src){
+  const klonas=src.clone(true);
+  const seni=[], nauji=[];
+  src.traverse(o=>seni.push(o));
+  klonas.traverse(o=>nauji.push(o));
+  const pagalSena=new Map();
+  seni.forEach((o,i)=>pagalSena.set(o,nauji[i]));
+  klonas.traverse(o=>{
+    if(o.isMesh&&o.material)
+      o.material=Array.isArray(o.material)?o.material.map(m=>m.clone()):o.material.clone();
+    if(!o.isSkinnedMesh) return;
+    const o0=seni[nauji.indexOf(o)];
+    if(!o0||!o0.skeleton) return;
+    const kaulai=o0.skeleton.bones.map(b=>pagalSena.get(b)||b);
+    o.bind(new THREE.Skeleton(kaulai,o0.skeleton.boneInverses.map(m=>m.clone())),
+           o0.bindMatrix.clone());
+  });
+  return klonas;
+}
 function attachEnemyGlb(e){
   if(typeof THREE==='undefined'||!THREE.GLTFLoader) return;   // testų aplinka — praleidžiam
-  new THREE.GLTFLoader().load(GLB_URL, g=>{
-    const m=g.scene; m.scale.setScalar(e.def.scale); scene.add(m);
+  loadGlbOnce(GLB_URL, g=>{
+    const m=cloneGlbScene(g.scene); m.scale.setScalar(e.def.scale); scene.add(m);
     const mixer=new THREE.AnimationMixer(m);
     stripRootMotionXZ(g.animations);               // v98
     const A={e,model:m,mixer,acts:glbActionsFor(mixer,g.animations,e.def),current:null,chain:null};
@@ -4378,6 +4479,7 @@ function attachEnemyGlb(e){
     });
     e.glb=A; ENEMY_GLB.push(A);
     e.obj.traverse(o=>{ if(o.isMesh) o.visible=false; });   // procedūrinis kūnas — nematomas
+    applyModelQuality();                                    // v191: žemoje kokybėje atvirkščiai
     glbLoop(A, (e.def.dummy?A.acts.dummyIdle:null)||A.acts.idle);
   }, undefined, err=>console.warn('priešo GLB neįkeltas',err));
 }
@@ -4394,7 +4496,11 @@ const START_LEVEL=30;            // v180: vartotojo prašymu žaidimas prasideda
 const ATTR={jega:1,vikrumas:1,intelektas:1};
 const RANK={};
 const gear={};        // užsidėti daiktai pagal vietas (skelbiama anksti — naudoja derive)
-let primaryPts=0, combatPts=0, charXp=0, charLvl=1;   /* v178: rinkimo ir amatų taškų nebėra */
+/* v191: rinkimo ir amatų taškai GRĮŽTA (v178 jie buvo panaikinti), bet jų
+   nebeduoda lygis — jie uždirbami DIRBANT: kaskart, kai pakyla rinkimo ar amato
+   meistrystė, gaunamas vienas tos srities taškas. Kur jį dėti, kaip ir kovoje,
+   riboja pagrindinės savybės (capacity → str/int/dex). */
+let primaryPts=0, combatPts=0, gatherPts=0, craftPts=0, charXp=0, charLvl=1;
 const xpForChar=l=>Math.floor(40*Math.pow(l,1.60));
 function charLevelOf(xp){let l=1;while(l<99&&xp>=xpForChar(l+1))l++;return l;}
 
@@ -4707,13 +4813,30 @@ function showAttrPopup(key,evt){
     if(e&&e.stopPropagation) e.stopPropagation();
     unequipItem(b.dataset.u); hideAttrPopup(); drawCharPanel(); drawGearBag();
   });
+  keepAttrPopup();
+  if(!p.__hoverBound&&p.addEventListener){        // v190: virš paties aprašymo jis nedingsta
+    p.addEventListener('pointerenter',keepAttrPopup);
+    p.addEventListener('pointerleave',()=>hideAttrPopupSoon(120));
+    p.__hoverBound=true;
+  }
   p.style.display='block';
   const pw=220,ph=p.offsetHeight||90;
   let x=(evt.clientX||0)+14, y=(evt.clientY||0)+14;
   x=Math.min(x,window.innerWidth-pw-8); y=Math.min(y,window.innerHeight-ph-8);
   p.style.left=Math.max(8,x)+'px'; p.style.top=Math.max(8,y)+'px';
 }
-function hideAttrPopup(){ const p=document.getElementById('attrPopup'); if(p) p.style.display='none'; }
+/* v190: slėpimas su maža delsa — kad spėtum nuvesti pelę nuo daikto ant paties
+   aprašymo ir paspausti jame esantį mygtuką. */
+let popupHideT=null;
+function hideAttrPopup(){
+  if(popupHideT){ clearTimeout(popupHideT); popupHideT=null; }
+  const p=document.getElementById('attrPopup'); if(p) p.style.display='none';
+}
+function hideAttrPopupSoon(ms){
+  if(popupHideT) clearTimeout(popupHideT);
+  popupHideT=setTimeout(()=>{ popupHideT=null; hideAttrPopup(); }, ms||240);
+}
+function keepAttrPopup(){ if(popupHideT){ clearTimeout(popupHideT); popupHideT=null; } }
 function bindPopups(box,sel,attr){
   if(!box.querySelectorAll) return;
   const trackOpenInfo=attr==='a';   // atributų medžiui reikia žinoti, kuri grupė aktyvi (žr. treeHtml)
@@ -4723,7 +4846,7 @@ function bindPopups(box,sel,attr){
       el.onclick=e=>{ e.stopPropagation(); if(trackOpenInfo) openInfo=key; showAttrPopup(key,e); };
     }else{
       el.onmouseenter=e=>{ if(trackOpenInfo) openInfo=key; showAttrPopup(key,e); };
-      el.onmouseleave=hideAttrPopup;
+      el.onmouseleave=()=>hideAttrPopupSoon();      // v190: spėti nueiti iki mygtuko
     }
   });
 }
@@ -4741,21 +4864,10 @@ const usedIn=g=>g.sub.reduce((a,sb)=>a+RANK[sb.k],0);
 const groupOfKey=k=>GROUPS.find(g=>g.sub.some(sb=>sb.k===k));
 
 const D={};
-/* v178: rinkimo ir amatų atributai NEPERKAMI taškais — jų rangas seka tos
-   veiklos meistrystės lygį (sub laukas act). Rangas = lygis−1, kad pradžioje
-   (visos meistrystės 1 lygio) būtų 0, kaip ir buvo. Skaičiuojam derive()
-   pradžioje, tad po kiekvieno addXp viskas susidėlioja savaime. */
-function syncActRanks(){
-  for(const g of GROUPS){
-    if(!isGather(g)&&!isCraft(g)) continue;
-    for(const sb of g.sub){
-      const s=SKILLS[sb.act];
-      RANK[sb.k]=s?Math.max(0,s.lv-1):0;
-    }
-  }
-}
+/* v191: syncActRanks PAŠALINTA — rangai vėl renkami rankomis iš uždirbtų taškų.
+   sub laukas act lieka: pagal jį žinom, kuri meistrystė duoda tos srities tašką
+   (GATHER_ACTS/CRAFT_ACTS) ir kuri kovoje nekyla (v188). */
 function derive(){
-  syncActRanks();
   for(const g of GROUPS) for(const sb of g.sub) D[sb.k]=sb.v(RANK[sb.k]);
   /* --- aprangos priedai --- */
   for(const sk of Object.keys(gear)){
@@ -4789,24 +4901,27 @@ function spendPrimary(k){
   burst(player.pos.x,player.pos.y+1.2,player.pos.z,18,0xffc861,2.8);
   return true;
 }
+/* v191: kiekvienas medis turi savo rezervą; talpą (kur galima dėti) lemia
+   pagrindinės savybės — lygiai kaip kovoje. */
+function ptsOf(g){ return isGather(g)?gatherPts:(isCraft(g)?craftPts:combatPts); }
 function spendSecondary(k){
   const g=groupOfKey(k); if(!g) return false;
-  if(isGather(g)||isCraft(g)) return false;      // v178: kyla nuo veiklos, ne nuo taškų
-  if(combatPts<=0) return false;
+  if(ptsOf(g)<=0) return false;
   if(usedIn(g)>=capacity(g)) return false;
-  combatPts--;
+  if(isGather(g)) gatherPts--; else if(isCraft(g)) craftPts--; else combatPts--;
   RANK[k]++; derive(); refreshUI();
   return true;
 }
 function resetAttrs(){
-  let p=0,cb=0;
+  let p=0,cb=0,gt=0,cr=0;
   for(const k of Object.keys(ATTR)){ p+=ATTR[k]-1; ATTR[k]=1; }
   for(const g of GROUPS){
-    if(isGather(g)||isCraft(g)) continue;        // v178: uždirbtų rangų negrąžinam ir nenulinam
-    for(const sb of g.sub){ cb+=RANK[sb.k]; RANK[sb.k]=0; }
+    let sum=0;
+    for(const sb of g.sub){ sum+=RANK[sb.k]; RANK[sb.k]=0; }
+    if(isGather(g)) gt+=sum; else if(isCraft(g)) cr+=sum; else cb+=sum;
   }
-  primaryPts+=p; combatPts+=cb;
-  const sec=cb;
+  primaryPts+=p; combatPts+=cb; gatherPts+=gt; craftPts+=cr;   // v191: grąžinam į savo rezervus
+  const sec=cb+gt+cr;
   derive();
   player.hp=player.maxHp; player.mana=player.maxMana;
   player.stam=player.maxStam; player.workStam=player.maxWorkStam; player.shield=player.maxShield;
@@ -5150,9 +5265,9 @@ addEventListener('keydown',e=>{
      kartu su Keliautoju, žr. openChar). Antras paspaudimas uždaro. */
   if(e.code==='KeyI'){ togglePanel('pGearBag',null); drawGearBag(); }
   if(e.code==='KeyK') charKey('skills');
-  if(e.code==='KeyC') charKey('combat');
+  if(e.code==='KeyC') charKey('char');       // v190: C — Keliautojo langas (buvo kovos)
   if(e.code==='KeyG') charKey('gather');
-  if(e.code==='KeyP') charKey('char');
+  if(e.code==='KeyP') charKey('combat');     // v190: kovos savybės perkeltos ant P
   if(/^Digit[1-9]$/.test(e.code)){
     const i=+e.code.slice(5)-1;
     if(SKILL_SLOTS[i]) startAct(SKILL_SLOTS[i]);
@@ -5336,6 +5451,9 @@ function splat(v3,text,color){
    medžio, tad pridėjus naują rinkimo atributą nieko čia keisti nereikia. */
 const GATHER_ACTS=new Set();
 for(const g of GGROUPS) for(const sb of g.sub) if(sb.act) GATHER_ACTS.add(sb.act);
+/* v191: amatų medžio veiklos — iš jų uždirbami amatų taškai */
+const CRAFT_ACTS=new Set();
+for(const g of AGROUPS) for(const sb of g.sub) if(sb.act) CRAFT_ACTS.add(sb.act);
 const inFight=()=>player.fightT>0||player.fightWait>0;
 function addXp(skill,amount){
   skill=XP_ALIAS[skill]||skill;
@@ -5344,8 +5462,14 @@ function addXp(skill,amount){
   const before=s.lv;
   const gained=Math.max(1,Math.round(amount));
   s.xp+=gained; s.lv=levelOf(s.xp);
-  /* v178: pakilusi meistrystė iškart pakelia savo rinkimo/amatų atributų rangus */
-  if(s.lv>before){ derive(); log(Lx(s.n)+T('leveledUp')+s.lv+T('leveledUpEnd'),'lg-g'); }
+  if(s.lv>before){
+    /* v191: pakilusi rinkimo meistrystė duoda rinkimo tašką, amato — amatų.
+       Taip taškai uždirbami DIRBANT, o ne keliant bendrą lygį. */
+    const kiek=s.lv-before;
+    if(GATHER_ACTS.has(skill)){ gatherPts+=kiek; log(T('gotGatherPt'),'lg-a'); }
+    if(CRAFT_ACTS.has(skill)){  craftPts+=kiek;  log(T('gotCraftPt'),'lg-a'); }
+    derive(); log(Lx(s.n)+T('leveledUp')+s.lv+T('leveledUpEnd'),'lg-g');
+  }
   gainCharXp(gained);
   refreshUI();
 }
@@ -5361,7 +5485,9 @@ function give(key,n){
    kuris pats meta pataikymą ir skaičiuoja žalą. */
 function playerAttack(e,echo){
   fightMusic(false);                      // v187/v188: kirtis = kova (muzikai) po 1 s
-  const interval=1/D.atakosSparta;
+  /* v190: PLIKOMIS RANKOMIS mušama ne dažniau kaip kartą per sekundę, kad ir
+     kokia būtų atakos sparta — vartotojo taisyklė. Su ginklu viskas kaip buvo. */
+  const interval=Math.max(gear.ginklas?0:FIST_INTERVAL, 1/D.atakosSparta);
   player.swingLen=0;
   player.obj.userData.swing=1;
   const crit=Math.random()<D.kritSansas;          // lemia ir animaciją (kritinis klipas)
@@ -5384,7 +5510,9 @@ function landHit(e,tok,crit,allowChain){
   let dmg=0;
   if(!miss){
     const armor=Math.max(0,(e.def.armor||0)-D.pramusimas);
-    dmg=rndI(1,3+SKILLS.puolimas.lv)+D.zala+D.runuKirtis;
+    /* v191: vartotojo taisyklė — galią duoda TIK pasirinkti atributai, ne lygis
+       (anksčiau čia buvo 3+SKILLS.puolimas.lv). */
+    dmg=rndI(1,3)+D.zala+D.runuKirtis;
     if(crit) dmg*=D.kritZala;
     dmg*=1+D.isiutis*(1-player.hp/player.maxHp);            // Įsiūtis
     dmg*=1+Math.min(5,player.combo)*D.isibegejimas;          // Įsibėgėjimas
@@ -5398,12 +5526,12 @@ function landHit(e,tok,crit,allowChain){
      Pats dažnis nepakeistas: D.taiklumas ties 0 rangu 0,77, t. y. ~23 %. */
   splat(hp,miss?T('splatMissed'):((crit?'✦':'')+dmg),miss?'#8fb6d9':crit?'#ffe6a8':'#ffd489');
   burst(hp.x,hp.y,hp.z,miss?3:crit?19:11,miss?0x8fb6d9:0xc4462f,crit?3.6:2.6);
-  if(!miss){ flashEnemy(e,crit?0xffcc55:0xcc3322); addShake(crit?.16:.07);
+  if(!miss){ addShake(crit?.16:.07);        // v192: blyksnio nebėra
     if(crit) shockRing(e.pos.x,e.pos.y+.1,e.pos.z,0xffc861,.6); }
   if(miss){sfx('miss'); player.combo=0; return;}
   player.combo++; player.comboT=3;
   sfx(crit?'crit':'hit');
-  e.hp-=dmg; e.flash=.16; e.state='chase'; e.obj.userData.flinch=1;
+  e.hp-=dmg; e.state='chase'; e.obj.userData.flinch=1;
   const a=Math.atan2(e.pos.x-player.pos.x,e.pos.z-player.pos.z);
   e.pos.x+=Math.sin(a)*D.atatranka; e.pos.z+=Math.cos(a)*D.atatranka;
   collide(e.pos);
@@ -5713,15 +5841,14 @@ function skillDamage(e,a,mul){
   if(a.kind==='spell') addXp('magija',Math.max(2,Math.round(a.mana||4)));   // v106
   const crit=Math.random()<D.kritSansas;
   const armor=Math.max(0,(e.def.armor||0)-D.pramusimas);
-  let dmg=(rndI(1,3+SKILLS.puolimas.lv)+D.zala+D.runuKirtis)*(a.dmg*mul);
+  let dmg=(rndI(1,3)+D.zala+D.runuKirtis)*(a.dmg*mul);   // v191: be lygio priedo
   if(crit) dmg*=D.kritZala;
   dmg*=1+D.isiutis*(1-player.hp/player.maxHp);
   dmg*=D.herojausAura;
   dmg=Math.max(1,Math.round(dmg-armor));
-  e.hp-=dmg; e.flash=.16; e.state='chase'; e.obj.userData.flinch=1;
+  e.hp-=dmg; e.state='chase'; e.obj.userData.flinch=1;
   splat(new THREE.Vector3(e.pos.x,e.pos.y+2.0,e.pos.z),(crit?'✦':'')+dmg,crit?'#ffe6a8':'#ffd489');
   burst(e.pos.x,e.pos.y+1.3,e.pos.z,crit?18:11,0xc4462f,2.8);
-  flashEnemy(e,crit?0xffcc55:0xcc3322);
   if(a.stun) e.stun=Math.max(e.stun,a.stun);
   if(a.root) e.stun=Math.max(e.stun,a.root);
   if(a.slow) e.slow=Math.max(e.slow||0,a.slow);
@@ -5831,10 +5958,9 @@ function magicHitFrom(e,mul,col){
   let dmg=D.burtuGalia*rnd(.85,1.2)*mul;
   if(crit) dmg*=D.kritZala;
   dmg=Math.max(1,Math.round(dmg*D.herojausAura));
-  e.hp-=dmg; e.flash=.16; e.state='chase';
+  e.hp-=dmg; e.state='chase';
   splat(new THREE.Vector3(e.pos.x,e.pos.y+1.9,e.pos.z),(crit?'✦':'')+dmg,'#8fe4ff');
   burst(e.pos.x,e.pos.y+1.2,e.pos.z,14,col||0x7fd8ff,3.0);
-  flashEnemy(e,0x4488cc);
   addXp('kova',Math.round(dmg*3.8));
   if(e.hp<=0) killEnemy(e);
 }
@@ -5953,11 +6079,11 @@ function magicHit(e,at){
   let dmg=D.burtuGalia*rnd(.85,1.2);
   if(crit) dmg*=D.kritZala;
   dmg=Math.max(1,Math.round(dmg*D.herojausAura));   // magija ignoruoja šarvus
-  e.hp-=dmg; e.flash=.16; e.state='chase';
+  e.hp-=dmg; e.state='chase';
   splat(new THREE.Vector3(e.pos.x,e.pos.y+1.9,e.pos.z),(crit?'✦':'')+dmg,'#8fe4ff');
   burst(at.x,at.y,at.z,16,0x7fd8ff,3.1);
   shockRing(e.pos.x,e.pos.y+.1,e.pos.z,0x7fd8ff,.7);
-  flashEnemy(e,0x4488cc); addShake(.09);
+  addShake(.09);
   sfx('spellhit');
   if(Math.random()<D.uzkalbejimas){                        // Užkalbėjimas
     e.stun=Math.max(e.stun,1.2);
@@ -5976,34 +6102,12 @@ function magicHit(e,at){
   addXp('kova',Math.round(dmg*3.8));
   if(e.hp<=0) killEnemy(e);
 }
-/* v176: kirčio blyksnis. Vartotojas: „kartais po atakos targetas pasidaro
-   baltas ir kodėl po atakų targetas pasidaro balkšvos spalvos?" — abu klausimai
-   apie tą patį: emissive spalva uždedama, bet NE VISUR nuvaloma.
-   Nuvalymas buvo tik viename kelyje — updateEnemies gyvo prieso šakoje. Todėl:
-     - MANEKENAS (e.def.dummy) turi savo šaką be nuvalymo, tad po pirmo kirčio
-       likdavo švytėti VISAM LAIKUI, o kiekvienas naujas kirtis dar keisdavo
-       atspalvį (kritinis 0xffcc55 ant šviesaus modelio atrodo balsvai) —
-       tai ir yra „po atakų pasidaro balkšvos spalvos";
-     - MIRUSIO priešo šaka (e.dead) iškart daro continue, tad nukovus blyksnis
-       likdavo ant lavono IR ant to paties modelio po atgimimo — „kartais po
-       atakos pasidaro baltas".
-   Papildomai: senasis nuvalymas visiems dėdavo 0x000000, t. y. sunaikindavo
-   medžiagos SAVO švytėjimą (pvz. gintarinės dalys). Dabar pradinė reikšmė
-   įsimenama pirmo blyksnio metu ir grąžinama tiksliai ji. */
-function flashEnemy(e,color){
-  const on=o=>{ if(o.isMesh&&o.material&&o.material.emissive){
-    if(o.userData.baseEmis===undefined) o.userData.baseEmis=o.material.emissive.getHex();
-    o.material.emissive.setHex(color); } };
-  e.obj.traverse(on);
-  if(e.glb) e.glb.model.traverse(on);
-  e.flash=.18;
-}
-function clearFlash(e){
-  const off=o=>{ if(o.isMesh&&o.material&&o.material.emissive&&o.userData.baseEmis!==undefined)
-    o.material.emissive.setHex(o.userData.baseEmis); };
-  e.obj.traverse(off);
-  if(e.glb) e.glb.model.traverse(off);
-}
+/* v192: KIRČIO BLYKSNIS IR TAIKINIO DIDĖJIMAS IŠIMTI (vartotojo prašymu —
+   vietoj jų kada nors bus kiti efektai). Kartu dingo ir v176 problema, dėl
+   kurios blyksnis likdavo ant manekeno bei lavono: nebėra ko nuvalyti.
+   Jei kada grąžinsi bet kokį laikiną spalvos keitimą — nuvalymas privalo būti
+   VISOSE updateEnemies šakose (gyvas, nukautas, manekenas), o grąžinama ne
+   0x000000, o įsiminta pradinė medžiagos reikšmė. */
 function killEnemy(e){
   if(e.def.dummy){ e.hp=e.maxHp; return; }        // v96: taikinio manekenas nemiršta
   if(e.glb) glbOnce(e.glb,e.glb.acts.death,1);    // v96: mirties animacija (nr8)
@@ -7614,7 +7718,7 @@ function charKey(tab){
 function charInfoHtml(){
   const base=xpForChar(charLvl), next=xpForChar(charLvl+1);
   const xpPct=clamp((charXp-base)/(next-base),0,1)*100;
-  const free=primaryPts+combatPts;
+  const free=primaryPts+combatPts+gatherPts+craftPts;
   const worn=ALL_SLOTS.filter(sl=>gear[sl.k]).length;
   let h='<div class="row" style="border-bottom:1px solid rgba(217,152,47,.28)">'+
     '<span style="font-family:Fraunces,serif;color:#d9a06a">'+T('gearHeader')+'</span>'+
@@ -7752,8 +7856,8 @@ function drawCharPanel(){
   if(charTab==='char'){       box.innerHTML=charInfoHtml(); bindGear(box); }
   else if(charTab==='skills'){ box.innerHTML=masteryHtml(); bindMastery(box); }
   else if(charTab==='combat'){ box.innerHTML=treeHtml(CGROUPS,combatPts,T('combatPtsLbl'),'combat'); bindTree(box); }
-  else if(charTab==='gather'){ box.innerHTML=treeHtml(GGROUPS,0,T('gatherPtsLbl'),'gather'); bindTree(box); }
-  else                       { box.innerHTML=treeHtml(AGROUPS,0,T('craftPtsLbl'),'craft'); bindTree(box); }
+  else if(charTab==='gather'){ box.innerHTML=treeHtml(GGROUPS,gatherPts,T('gatherPtsLbl'),'gather'); bindTree(box); }
+  else                       { box.innerHTML=treeHtml(AGROUPS,craftPts,T('craftPtsLbl'),'craft'); bindTree(box); }
   drawGearBag();                       // v105: kartu atnaujinam aprangos langą
   const nav=document.getElementById('charNav');
   if(nav.querySelectorAll) nav.querySelectorAll('button').forEach(b=>{
@@ -7924,8 +8028,10 @@ function atNodeHtml(cls,key,x,y,r,g,extraCls,inner,data){
     ' style="left:'+(x-r).toFixed(1)+'px;top:'+(y-r).toFixed(1)+'px;width:'+(2*r)+'px;height:'+(2*r)+
     'px;border-color:'+g.c+'">'+inner+'</div>';
 }
-/* ar šis medis perkamas taškais (kova), ar kyla nuo veiklos (rinkimas/amatai) */
-const atEarned=g=>isGather(g)||isCraft(g);
+/* v191: visi trys medžiai vėl perkami taškais — skiriasi tik rezervas ir tai,
+   kad pagrindinės savybės keliamos TIK kovos lange. */
+const atEarned=g=>false;
+const atNoPrimary=g=>isGather(g)||isCraft(g);
 /* stipino ryškumas pagal rangą (v178): kuo daugiau taškų ant atributo, tuo
    ryškesnė ir storesnė nuo jo einanti linija. */
 /* briaunos ryškumas pagal pagrindinę savybę (v181): 1 savybė — blanki, nuo 5 — pilna */
@@ -7941,7 +8047,7 @@ function atSpoke(r){
 }
 /* vienos grupės aprašymas popup'ui (talpa arba veikla, ką ji reiškia) */
 function atGroupPopup(g){
-  const gali=g.kind==='primary'&&primaryPts>0&&!atEarned(g);
+  const gali=g.kind==='primary'&&primaryPts>0&&!atNoPrimary(g);
   let apacia;
   if(atEarned(g)) apacia='<span style="font-size:10.5px">'+T('atRanksSum')+usedIn(g)+'</span>';
   else apacia='<span style="font-size:10.5px">'+T('atCapLbl')+usedIn(g)+'/'+capacity(g)+'</span>';
@@ -7949,7 +8055,7 @@ function atGroupPopup(g){
     (g.kind==='primary'
       ? T('atPrimaryInfo')+' <b>'+ATTR[g.key]+'</b>'+
         (gali?'<br><span style="color:#ffc861">'+T('atClickRaise')+'</span>':'')+
-        (atEarned(g)?'<br><span style="opacity:.75">'+T('atNoPrimaryHere')+'</span>':'')
+        (atNoPrimary(g)?'<br><span style="opacity:.75">'+T('atNoPrimaryHere')+'</span>':'')
       : (atEarned(g)?T('atEarnedGroup'):T('atGroupInfo')))+
     '<br>'+apacia;
 }
@@ -7972,10 +8078,10 @@ function graphHtml(groups,which,pts){
   let h='';
   for(const hb of L.hubs){
     atGroupPopup(hb.g);
-    const gali=primaryPts>0&&!atEarned(hb.g);
+    const gali=primaryPts>0&&!atNoPrimary(hb.g);
     h+=atNodeHtml('atHub','G'+hb.g.id,hb.x,hb.y,AT_HUB,hb.g,gali?' can':'',
       '<i>'+hb.g.i+'</i><b>'+ATTR[hb.key]+'</b>',
-      atEarned(hb.g)?'':' data-p="'+hb.key+'"');   // v178: rinkime/amatuose savybės nekeliamos
+      atNoPrimary(hb.g)?'':' data-p="'+hb.key+'"');   // v178: rinkime/amatuose savybės nekeliamos
   }
   for(const md of L.mids){
     atGroupPopup(md.g);
@@ -8008,7 +8114,7 @@ function atAttrPopup(sb,cap,uzd){
 }
 function treeHtml(groups, pts, label, which){
   const w=which||'combat';
-  const uzd=atEarned(groups[0]);          // rinkimo/amatų medis — be taškų
+  const uzd=false;                        // v191: visi medžiai turi savo taškus
   /* v178: antraštėje lieka TIK lygis (ir pagrindiniai taškai kovoje);
      visa kita — po „?" ženklu, kad neužimtų trijų eilučių. */
   POPUP_HTML['?']=(uzd?T('atEarnedTree'):T('atSpendHint'))+
@@ -8038,7 +8144,7 @@ function atBindNode(el,key,act){
     };
   }else{
     el.onmouseenter=e=>{ openInfo=key; showAttrPopup(key,e); };
-    el.onmouseleave=hideAttrPopup;
+    el.onmouseleave=()=>hideAttrPopupSoon();        // v190
     if(act) el.onclick=e=>{ if(e&&e.stopPropagation) e.stopPropagation(); if(!atMoved) act(); };
   }
 }
@@ -8210,13 +8316,50 @@ const MASTERY_INFO={
   virtuve:{a:{lt:'Valgio duodama nauda ir jos trukmė.',en:'The benefit food gives and how long it lasts.'},
            k:{lt:'Gamink iš laimikio ir girios gėrybių (dar neįdiegta).',en:'Cook from your catch and forest bounty (not yet implemented).'}}
 };
+/* ===================== MAISTAS IR VAISTAI (v190) =====================
+   Iki šiol krepšio gėrybės buvo tik atsargos — jų panaudoti nebuvo kaip.
+   Dabar paspaudus krepšyje jos suvalgomos/išgeriamos: atstato jėgas ir groja
+   geltoną nr4 animaciją (A_NO.use), kaip prašė vartotojas. */
+const CONSUM={
+  uogos: {hp:8,             n:{lt:'Uogos',en:'Berries'}},
+  grybas:{stam:14,          n:{lt:'Grybas',en:'Mushroom'}},
+  duona: {hp:10,stam:8,     n:{lt:'Duona',en:'Bread'}},
+  zole:  {hp:22,mana:10,    n:{lt:'Vaistažolė',en:'Herb'}}
+};
+function useConsumable(k){
+  const c=CONSUM[k]; if(!c) return false;
+  if(!(bag[k]>0)){ return false; }
+  if(player.dead||player.swimming) return false;
+  bag[k]--;
+  if(c.hp)   player.hp  =Math.min(player.maxHp,  player.hp+c.hp);
+  if(c.mana) player.mana=Math.min(player.maxMana,player.mana+c.mana);
+  if(c.stam) player.stam=Math.min(player.maxStam,player.stam+c.stam);
+  /* geltona nr4 — valgymo/gėrimo judesys */
+  if(playerGltfActions.use) triggerPlayerClip(playerGltfActions.use,1);
+  player.obj.userData.act={a:'use',t:0,dur:.9};
+  sfx('pickup');
+  const dalys=[];
+  if(c.hp) dalys.push('+'+c.hp+' ❤');
+  if(c.mana) dalys.push('+'+c.mana+' ✨');
+  if(c.stam) dalys.push('+'+c.stam+' 🫁');
+  log(T('used')+Lx(ITEMS[k].n)+' ('+dalys.join(', ')+')','lg-s');
+  addXp('virtuve',3);
+  drawBag(); refreshUI();
+  return true;
+}
 const bagGrid=document.getElementById('bagGrid');
 for(let i=0;i<20;i++){const d=document.createElement('div');d.className='slot';bagGrid.appendChild(d);}
 function drawBag(){
   const keys=Object.keys(bag).filter(k=>bag[k]>0);
   [...bagGrid.children].forEach((s,i)=>{
-    if(i<keys.length){s.innerHTML=ITEMS[keys[i]].i+'<b>'+bag[keys[i]]+'</b>';s.title=Lx(ITEMS[keys[i]].n);}
-    else{s.innerHTML='';s.title='';}
+    const k=keys[i];
+    if(k){
+      s.innerHTML=ITEMS[k].i+'<b>'+bag[k]+'</b>';
+      /* v190: valgomiems daiktams — užuomina ir paspaudimas */
+      s.title=Lx(ITEMS[k].n)+(CONSUM[k]?' — '+T('clickToUse'):'');
+      s.classList.toggle('usable',!!CONSUM[k]);
+      s.onclick=CONSUM[k]?(()=>useConsumable(k)):null;
+    } else { s.innerHTML=''; s.title=''; s.classList.remove('usable'); s.onclick=null; }
   });
 }
 drawBag();
@@ -8242,7 +8385,7 @@ function refreshUI(){
   const pct=clamp(player.hp/player.maxHp,0,1)*100;
   document.getElementById('hpFill').style.width=pct+'%';
   document.getElementById('hpTxt').textContent=Math.max(0,Math.ceil(player.hp))+' / '+player.maxHp;
-  const freePts=primaryPts+combatPts;
+  const freePts=primaryPts+combatPts+gatherPts+craftPts;
   document.getElementById('cbLvl').textContent=charLvl;
   document.getElementById('pPts').textContent=freePts>0?'+'+freePts:'';
   document.getElementById('playerCard').classList.toggle('hasPts',freePts>0);
@@ -9390,9 +9533,7 @@ function updateEnemies(dt){
       if(e.home){ e.pos.x=e.home.x; e.pos.z=e.home.z; }   // v104: atatranka jo nepajudina
       e.pos.y=heightAt(e.pos.x,e.pos.z);
       e.obj.position.copy(e.pos); e.obj.rotation.y=e.yaw;
-      if(e.flash>0){ e.flash-=dt; e.obj.scale.setScalar(e.def.scale*(1+e.flash*.9));
-        if(e.flash<=0) clearFlash(e);           // v176: manekenas nebelieka švytėti
-      }else e.obj.scale.setScalar(e.def.scale);
+      e.obj.scale.setScalar(e.def.scale);       // v192: be blyksnio ir be didėjimo
       if(e.glb) glbLoop(e.glb,e.glb.acts.dummyIdle||e.glb.acts.idle);
       placeTag(e.tag,e.pos.x,e.pos.y+2.45*e.def.scale,e.pos.z,46);
       if(e.tag.bar) e.tag.bar.style.width='100%';
@@ -9400,9 +9541,6 @@ function updateEnemies(dt){
     }
     if(e.dead){
       e.respawn-=dt;
-      /* v176: nukautas priešas irgi turi nustoti švytėti — kitaip blyksnys
-         lieka ant lavono ir grįžta kartu su juo po atgimimo */
-      if(e.flash>0){ e.flash-=dt; if(e.flash<=0) clearFlash(e); }
       if(e.sink>0){                       // nugrimzta į žemę
         e.sink-=dt;
         e.obj.position.y=e.pos.y-(1.2-e.sink)*1.6;
@@ -9498,11 +9636,7 @@ function updateEnemies(dt){
     groundAlign(e.obj,e.pos.x,e.pos.z,e.yaw);
     e.obj.userData.lookAt=(e.state==='chase'&&!player.dead)?player.pos:null;
     animateBody(e.obj,sp,dt);
-    if(e.flash>0){
-      e.flash-=dt;
-      e.obj.scale.setScalar(e.def.scale*(1+e.flash*.9));
-      if(e.flash<=0) clearFlash(e);
-    }else e.obj.scale.setScalar(e.def.scale);
+    e.obj.scale.setScalar(e.def.scale);        // v192: be blyksnio ir be didėjimo
 
     if(e.glb){                       // v96: ėjimas/stovėjimas, kai nevyksta vienkartinis klipas
       const A=e.glb, busy=A.current&&A.current.__once&&A.current.isRunning();
@@ -9722,8 +9856,11 @@ function frame(now){
     merchant.lamp.intensity=1.0+Math.sin(t*4.3)*.18;
     placeTag(merchant.tag,merchant.pos.x,merchant.pos.y+2.35,merchant.pos.z,30);
   }
-  if(playerGltfMixer) playerGltfMixer.update(dt);
-  for(const A of ENEMY_GLB) A.mixer.update(dt);
+  /* v191: žemoje kokybėje GLB skeletų iš viso nesukam — jų niekas nemato */
+  const glbOn=CFG.quality==='high';
+  if(glbOn&&playerGltfMixer) playerGltfMixer.update(dt);
+  if(glbOn) for(const A of ENEMY_GLB) A.mixer.update(dt);
+  updateMeditatePose(dt);        // v191: meditacijos Y poza
   updateSpellClips();            // v184: burtų klipai 33/35/36/34
   updateSpellPose();             // v140: buvo updateThunderCastPose — dabar ir „heal"
   updateMiningPose(dt);          // v138: kirtiklio poza — irgi PO mikserio
@@ -9736,7 +9873,7 @@ function frame(now){
      rečiau, o praleistas dt kompensuojamas (mx.update(dt*skip)), kad
      animacijos greitis nesikeistų. Žemos kokybės (isTouch/telefono) atveju
      ribos griežtesnės. */
-  {
+  if(glbOn){
     const camX=player.pos.x, camZ=player.pos.z, low=CFG.quality!=='high';
     for(let i=0;i<CATALOG_MIXERS.length;i++){
       const cm=CATALOG_MIXERS[i];

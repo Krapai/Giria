@@ -96,7 +96,27 @@ canvas{display:block;touch-action:none}
   letter-spacing:.2em;color:var(--amber)}
 
 /* laikrodis — po pokalbių langu apačioje kairėje, ne viršuje centre */
+/* v189: langai ir skydeliai NĖRA tekstas — laikant pirštą ant daikto jis
+   nebeturi nusidažyti mėlynai (žymėjimas) ar iššokti sistemos meniu. Įvedimo
+   laukams žymėjimas paliekamas. */
+#hud,.panel,.card,.tag,#tools,#skillBar{user-select:none;-webkit-user-select:none;
+  -webkit-touch-callout:none}
+input,textarea{user-select:text;-webkit-user-select:text}
+/* v188: slinkties juosta languose — siaura, gintarinė, po žaidimo spalvomis.
+   Firefox naudoja scrollbar-width/color, Chrome/Safari — ::-webkit-scrollbar. */
+*{scrollbar-width:thin;scrollbar-color:rgba(217,152,47,.6) rgba(13,19,16,.5)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:rgba(13,19,16,.5);border-radius:7px;
+  box-shadow:inset 0 0 4px rgba(0,0,0,.5)}
+::-webkit-scrollbar-thumb{border-radius:7px;border:1px solid rgba(13,19,16,.85);
+  background:linear-gradient(180deg,#d9982f 0%,#a3701f 55%,#6f4a12 100%)}
+::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,#ffc861 0%,#d9982f 60%,#8a5f1c 100%)}
+::-webkit-scrollbar-corner{background:transparent}
 /* v184: garsumo slankikliai — Nustatymų eilutėje šalia įjungimo mygtuko */
+/* v189: paimtas daiktas seka pelę/pirštą, o gulintis ant žemės turi mažą vardą */
+.dragGhost{position:fixed;z-index:80;transform:translate(-50%,-50%);font-size:26px;
+  pointer-events:none;filter:drop-shadow(0 3px 6px rgba(0,0,0,.6));opacity:.92}
+.tag.tagItem .nm{font-size:9.5px;letter-spacing:.02em;opacity:.9;text-shadow:0 1px 3px #000}
 .volRow{display:flex;align-items:center;gap:8px}
 .vol{-webkit-appearance:none;appearance:none;width:96px;height:4px;border-radius:3px;
   background:linear-gradient(90deg,var(--amber),rgba(217,152,47,.25));outline:none;cursor:pointer}
@@ -553,8 +573,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
     <div id="charBody"></div>
     <div id="charNav">
       <button data-t="char"><b>🧍</b><span id="tCharTravel">Keliautojas</span></button>
-      <button data-t="skills"><b>📜</b><span id="tCharMastery">Meistrystės</span></button>
       <button data-t="combat"><b>🜂</b><span id="tCharCombat">Kovos</span></button>
+      <button data-t="skills"><b>📜</b><span id="tCharMastery">Meistrystės</span></button>
       <button data-t="gather"><b>🌿</b><span id="tCharGather">Rinkimas</span></button>
       <button data-t="craft"><b>🔨</b><span id="tCharCraft">Amatai</span></button>
     </div>
@@ -675,8 +695,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v186';
-const GAME_CHANGES='takelių garsumas suvienodintas, Kaimavietė kaip anksčiau, kumščių kirtis lėtesnis';
+const GAME_VERSION='v189';
+const GAME_CHANGES='daiktai metami ant žemės su šešėliais; ištvermės juosta; kumščio kirtis 50/50';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -752,7 +772,7 @@ const I18N={
     shopWares:' prekės · ', haveCoins:'Turi: ', gearHeader:'Apranga', unusedPoints:'Nepanaudota taškų: ',
     levelLbl:'Lygis ', toNext:'% iki ',
     combatPtsLbl:'kovos taškų', gatherPtsLbl:'rinkimo taškų', craftPtsLbl:'amatų taškų', primaryPtsLbl:'pagrindinių taškų',
-    treeHint:'Vilk — stumdai žemėlapį, ratukas arba +/− — mastelis. Užvesk ant taško — aprašymas, spustelėk — kelk rangą (telefone: bakstelk, tada dar kartą).', atPrimaryInfo:'Pagrindinė savybė — nuo jos priklauso grupių talpa. Dabar:', atClickRaise:'Spustelėk — pakelsi savybę', atGroupInfo:'Grupė — kiek joje telpa rangų, lemia pagrindinės savybės.', atCapLbl:'užimta: ', craftHint:'Receptas rodo, ko reikia. Žalia — turi, raudona — trūksta. Amatas parenkamas pagal tai, ko daikte daugiausia.', craftDo:'Gaminti', craftNone:'Šiam amatui receptų dar nėra.', craftMade:'Pagaminta: ', craftTwice:' (dvigubai!)', craftNoRes:'Trūksta žaliavos: ', craftNeedLvl:'Per žemas amato lygis — reikia: ', craftNeedsLbl:'Reikia: ', craftSkillLbl:'Amatas: ', ttCraft:'Dirbtuvė', craftTitle:'Dirbtuvė', atRanksSum:'rangų iš viso: ', atRisesBy:'kyla darant: ', atEarnedGroup:'Šios grupės atributai neperkami — jie kyla patys, kai dirbi tą darbą.', atNoPrimaryHere:'Pagrindinės savybės čia nekeliamos — tik kovos lange.', atEarnedTree:'Taškų čia nėra: rangai kyla patys, kai renki, žvejoji, kerti ar gamini.', atSpendHint:'Spustelėk mazgą — išleisi tašką.',
+    treeHint:'Vilk — stumdai žemėlapį, ratukas arba +/− — mastelis. Užvesk ant taško — aprašymas, spustelėk — kelk rangą (telefone: bakstelk, tada dar kartą).', atPrimaryInfo:'Pagrindinė savybė — nuo jos priklauso grupių talpa. Dabar:', atClickRaise:'Spustelėk — pakelsi savybę', atGroupInfo:'Grupė — kiek joje telpa rangų, lemia pagrindinės savybės.', atCapLbl:'užimta: ', craftHint:'Receptas rodo, ko reikia. Žalia — turi, raudona — trūksta. Amatas parenkamas pagal tai, ko daikte daugiausia.', itemDropped:'Numesta ant žemės: ', dropItem:'Išmesti', craftDo:'Gaminti', craftNone:'Šiam amatui receptų dar nėra.', craftMade:'Pagaminta: ', craftTwice:' (dvigubai!)', craftNoRes:'Trūksta žaliavos: ', craftNeedLvl:'Per žemas amato lygis — reikia: ', craftNeedsLbl:'Reikia: ', craftSkillLbl:'Amatas: ', ttCraft:'Dirbtuvė', craftTitle:'Dirbtuvė', atRanksSum:'rangų iš viso: ', atRisesBy:'kyla darant: ', atEarnedGroup:'Šios grupės atributai neperkami — jie kyla patys, kai dirbi tą darbą.', atNoPrimaryHere:'Pagrindinės savybės čia nekeliamos — tik kovos lange.', atEarnedTree:'Taškų čia nėra: rangai kyla patys, kai renki, žvejoji, kerti ar gamini.', atSpendHint:'Spustelėk mazgą — išleisi tašką.',
     resetAllAttrs:'↺ Atstatyti visas savybes', capReached:'riba pasiekta — daugiau nebeauga',
     nextRank:'kitas rangas: ', groupLocked:'grupė dar neatrakinta', ranksLbl:' · rangų: ',
     charTabTraveler:'Keliautojas', charTabMastery:'Meistrystės', charTabCombat:'Kovos', charTabGather:'Rinkimas', charTabCraft:'Amatai',
@@ -878,7 +898,7 @@ const I18N={
     shopWares:' wares · ', haveCoins:'You have: ', gearHeader:'Gear', unusedPoints:'Unused points: ',
     levelLbl:'Level ', toNext:'% to ',
     combatPtsLbl:'combat points', gatherPtsLbl:'gathering points', craftPtsLbl:'crafting points', primaryPtsLbl:'primary points',
-    treeHint:'Drag to move the map, wheel or +/− to zoom. Hover a node for its description, click to raise its rank (on phone: tap, then tap again).', atPrimaryInfo:'Primary attribute — group capacity depends on it. Now:', atClickRaise:'Click to raise it', atGroupInfo:'Group — its capacity comes from the primary attributes.', atCapLbl:'used: ', craftHint:'The recipe shows what it takes. Green — you have it, red — you are missing it. The craft is picked by whatever the item needs most.', craftDo:'Craft', craftNone:'No recipes for this craft yet.', craftMade:'Crafted: ', craftTwice:' (double!)', craftNoRes:'Not enough: ', craftNeedLvl:'Craft level too low — needs: ', craftNeedsLbl:'Needs: ', craftSkillLbl:'Craft: ', ttCraft:'Workshop', craftTitle:'Workshop', atRanksSum:'ranks in total: ', atRisesBy:'rises by: ', atEarnedGroup:'These attributes are not bought — they grow as you do the work.', atNoPrimaryHere:'Primary attributes are raised in the combat window only.', atEarnedTree:'No points here: ranks grow on their own as you gather, fish, chop or craft.', atSpendHint:'Click a node to spend a point.',
+    treeHint:'Drag to move the map, wheel or +/− to zoom. Hover a node for its description, click to raise its rank (on phone: tap, then tap again).', atPrimaryInfo:'Primary attribute — group capacity depends on it. Now:', atClickRaise:'Click to raise it', atGroupInfo:'Group — its capacity comes from the primary attributes.', atCapLbl:'used: ', craftHint:'The recipe shows what it takes. Green — you have it, red — you are missing it. The craft is picked by whatever the item needs most.', itemDropped:'Dropped on the ground: ', dropItem:'Drop', craftDo:'Craft', craftNone:'No recipes for this craft yet.', craftMade:'Crafted: ', craftTwice:' (double!)', craftNoRes:'Not enough: ', craftNeedLvl:'Craft level too low — needs: ', craftNeedsLbl:'Needs: ', craftSkillLbl:'Craft: ', ttCraft:'Workshop', craftTitle:'Workshop', atRanksSum:'ranks in total: ', atRisesBy:'rises by: ', atEarnedGroup:'These attributes are not bought — they grow as you do the work.', atNoPrimaryHere:'Primary attributes are raised in the combat window only.', atEarnedTree:'No points here: ranks grow on their own as you gather, fish, chop or craft.', atSpendHint:'Click a node to spend a point.',
     resetAllAttrs:'↺ Reset all attributes', capReached:'cap reached — no further growth',
     nextRank:'next rank: ', groupLocked:'group not unlocked yet', ranksLbl:' · ranks: ',
     charTabTraveler:'Traveler', charTabMastery:'Masteries', charTabCombat:'Combat', charTabGather:'Gathering', charTabCraft:'Crafting',
@@ -2596,6 +2616,11 @@ const SKILLS={
 };
 /* seni patirties raktai — kad nereikėtų keisti visų addXp kvietimų */
 const XP_ALIAS={kova:'puolimas', gyvybe:'gynyba'};
+/* v187: kiek sekundžių po paskutinio kirčio ar smūgio dar groja kovos muzika */
+const FIGHT_MUS_T=7;
+/* v188: sava ataka muziką įjungia ne iškart, o po sekundės (kad vienas kirtis į
+   medį stovintį priešą nekeltų viso mūšio); gautas smūgis — iškart. */
+const FIGHT_MUS_WAIT=1;
 const SPRINT_MULT=1.35;   // v123: „Sprinto sparta" atributas ištrintas (perkelta darbo-ištvermės logika), greitis fiksuotas
 const xpFor=l=>Math.floor(46*Math.pow(l,1.72));
 function levelOf(xp){let l=1;while(l<70&&xp>=xpFor(l+1))l++;return l;}
@@ -2604,6 +2629,8 @@ const player={
   obj:humanoid({type:'human',skin:0xd7a06a,cloth:0x35506a,hair:0x4a3524,sleeves:true,
     weapon:{kind:'sword',color:0xc2c6cc},scale:1}),
   pos:new THREE.Vector3(4,0,7), vel:new THREE.Vector3(),
+  fightT:0,          // v187: kiek dar sekundžių laikoma kovos muzika
+  fightWait:0,       // v188: kiek liko iki jos įsijungimo po savo atakos
   yaw:0, speed:5.4, moveTo:null, targetId:null, gatherId:null, dash:null, swingToken:0, autoAtk:false,
   hp:30, maxHp:30, atkCd:0, hurtCd:0, dead:false, stepCd:0,
   goalDist:1e9, stuckCd:0,
@@ -3046,7 +3073,7 @@ function stripRootMotionXZ(clips){
 let playerGltfModel=null, playerGltfMixer=null, playerGltfActions={}, playerGltfCurrent=null;
 /* v186: kumščių kirtis — viena seka ir ginklui, ir plikoms rankoms */
 const FIST_SEQ=['fist1','fist1m'];
-const FIST_MIN=0.85;    // v186: trumpiausia visos poros trukmė sekundėmis (buvo per greita)
+const FIST_MIN=0.45;    // v189: trumpiausia VIENO smūgio trukmė (v186 buvo poros 0,85)
 const CATALOG_MIXERS=[], CATALOG_TAGS=[];    // v160: CATALOG_MIXERS = {mx,x,z}, žr. LOD frame() cikle
 let playerGltfSwingToggle=0;
 
@@ -3972,10 +3999,12 @@ function triggerPlayerSwingClip(crit,interval){
   else if(own&&playerGltfActions[own]) seq=[[playerGltfActions[own],true]];
   /* v184: BE GINKLO — geltoni 18 ir 19, o kas antrą kartą tie patys veidrodiniai,
      tad kirčiai eina dešine, dešine, kaire, kaire ir vėl iš pradžių. */
-  /* v186: BE GINKLO kertama TA PAČIA seka kaip su „Kumštine" — 18 dešine ir 18
-     veidrodinis kaire (vartotojo prašymu; v184 čia dar buvo 18/19 kaitaliojimas). */
+  /* v189: BE GINKLO — VIENAS smūgis per kirtį, 50/50 dešine (18) arba kaire
+     (18 veidrodinis). Tempą lemia atakos sparta, kaip ir ginklams: bazė — kartas
+     per sekundę (v186 čia buvo abu smūgiai iš eilės, tad atrodė dvigubai greičiau). */
   else if(!gear.ginklas&&playerGltfActions.fist1){
-    seq=FIST_SEQ.map(k=>[playerGltfActions[k]||playerGltfActions.fist1,true]);
+    const k=Math.random()<.5?'fist1':'fist1m';
+    seq=[[playerGltfActions[k]||playerGltfActions.fist1,true]];
   }
   else if(crit) seq=[[playerGltfActions.crit,true],[rec(playerGltfActions.crit),false]];
   else{
@@ -4669,6 +4698,11 @@ function showAttrPopup(key,evt){
     if(!equipItem(b.dataset.eq)) log(T('equipFail'),'lg-h');
     hideAttrPopup(); drawGearBag(); drawCharPanel();
   });
+  /* v189: „Išmesti" — daiktas atsiduria ant žemės priešais personažą */
+  if(body.querySelectorAll) body.querySelectorAll('.gbDrop').forEach(b=>b.onclick=e=>{
+    if(e&&e.stopPropagation) e.stopPropagation();
+    dropGear(b.dataset.drop); hideAttrPopup();
+  });
   if(body.querySelectorAll) body.querySelectorAll('.unEq').forEach(b=>b.onclick=e=>{
     if(e&&e.stopPropagation) e.stopPropagation();
     unequipItem(b.dataset.u); hideAttrPopup(); drawCharPanel(); drawGearBag();
@@ -5297,8 +5331,15 @@ function splat(v3,text,color){
   d.style.color=color; d.textContent=text;
   worldLayer.appendChild(d); setTimeout(()=>d.remove(),1000);
 }
+/* v188: kurios meistrystės maitina RINKIMO medį — jos kovojant nekyla
+   (vartotojo taisyklė: rinkimo taškų kovoje negaunama). Sąrašas imamas iš paties
+   medžio, tad pridėjus naują rinkimo atributą nieko čia keisti nereikia. */
+const GATHER_ACTS=new Set();
+for(const g of GGROUPS) for(const sb of g.sub) if(sb.act) GATHER_ACTS.add(sb.act);
+const inFight=()=>player.fightT>0||player.fightWait>0;
 function addXp(skill,amount){
   skill=XP_ALIAS[skill]||skill;
+  if(inFight()&&GATHER_ACTS.has(skill)) return;   // v188: kovojant rinkimas nekyla
   const s=SKILLS[skill]; if(!s) return;
   const before=s.lv;
   const gained=Math.max(1,Math.round(amount));
@@ -5319,6 +5360,7 @@ function give(key,n){
    momentai ateina iš triggerPlayerSwingClip; kiekvienam paleidžiamas landHit,
    kuris pats meta pataikymą ir skaičiuoja žalą. */
 function playerAttack(e,echo){
+  fightMusic(false);                      // v187/v188: kirtis = kova (muzikai) po 1 s
   const interval=1/D.atakosSparta;
   player.swingLen=0;
   player.obj.userData.swing=1;
@@ -5632,6 +5674,7 @@ function startAct(k){
      mana pati baigdavo meditaciją. Dabar burtas meditaciją nutraukia ČIA, jau
      praėjus visoms patikroms — jei manos nepakanka, meditacija nenutraukiama. */
   if(player.meditating) stopMeditate(T('castStopsMeditation'));
+  if(a.kind==='spell'||a.kind==='melee') fightMusic(false);   // v187/v188: įgūdis = kova
   if(a.kind==='spell') player.mana-=cost; else player.stam-=cost;
   player.cds[k]=a.cd*(a.kind==='spell'?1/Math.max(.4,D.burtuSparta/0.67):1);
   if(a.kind==='spell'&&Math.random()<D.burtuAidas) player.cds[k]=0;
@@ -5997,6 +6040,7 @@ function killEnemy(e){
   refreshUI();
 }
 function hurtPlayer(dmg,from){
+  fightMusic(true);                       // v188: gautas smūgis — muzika iškart
   const at=new THREE.Vector3(player.pos.x,player.pos.y+2,player.pos.z);
   dmg*=1-D.vadoAura;                                       // Vado aura
   if(!player.moving) dmg*=1-D.gynyba;                      // Gynybos laikysena
@@ -6225,7 +6269,8 @@ const TRACKS={
      antroji įstoja puse takto vėliau ir sekunda aukščiau; susidūrusios sekundos
      ir yra visas šitos muzikos garsas. */
   sutartine:{bpm:96,sc:DOR,oct:1,chords:[0,0,4,4],cut:2200,own:'sutartine',
-         vol:1.2,name:{lt:'Sutartinė',en:'Sutartinė round song'}},
+         vol:1.2,name:{lt:'Miškas',en:'Forest'}},   /* v187: vardas vartotojo prašymu;
+     raktas ir grojimo būdas lieka sutartinės (dviejų balsų kanonas sekunda) */
   /* v183: SKUDUČIAI — irgi sava funkcija. Hoketas: kiekvienas dūdelė turi vieną
      natą, tad melodija šokinėja tarp registrų, o po ja eina dronas ir barškis. */
   skuduciai:{bpm:104,sc:DOR,oct:1,chords:[0,4,5,4],cut:2600,own:'skuduciai',
@@ -6387,9 +6432,20 @@ function musicBar(key,t){
 /* v183: šeši takeliai, kiekvienas su savo vieta:
      kova — mūšis; kaimas — prie laužo; skudučiai — kai dirbi (kerti, kasi, renki);
      aušra — auštant; naktis — naktį; sutartinė — dieną girioje. */
+/* v188: iskart=true — muzika įsijungia tą pačią akimirką (gautas smūgis);
+   iskart=false — po FIGHT_MUS_WAIT sekundės (sava ataka). Jei kova jau groja,
+   tiesiog pratęsiam. */
+function fightMusic(iskart){
+  if(iskart||player.fightT>0){ player.fightWait=0; player.fightT=FIGHT_MUS_T; return; }
+  if(!(player.fightWait>0)) player.fightWait=FIGHT_MUS_WAIT;
+}
 function pickTrack(){
   if(player.dead) return 'naktis';
-  if(player.targetId!==null) return 'kova';
+  /* v187: vien PAŽYMĖTAS taikinys dar nėra kova — vartotojas spusteli priešą
+     apžiūrėti, o muzika jau griaudėdavo. Kovos takelis įsijungia tik tada, kai
+     tikrai kaujamasi: neseniai kirtai, buvai suduotas (player.fightT) arba
+     priešas tave vejasi. */
+  if(player.fightT>0) return 'kova';
   for(const e of enemies) if(!e.dead&&e.state==='chase'&&
     Math.hypot(e.pos.x-player.pos.x,e.pos.z-player.pos.z)<15) return 'kova';
   if(Math.hypot(player.pos.x,player.pos.z)<14) return 'kaimas';
@@ -6443,6 +6499,15 @@ function toggleToolMenu(force){
   if(b) b.classList.toggle('on',open);
 }
 document.getElementById('bMenu').onclick=()=>toggleToolMenu();
+/* v189: išskleistas meniu užsiveria paspaudus BET KUR kitur — anksčiau jis
+   likdavo atviras, kol nepaspausi vieno iš jo mygtukų arba paties ☰. */
+addEventListener('pointerdown',e=>{
+  const st=document.getElementById('menuStack');
+  if(!st||!st.classList||!st.classList.contains('open')) return;
+  const t=e&&e.target;
+  if(t&&t.closest&&t.closest('#menuWrap')) return;    // pats meniu — netrukdom
+  toggleToolMenu(false);
+},true);
 document.getElementById('mBag').onclick=()=>{toggleToolMenu(false);togglePanel('pBag',null);};
 document.getElementById('mCraft').onclick=()=>{toggleToolMenu(false);togglePanel('pCraft',null);drawCraft();};
 /* v184: garsumo slankikliai. Muzikos — per SND.musVol (jį naudoja updateMusic
@@ -6502,10 +6567,17 @@ let dragSkill=null;     // {k, fromIdx, ghost, moved, sx, sy}
    tempti mygtukus juostoje — kitaip žaidžiant netyčia išmetamas įgūdis.
    Tikrinam per DOM (.skRow / .cmb), o ne per charTab, nes charTab skelbiamas
    žemiau šioje byloje (TDZ). */
+/* v188: juostos slotus galima pertvarkyti, kol atidarytas BET KURIS įgūdžių
+   langas. Iki tol čia buvo tikrinamas tik #pChar (Keliautojas), o aktyvūs
+   įgūdžiai ir burtai nuo v106 gyvena atskirame #pSkills — todėl atsidarius
+   būtent jį, tempimas juostoje neveikdavo ir slotų sukeisti buvo neįmanoma. */
 function skillsPanelOpen(){
-  const p=document.getElementById('pChar');
-  if(!p||!p.classList||!p.classList.contains('open')||!p.querySelectorAll) return false;
-  return p.querySelectorAll('.skRow').length>0||p.querySelectorAll('.cmb').length>0;
+  for(const id of ['pSkills','pChar']){
+    const p=document.getElementById(id);
+    if(!p||!p.classList||!p.classList.contains('open')||!p.querySelectorAll) continue;
+    if(p.querySelectorAll('.skRow').length>0||p.querySelectorAll('.cmb').length>0) return true;
+  }
+  return false;
 }
 function makeGhost(a){
   const d=document.createElement('div');
@@ -7411,7 +7483,67 @@ function gearBagInfoHtml(it){
   return '<b style="color:#ffc861">'+it.n+'</b><br>'+(it.d||'')+
     '<br><span style="color:#ffc861">'+itemFullStats(it)+'</span>'+
     '<br><button class="tbtn gbEq" data-eq="'+it.id+'" style="width:auto;height:22px;padding:0 10px;'+
-    'font-size:10px;border-radius:6px;margin-top:5px">'+T('equip')+'</button>';
+    'font-size:10px;border-radius:6px;margin-top:5px">'+T('equip')+'</button>'+
+    /* v189: išmesti ant žemės — tas pats popup, kaip ir užsidėjimui */
+    ' <button class="tbtn gbDrop" data-drop="'+it.id+'" style="width:auto;height:22px;padding:0 10px;'+
+    'font-size:10px;border-radius:6px;margin-top:5px">'+T('dropItem')+'</button>';
+}
+/* v189: daiktą galima PAIMTI (palaikius pirštą ar pelę) ir numesti ant žemės,
+   paleidus už langų ribų. Anksčiau ilgas paspaudimas tik pažymėdavo ženklą kaip
+   tekstą — būtent tuo vartotojas ir skundėsi. */
+let gearDrag=null;
+function gearGhost(it){
+  const g=document.createElement('div');
+  g.className='dragGhost'; g.textContent=it.i;
+  document.body.appendChild(g);
+  return g;
+}
+function gearDragMove(x,y){
+  if(!gearDrag||!gearDrag.ghost) return;
+  gearDrag.ghost.style.left=x+'px'; gearDrag.ghost.style.top=y+'px';
+}
+function gearDragEnd(x,y){
+  if(!gearDrag) return;
+  const {id,ghost,moved}=gearDrag;
+  if(ghost&&ghost.parentNode&&ghost.parentNode.removeChild) ghost.parentNode.removeChild(ghost);
+  const t=document.elementFromPoint?document.elementFromPoint(x,y):null;
+  gearDrag=null;
+  if(!moved) return;                                  // nepajudėjo — tai buvo paspaudimas
+  const virsLango=t&&t.closest&&t.closest('.panel,#tools,#skillBar');
+  if(!virsLango) dropGear(id);                        // paleista virš pasaulio — metam
+}
+function bindGearDrag(grid){
+  if(!grid.querySelectorAll) return;
+  grid.querySelectorAll('.gbSlot').forEach(el=>{
+    if(!el.dataset||!el.dataset.eq) return;
+    el.addEventListener('pointerdown',e=>{
+      /* v189: preventDefault ČIA NEDEDAM — atšauktas pointerdown kai kuriose
+         naršyklėse nuslopina ir 'click', o ant to laikosi greitas užsidėjimas.
+         Nuo mėlyno žymėjimo saugo CSS (user-select:none), ne šitas. */
+      const id=el.dataset.eq;
+      gearDrag={id,ghost:null,moved:false,sx:e.clientX,sy:e.clientY,t:setTimeout(()=>{
+        if(gearDrag&&gearDrag.id===id&&!gearDrag.ghost){
+          gearDrag.ghost=gearGhost(CATALOG[id]);
+          gearDragMove(gearDrag.sx,gearDrag.sy);
+          gearDrag.moved=true;                        // laikymas = paėmimas
+        }
+      },260)};
+    });
+  });
+}
+if(typeof addEventListener==='function'){
+  addEventListener('pointermove',e=>{
+    if(!gearDrag) return;
+    if(Math.hypot(e.clientX-gearDrag.sx,e.clientY-gearDrag.sy)>8&&!gearDrag.ghost){
+      gearDrag.ghost=gearGhost(CATALOG[gearDrag.id]); gearDrag.moved=true;
+    }
+    gearDragMove(e.clientX,e.clientY);
+  });
+  addEventListener('pointerup',e=>{
+    if(gearDrag&&gearDrag.t) clearTimeout(gearDrag.t);
+    gearDragEnd(e.clientX,e.clientY);
+  });
+  addEventListener('pointercancel',()=>{ if(gearDrag&&gearDrag.t) clearTimeout(gearDrag.t); gearDrag=null; });
 }
 function drawGearBag(){
   const p=document.getElementById('pGearBag');
@@ -7428,6 +7560,7 @@ function drawGearBag(){
   grid.innerHTML=h;
   bindPopups(grid,'.gbSlot','i');
   bindQuickEquip(grid);
+  bindGearDrag(grid);          // v189: palaikius daiktą jis paimamas, o paleidus lauke — numetamas
 }
 /* v146: GREITAS UŽSIDĖJIMAS iš aprangos lango — daiktas keliauja į JAM SKIRTĄ
    vietą pats (slotOf(): ginklas→ginklas, šalmas→galva; žiedas→pirma laisva
@@ -7581,7 +7714,10 @@ function bindGear(box){
    aprašymas (ką veikia ir kaip kelti). */
 function masteryHtml(){
   let h='<div class="hint" style="margin-bottom:8px">'+T('masteryHint')+'</div>';
-  h+=Object.keys(SKILLS).map(k=>{
+  /* v188: sąrašas rikiuojamas nuo labiausiai ištobulintos srities (lygis, tada
+     patirtis), kad viršuje visada būtų tai, ką žaidėjas tikrai daro. */
+  h+=Object.keys(SKILLS).sort((a,b)=>SKILLS[b].lv-SKILLS[a].lv||SKILLS[b].xp-SKILLS[a].xp||
+     Lx(SKILLS[a].n).localeCompare(Lx(SKILLS[b].n))).map(k=>{
     const q=SKILLS[k], b=xpFor(q.lv), nx=xpFor(q.lv+1);
     const w=clamp((q.xp-b)/(nx-b),0,1)*100;
     const inf=MASTERY_INFO[k]||{a:'',k:''};
@@ -8085,6 +8221,19 @@ function drawBag(){
 }
 drawBag();
 
+/* v189: TIKRA KLAIDA — hp/manos/ištvermės juostos buvo perpiešiamos tik
+   refreshUI() metu (t. y. per įvykius), o ištvermė senka KAS KADRĄ bėgant.
+   Todėl juosta rodydavo pasenusią reikšmę: bėgi, o ji stovi vietoje.
+   updateStatBars() — pigi funkcija (tik trys stiliai), kviečiama kadro cikle. */
+function updateStatBars(){
+  const w=(id,v)=>{ const el=document.getElementById(id); if(el) el.style.width=(clamp(v,0,1)*100)+'%'; };
+  const tx=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+  w('hpFill',player.hp/player.maxHp);
+  tx('hpTxt',Math.max(0,Math.ceil(player.hp))+' / '+player.maxHp);
+  w('manaFill',player.mana/player.maxMana);
+  tx('manaTxt',Math.max(0,Math.ceil(player.mana))+' / '+player.maxMana);
+  w('stamFill',player.stam/player.maxStam);
+}
 function refreshUI(){
   document.getElementById('manaFill').style.width=(clamp(player.mana/player.maxMana,0,1)*100)+'%';
   document.getElementById('manaTxt').textContent=Math.max(0,Math.ceil(player.mana))+' / '+player.maxMana;
@@ -9128,6 +9277,11 @@ function updatePlayer(dt){
   animateBody(player.obj,sp,dt);
   if(player.atkCd>0) player.atkCd-=dt;
   if(player.hurtCd>0) player.hurtCd-=dt;
+  /* v188: laukimas prieš kovos muziką ir jos laikymas */
+  if(player.fightWait>0){
+    player.fightWait-=dt;
+    if(player.fightWait<=0){ player.fightWait=0; player.fightT=FIGHT_MUS_T; }
+  } else if(player.fightT>0) player.fightT-=dt;
   /* lėta regeneracija */
   if(player.hp<player.maxHp&&player.hurtCd<=0&&!player.meditating){
     player.hp=Math.min(player.maxHp,player.hp+dt*(.5+D.atkaklumas));
@@ -9379,6 +9533,74 @@ function updateNodes(dt){
   }
 }
 
+/* ===================== ANT ŽEMĖS GULINTYS DAIKTAI (v189) =====================
+   Vartotojas prašė, kad išmestas daiktas gulėtų ant žemės kaip ŠEŠĖLIS, iš kurio
+   matyti, kas tai per daiktas (batai, šalmas, kardas, lankas…), o virš jo mažom
+   raidėm būtų pavadinimas.
+   Kiekvienam TIPUI atskiro piešinio nerašom ranka — šešėlis gaminamas iš to paties
+   ženklo, kurį daiktas jau turi (ITEM_TYPES.i): ženklas nupiešiamas į drobę, tada
+   'source-in' visa drobė užliejama tamsia spalva, tad lieka TIK jo siluetas.
+   Taip kiekvienas tipas savaime turi savo formą, o naujam tipui nieko pridėti
+   nereikia. */
+const GEAR_SHADOW={};                 // tipas → THREE.CanvasTexture (gaminama kartą)
+function gearShadowTex(ic,key){
+  if(GEAR_SHADOW[key]) return GEAR_SHADOW[key];
+  const S=128, c=document.createElement('canvas');
+  c.width=S; c.height=S;
+  const x=c.getContext&&c.getContext('2d');
+  if(!x) return null;
+  x.clearRect(0,0,S,S);
+  x.font='96px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",serif';
+  x.textAlign='center'; x.textBaseline='middle';
+  x.fillText(ic||'?',S/2,S/2+4);
+  x.globalCompositeOperation='source-in';    // palieka tik ženklo formą
+  x.fillStyle='#0b1210';
+  x.fillRect(0,0,S,S);
+  x.globalCompositeOperation='source-over';
+  const t=new THREE.CanvasTexture(c);
+  GEAR_SHADOW[key]=t;
+  return t;
+}
+const gearDrops=[];
+/* Išmeta daiktą iš krepšio ant žemės priešais personažą. */
+function dropGear(id){
+  const it=CATALOG[id]; if(!it) return false;
+  const i=owned.indexOf(id); if(i<0) return false;
+  owned.splice(i,1);
+  const dx=Math.sin(player.yaw)*1.1, dz=Math.cos(player.yaw)*1.1;
+  const x=player.pos.x+dx, z=player.pos.z+dz;
+  const tex=gearShadowTex(it.i,it.type||it.id);
+  const mat=tex?new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:.82,depthWrite:false})
+               :new THREE.MeshBasicMaterial({color:0x0b1210,transparent:true,opacity:.7,depthWrite:false});
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(.78,.78),mat);
+  m.rotation.x=-Math.PI/2;
+  m.rotation.z=rnd(0,Math.PI*2);
+  m.position.set(x,heightAt(x,z)+.045,z);
+  scene.add(m);
+  const tag=makeTag(it.n,'#cfd8c8',false);
+  tag.el.classList.add('tagItem');            // mažesnės raidės (žr. CSS)
+  gearDrops.push({obj:m,tag,id,t:0,x,z});
+  log(T('itemDropped')+it.n,'lg-s');
+  sfx('pickup');
+  drawGearBag(); drawCharPanel();
+  return true;
+}
+function updateGearDrops(dt){
+  for(let i=gearDrops.length-1;i>=0;i--){
+    const d=gearDrops[i]; d.t+=dt;
+    /* pakelti galima priėjus — bet ne tą pačią akimirką, kai išmetei */
+    const arti=Math.hypot(d.x-player.pos.x,d.z-player.pos.z)<1.25;
+    if(d.t>1.2&&arti){
+      giveItem(d.id);
+      burst(d.x,heightAt(d.x,d.z)+.4,d.z,10,0xffc861,1.6);
+      sfx('pickup');
+      scene.remove(d.obj); d.tag.el.remove(); gearDrops.splice(i,1);
+      drawGearBag(); drawCharPanel();
+      continue;
+    }
+    placeTag(d.tag,d.x,heightAt(d.x,d.z)+.55,d.z,22);
+  }
+}
 function updateDrops(dt){
   for(let i=drops.length-1;i>=0;i--){
     const d=drops[i]; d.t+=dt;
@@ -9525,8 +9747,9 @@ function frame(now){
   }
   for(const ct of CATALOG_TAGS) placeTag(ct.tag,ct.x,ct.y,ct.z,60);
   updateFx(dt);
+  updateGearDrops(dt);          // v189: ant žemės gulintys daiktai
   updateActs(dt);
-  updateSkillBar(); updateCastBar();
+  updateSkillBar(); updateCastBar(); updateStatBars();   // v189: juostos kas kadrą
   document.getElementById('bCast').classList.toggle('on',!!player.meditating);
   updateMusic(dt);
   updateDay(dt);

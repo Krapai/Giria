@@ -96,7 +96,17 @@ canvas{display:block;touch-action:none}
   letter-spacing:.2em;color:var(--amber)}
 
 /* laikrodis — po pokalbių langu apačioje kairėje, ne viršuje centre */
-#timeBadge{position:absolute;left:12px;bottom:12px;
+/* v184: garsumo slankikliai — Nustatymų eilutėje šalia įjungimo mygtuko */
+.volRow{display:flex;align-items:center;gap:8px}
+.vol{-webkit-appearance:none;appearance:none;width:96px;height:4px;border-radius:3px;
+  background:linear-gradient(90deg,var(--amber),rgba(217,152,47,.25));outline:none;cursor:pointer}
+.vol::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+  background:var(--amber-lit);border:1px solid #0d1310;cursor:pointer}
+.vol::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--amber-lit);
+  border:1px solid #0d1310;cursor:pointer}
+/* v184: laikrodis — KAIRIAU žemėlapio (jis guli #mapWrap viduje, tad anksčiau
+   su left:12px sėdėdavo po pačiu žemėlapiu). */
+#timeBadge{position:absolute;right:96px;left:auto;bottom:12px;
   display:flex;align-items:center;gap:6px;padding:4px 9px 6px;border-radius:11px;
   white-space:nowrap;font-size:11px;pointer-events:auto;cursor:pointer;
   transition:border-color .2s,transform .1s}
@@ -574,8 +584,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
     <div class="row"><span id="sLang">Kalba</span><button class="tbtn" id="oLang" style="width:auto;height:26px;padding:0 12px;font-size:12px">Lietuviškai</button></div>
     <div class="row"><span id="sDevice">Įrenginys</span><button class="tbtn" id="oDevice" style="width:auto;height:26px;padding:0 12px;font-size:12px">🖥 Kompiuteris</button></div>
     <div class="row"><span id="sGraphics">Grafika</span><button class="tbtn" id="oQual" style="width:auto;height:26px;padding:0 12px;font-size:12px">Aukšta</button></div>
-    <div class="row"><span id="sMusic">Muzika</span><button class="tbtn" id="oMus" style="width:auto;height:26px;padding:0 12px;font-size:12px">Įjungta</button></div>
-    <div class="row"><span id="sSound">Garsai</span><button class="tbtn" id="oSnd" style="width:auto;height:26px;padding:0 12px;font-size:12px">Įjungti</button></div>
+    <div class="row"><span id="sMusic">Muzika</span><span class="volRow"><input id="oMusVol" class="vol" type="range" min="0" max="100" value="85"><button class="tbtn" id="oMus" style="width:auto;height:26px;padding:0 12px;font-size:12px">Įjungta</button></span></div>
+    <div class="row"><span id="sSound">Garsai</span><span class="volRow"><input id="oSndVol" class="vol" type="range" min="0" max="100" value="85"><button class="tbtn" id="oSnd" style="width:auto;height:26px;padding:0 12px;font-size:12px">Įjungti</button></span></div>
     <div class="row"><span id="sPlaying">Skamba</span><span id="oTrack">—</span></div>
     <div class="row"><span id="sTrackPick">Takelis</span><button class="tbtn" id="oTrackPick" style="width:auto;height:26px;padding:0 12px;font-size:12px">Automatinis</button></div>
     <div class="row"><span id="sMerchantDetail">Pirklio detalumas</span><button class="tbtn" id="oNpc" style="width:auto;height:26px;padding:0 12px;font-size:12px">—</button></div>
@@ -665,8 +675,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v183';
-const GAME_CHANGES='trys nauji takeliai (Aušra, Sutartinė, Skudučiai), Naktis be fleitos aido';
+const GAME_VERSION='v184';
+const GAME_CHANGES='garsumo slankikliai, burtų ir kumščių animacijos, sprintas išsijungia išsekus';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2796,13 +2806,19 @@ function updatePlayerWeaponVisual(){
    kuris rodomas ant manekeno galvos), nes .glb failo šiame pokalbyje neturėjau
    ir tikslių klipų vardų nežinau: klipas = gltf.animations[nr-1].
    JEI KADA PASIKEIS GLB (kita klipų tvarka) — čia vienintelė vieta taisyti. */
-const A_NO={dummyIdle:1, death:8, revive:17, wolfA:18, wolfB:19, atk3:23, chop:38, herb:5};
+/* v184: 18 ir 19 (geltoni) — kova BE GINKLO; iki tol jie čia gulėjo be naudos
+   (vardais wolfA/wolfB). */
+const A_NO={dummyIdle:1, death:8, revive:17, fistA:18, fistB:19, atk3:23, chop:38, herb:5};
 /* v135: vartotojo prašymu — TRYS klipai imami iš ANTRO paketo (UAL1_Standard_RM,
    žr. GLB_URL_UAL1), ne iš žaidėjo paties UAL2. Numeriai — kaip katalogo
    galvos žymėse (1-based). Kryžminis retargetinimas veikia, nes abu paketai
    turi TĄ PATĮ UE tipo skeleto vardyną (žr. v93/ISTORIJA.md) — Three.js
    AnimationMixer riša takelius PAGAL MAZGO VARDĄ, ne pagal kilmės failą. */
-const A_NO_UAL1={move:14, sprint:37, deathAlt:5, idle:10, swordStep:40};  // v147: idle = mėlyna nr10 (Idle_Loop); v155: nr40 = Sword_Attack
+/* v184: burtų klipai (mėlyni) — 33 Spell_Simple_Enter, 35 Spell_Simple_Idle_Loop
+   (kaupimas, kai burtas ilgas), 36 Spell_Simple_Shoot (paleidimas),
+   34 Spell_Simple_Exit (pabaiga). Trukmės iš paties failo: 0,53 · 2,10 · 0,50 · 0,43 s. */
+const A_NO_UAL1={move:14, sprint:37, deathAlt:5, idle:10, swordStep:40,
+                 spellIn:33, spellOut:34, spellLoop:35, spellShoot:36};  // v147: idle = mėlyna nr10 (Idle_Loop); v155: nr40 = Sword_Attack
 const WALK_CLIP_MPS=1.5;         // v97: kokiam greičiui (m/s) sukurtas UAL2 ėjimo klipas (atsarginis, kol UAL1 dar neįkeltas)
 /* v136: TIKRI, iš paties UAL1_Standard_RM.glb failo išmatuoti greičiai (žr.
    ISTORIJA.md v136) — šaknies kaulo („root") poslinkis per klipo trukmę:
@@ -2898,6 +2914,24 @@ function isMirroredTrack(tr){
      pasaulinė orientacija grąžinama per spine_01, tad ginklo mostas nepakinta
      NĖ 0,0° (žr. mirrorLegsClip pabaigą). */
   return b==='pelvis';
+}
+/* v184: KAIRĖ↔DEŠINĖ veidrodis (ne laiko atsukimas, kaip mirrorLegsClip).
+   Kiekvienas takelis pereina kitos pusės kaului (_l↔_r), o reikšmės atspindimos
+   per kūno X ašį. KURI kvaterniono dedamųjų pora keičia ženklą — IŠMATUOTA, ne
+   spėta: suveidrodintas bėgimo klipas (nr14) buvo palygintas su originalu, ir
+   per X gaunama 0,0000 m paklaida, per Y — 1,478 m, per Z — 4,915 m
+   (žr. ISTORIJA.md v184). Kaulų vardai abiejuose paketuose tie patys (v93). */
+function mirrorSideClip(clip,name){
+  const c=clip.clone(); c.name=name||(clip.name+'_SideMirror');
+  for(const tr of c.tracks){
+    const b=rootMotionNodeName(tr.name);
+    const kt=b.replace(/_(l|r)$/,(m,pus)=>pus==='l'?'_r':'_l');
+    if(kt!==b) tr.name=tr.name.replace(b,kt);
+    const v=tr.values;
+    if(/\.quaternion$/.test(tr.name)){ for(let i=0;i<v.length;i+=4){ v[i+1]=-v[i+1]; v[i+2]=-v[i+2]; } }
+    else if(/\.position$/.test(tr.name)){ for(let i=0;i<v.length;i+=3) v[i]=-v[i]; }
+  }
+  return c;
 }
 function mirrorLegsClip(clip,name){
   const c=clip.clone(); c.name=name||(clip.name+'_LegMirror');
@@ -3009,6 +3043,7 @@ function stripRootMotionXZ(clips){
   }
 }
 let playerGltfModel=null, playerGltfMixer=null, playerGltfActions={}, playerGltfCurrent=null;
+let fistFlip=false;     // v184: kova be ginklo — kas antra pora eina veidrodinė (kita ranka)
 const CATALOG_MIXERS=[], CATALOG_TAGS=[];    // v160: CATALOG_MIXERS = {mx,x,z}, žr. LOD frame() cikle
 let playerGltfSwingToggle=0;
 
@@ -3100,8 +3135,36 @@ const ARM_ASIDE={x:.25, z:.95, elX:0, elZ:-.40};
    personažo nesimato. Kad burtas turėtų matomą animaciją, jam reikia pozos
    ČIA. Kol kas padaryti du: „thunder" (Perkūno smūgis) ir „heal" (Gyvasties
    versmė). Kitiems — pridėti analogiškai. */
+/* v184: burtai grojami TIKRAIS klipais — 33 įėjimas, 35 kaupimas (tik jei
+   burtas ilgas), 36 paleidimas, 34 pabaiga. Procedūrinė poza (updateSpellPose)
+   lieka atsargai: jei mėlynas paketas neįsikeltų, viskas veikia kaip anksčiau. */
+function spellClipsReady(){ return !!(playerGltfActions.spellIn&&playerGltfActions.spellShoot); }
+function updateSpellClips(){
+  if(!playerGltfModel||!spellClipsReady()) return;
+  const A=player.act;
+  if(!(A&&A.d&&A.d.kind==='spell')){ player.spellStage=null; return; }
+  if(A.phase==='cast'){
+    if(!player.spellStage){
+      player.spellStage='in';
+      triggerPlayerClip(playerGltfActions.spellIn,1);
+    }else if(player.spellStage==='in'&&playerGltfActions.spellLoop&&
+             A.t>=(playerGltfActions.spellIn.getClip().duration||.5)){
+      player.spellStage='loop';
+      triggerPlayerClip(playerGltfActions.spellLoop,1,true);   // kaupimas sukasi, kol burtas kraunasi
+    }
+  }else if(player.spellStage!=='shoot'){
+    /* paleidimas: jei burtas buvo momentinis (nebuvo kaupimo) — pirma 33, tada 36 */
+    const uodega=[playerGltfActions.spellShoot,playerGltfActions.spellOut].filter(Boolean);
+    if(!player.spellStage){ triggerPlayerClip(playerGltfActions.spellIn,1); playerSwingChain=uodega; }
+    else { triggerPlayerClip(playerGltfActions.spellShoot,1);
+           playerSwingChain=[playerGltfActions.spellOut].filter(Boolean); }
+    playerSwingSpeed=1;
+    player.spellStage='shoot';
+  }
+}
 function updateSpellPose(){
   if(!playerGltfModel) return;
+  if(spellClipsReady()) return;      // v184: klipai perima — procedūrinė poza netrukdo
   const A=player.act;
   if(!(A&&A.d)) return;
   const k=A.d.k;
@@ -3833,7 +3896,7 @@ function resetWeaponSpin(){
 }
 /* v96: bendras vienkartinis klipas (kirtis, mirtis, prisikėlimas, kapojimas).
    __isSwing = "šito kadro cikle netrukdyti" — žr. updatePlayer. */
-function triggerPlayerClip(act,speed){
+function triggerPlayerClip(act,speed,loop){
   if(!playerGltfMixer||!act) return;
   /* v157: „PABAIGOJE ĮSIKELIA NAUJAS ŽMOGELIUKAS" — TRUMPAS MIRKTELĖJIMAS.
      Priežastis buvo ne klipas (patikrinta: nr40 pradžios ir pabaigos pozos
@@ -3854,7 +3917,9 @@ function triggerPlayerClip(act,speed){
      karto, tad suma niekada nenukrenta ir T poza nebeprasišviečia. */
   const prev=playerGltfCurrent;
   const smooth=prev&&prev!==act&&prev.getEffectiveWeight&&prev.getEffectiveWeight()>.99;
-  act.reset(); act.setLoop(THREE.LoopOnce,1); act.clampWhenFinished=true;
+  act.reset();
+  act.setLoop(loop?THREE.LoopRepeat:THREE.LoopOnce, loop?Infinity:1);   // v184: burtų kaupimas sukasi ratu
+  act.clampWhenFinished=!loop;
   act.timeScale=speed||1; act.__isSwing=true;
   if(smooth) act.fadeIn(.08); else act.setEffectiveWeight(1);
   act.play();
@@ -3897,8 +3962,20 @@ function triggerPlayerSwingClip(crit,interval){
   const rec=a=>a&&a.__rec;
   /* v155: ginklas gali turėti SAVO kirčio klipą (CATALOG įrašo swingClip).
      Tada jis naudojamas visiems kirčiams — ir paprastiems, ir kritiniams. */
-  const own=gear.ginklas&&gear.ginklas.swingClip;
-  if(own&&playerGltfActions[own]) seq=[[playerGltfActions[own],true]];
+  const own=gear.ginklas&&(gear.ginklas.swingSeq||gear.ginklas.swingClip);
+  /* v184: ginklas gali turėti ir KELIŲ klipų seką (swingSeq) — taip padaryta
+     „Kumštinė": 18 ir tas pats 18 veidrodinis, t. y. smūgis dešine, paskui kaire. */
+  if(Array.isArray(own)) seq=own.map(k=>[playerGltfActions[k],true]).filter(p=>p[0]);
+  else if(own&&playerGltfActions[own]) seq=[[playerGltfActions[own],true]];
+  /* v184: BE GINKLO — geltoni 18 ir 19, o kas antrą kartą tie patys veidrodiniai,
+     tad kirčiai eina dešine, dešine, kaire, kaire ir vėl iš pradžių. */
+  else if(!gear.ginklas&&playerGltfActions.fist1){
+    fistFlip=!fistFlip;
+    seq=fistFlip
+      ?[[playerGltfActions.fist1,true],[playerGltfActions.fist2,true]]
+      :[[playerGltfActions.fist1m||playerGltfActions.fist1,true],
+        [playerGltfActions.fist2m||playerGltfActions.fist2,true]];
+  }
   else if(crit) seq=[[playerGltfActions.crit,true],[rec(playerGltfActions.crit),false]];
   else{
     /* v158: kiekvienas variantas = kirtis + jo atsigavimas (v129: be _Rec
@@ -4022,6 +4099,15 @@ function triggerPlayerSwingClip(crit,interval){
     playerGltfActions.revive=mkActionNo(A_NO.revive);  // 17 — prisikėlimas
     playerGltfActions.chop =mkActionNo(A_NO.chop);     // 38 — medžio kapojimas
     playerGltfActions.herb =mkActionNo(A_NO.herb);     // v138: 5 (geltona) — žolių skynimas
+    /* v184: kova be ginklo — 18 ir 19, o jų veidrodiniai duoda tą patį smūgį
+       KITA ranka (žr. mirrorSideClip). */
+    playerGltfActions.fist1=mkActionNo(A_NO.fistA);
+    playerGltfActions.fist2=mkActionNo(A_NO.fistB);
+    const cF1=gltf.animations[A_NO.fistA-1], cF2=gltf.animations[A_NO.fistB-1];
+    if(cF1){ playerGltfActions.fist1m=playerGltfMixer.clipAction(mirrorSideClip(cF1,'Fist_A_Mirror'));
+             playerGltfActions.fist1m.setLoop(THREE.LoopRepeat); }
+    if(cF2){ playerGltfActions.fist2m=playerGltfMixer.clipAction(mirrorSideClip(cF2,'Fist_B_Mirror'));
+             playerGltfActions.fist2m.setLoop(THREE.LoopRepeat); }
     /* v103: atsigavimo klipai — po kirčio A eina A_Rec, po B — B_Rec.
        Vardas ieškomas pagal šabloną „<kirčio vardas>_Rec" (nejautru raidžių
        dydžiui), tad jei pakete jie vadinasi kitaip — pasakyk, pataisysiu. */
@@ -4125,6 +4211,15 @@ function triggerPlayerSwingClip(crit,interval){
         playerGltfActions.sprint.__mps=UAL1_SPRINT_MPS;  // v136: tikra klipo sparta
       }
       if(deathAltClip) playerGltfActions.deathAlt=playerGltfMixer.clipAction(deathAltClip);
+      /* v184: burtų klipai vietoj procedūrinės pozos (žr. updateSpellClips) */
+      for(const [raktas,no] of [['spellIn',A_NO_UAL1.spellIn],['spellOut',A_NO_UAL1.spellOut],
+                                ['spellLoop',A_NO_UAL1.spellLoop],['spellShoot',A_NO_UAL1.spellShoot]]){
+        const cl=ual1No(no); if(!cl) continue;
+        stripRootMotionXZ([cl]);
+        playerGltfActions[raktas]=playerGltfMixer.clipAction(cl);
+        playerGltfActions[raktas].setLoop(raktas==='spellLoop'?THREE.LoopRepeat:THREE.LoopOnce,
+                                         raktas==='spellLoop'?Infinity:1);
+      }
     },undefined,err=>console.warn('UAL1 žaidėjo klipai neįkelti',err));
 
     /* --- katalogas: po vieną modelį kiekvienai animacijai --- */
@@ -4992,6 +5087,11 @@ function updateCamera(dt){
 /* ---------- 9. Įvestis ---------- */
 const keys={};
 let sprintToggle=false, sprintHold=false, sprintOn=false;
+/* v184: išsekus ištvermei sprintas IŠSIJUNGIA ir neįsijungia, kol neatsigauna.
+   Anksčiau išsijungdavo tik mygtuko (sprintToggle) atveju — laikant Shift
+   sprintHold likdavo true, greitis kristi krisdavo, o bėgimo klipas likdavo,
+   ir žmogeliukas įstrigdavo ties vienu žingsniu. */
+let sprintLock=false;
 /* Kai rašoma į laukelį (el. paštas, vardas), klaviatūra NEVALDO žaidimo —
    kitaip „w" eitų pirmyn, skaičiai paleistų įgūdžius, o Tarpas išvis
    neįsirašytų (jį gaudo meditacija). */
@@ -5017,7 +5117,7 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyO') togglePanel('pSet',null);      // v105: nustatymai — nebeturi mygtuko juostoje
   if(e.code==='KeyT') nextPhase();
   if(e.code==='Space'){e.preventDefault&&e.preventDefault(); if(!hookFish()) toggleMeditate();}
-  if(e.code==='ShiftLeft'||e.code==='ShiftRight'){ sprintHold=true; sprintOn=true; }
+  if(e.code==='ShiftLeft'||e.code==='ShiftRight'){ if(!sprintLock){ sprintHold=true; sprintOn=true; } }
   if(e.code==='Escape') closePanels();
 });
 addEventListener('keyup',e=>{
@@ -5943,7 +6043,9 @@ function die(overkill){
 }
 
 /* ---------- 11. GARSAS: sintezatorius ir muzika ---------- */
-const SND={ctx:null,master:null,mus:null,fx:null,verb:null,sfxOn:true,musOn:true};
+/* v184: musVol/sfxVol — slankiklių valdomas garsumas (0..1). Muzika buvo per
+   tyli (0,50), dabar bazė 0,85; slankikliai Nustatymuose. */
+const SND={ctx:null,master:null,mus:null,fx:null,verb:null,sfxOn:true,musOn:true,musVol:.85,sfxVol:.85};
 
 function audioInit(){
   if(SND.ctx) return true;
@@ -5960,8 +6062,8 @@ function audioInit(){
     const conv=c.createConvolver(); conv.buffer=ir;
     SND.verb=c.createGain(); SND.verb.gain.value=.34;
     conv.connect(SND.verb); SND.verb.connect(SND.master); SND.conv=conv;
-    SND.mus=c.createGain(); SND.mus.gain.value=.5;
-    SND.fx =c.createGain(); SND.fx.gain.value=.85;
+    SND.mus=c.createGain(); SND.mus.gain.value=SND.musVol;
+    SND.fx =c.createGain(); SND.fx.gain.value=SND.sfxVol;
     SND.mus.connect(SND.master); SND.fx.connect(SND.master);
     const ms=c.createGain(); ms.gain.value=.55; SND.mus.connect(ms); ms.connect(conv);
     const fs=c.createGain(); fs.gain.value=.28; SND.fx.connect(fs); fs.connect(conv);
@@ -6087,7 +6189,7 @@ const MOTIF=[
    tad lauke — vienas takelis, o kaime ir mūšyje — savi. */
 const TRACKS={
   kaimas:{bpm:88,sc:DOR,oct:1,chords:[0,3,4,0],pad:.026,pluck:[1,1,0,1,1,0,1,0],
-         plkG:.095,mel:.7,melEvery:2,drum:.5,cut:3000,name:{lt:'Kaimavietė',en:'Village'}},
+         plkG:.095,mel:.7,melEvery:2,drum:.5,cut:3000,melSoft:true,name:{lt:'Kaimavietė',en:'Village'}},
   naktis:{bpm:72,sc:DOR,oct:1,chords:[0,5,3,4],pad:.034,pluck:[1,0,1,1,0,1,0,1],
          plkG:.085,mel:.55,melEvery:2,drum:0,cut:2400,
          swing:.055,vel:[1,.72,.88,1,.7,.92,.76,.86],shimmer:.012,fifth:2,
@@ -6096,7 +6198,7 @@ const TRACKS={
      akordai kyla 0→3→5→4, tad frazė visą laiką traukia į viršų. */
   ausra:{bpm:62,sc:DOR,oct:1,chords:[0,3,5,4],pad:.040,pluck:[1,0,0,1,0,1,0,0],
          plkG:.070,mel:.45,melEvery:2,drum:0,cut:2000,
-         vel:[1,.6,.6,.85,.6,.9,.6,.6],shimmer:.016,fifth:2,bell:{deg:[7,9,11],gain:.038},
+         vel:[1,.6,.6,.85,.6,.9,.6,.6],shimmer:.016,fifth:2,bell:{deg:[7,9,11],gain:.038},melSoft:true,
          name:{lt:'Aušra',en:'Dawn'}},
   /* v183: SUTARTINĖ — sava funkcija. Dvi giesmininkės gieda TĄ PAČIĄ frazę,
      antroji įstoja puse takto vėliau ir sekunda aukščiau; susidūrusios sekundos
@@ -6146,8 +6248,16 @@ function scheduleBar(tr,t){
     let off=0;
     for(const [d,len] of m){
       if(off>=4) break;
-      tone(t+off*beat, deg(tr.sc,root+d+7,tr.oct), len*beat*.85,
-        {type:'sine',gain:.055*tr.mel,a:.07,cut:2600,vib:5.2,vibAmt:3.4,bus:B});
+      /* v184: melSoft — vietoj aštrios fleitos minkštas, apvalus balsas
+         (trikampė banga, lėta ataka, žemas filtras, vos juntamas virpesys).
+         Naudoja Aušra ir Kaimavietė — vartotojui fleitos ten netiko. */
+      if(tr.melSoft)
+        tone(t+off*beat, deg(tr.sc,root+d+7,tr.oct), len*beat*.95,
+          {type:'triangle',gain:.050*tr.mel,a:len*beat*.35,cut:1300,cutEnd:700,
+           vib:3.0,vibAmt:1.5,bus:B});
+      else
+        tone(t+off*beat, deg(tr.sc,root+d+7,tr.oct), len*beat*.85,
+          {type:'sine',gain:.055*tr.mel,a:.07,cut:2600,vib:5.2,vibAmt:3.4,bus:B});
       off+=len;
     }
   }
@@ -6193,12 +6303,13 @@ function scheduleKova(tr,t){
   if(MUS.bar%2===1) tone(t+3.5*beat,66,.22,{type:'sine',gain:.11,glide:40,cut:400,bus:B});
   /* žemas dronas — įtampa be akordų vaikščiojimo */
   tone(t,deg(tr.sc,root,tr.oct-1),bar*.98,{type:'sawtooth',gain:.05,a:bar*.15,cut:300,bus:B});
-  /* rago šūksnis */
+  /* rago šūksnis — v184: OKTAVA ŽEMIAU (buvo tr.oct, vartotojui per aukštos
+     dūdos) ir su žemai nupjautu filtru, kad skambėtų kaip stumbro ragas */
   if(MUS.bar%2===0){
-    tone(t+beat*2,deg(tr.sc,root,tr.oct),beat*1.1,
-      {type:'sawtooth',gain:.075,a:.05,cut:1150,cutEnd:520,vib:4.4,vibAmt:2.6,bus:B});
-    tone(t+beat*3,deg(tr.sc,root+3,tr.oct),beat*.9,
-      {type:'sawtooth',gain:.062,a:.05,cut:1050,cutEnd:480,vib:4.4,vibAmt:2.6,bus:B});
+    tone(t+beat*2,deg(tr.sc,root,tr.oct-1),beat*1.25,
+      {type:'sawtooth',gain:.105,a:.06,cut:560,cutEnd:260,vib:3.4,vibAmt:1.8,bus:B});
+    tone(t+beat*3,deg(tr.sc,root+3,tr.oct-1),beat*1.0,
+      {type:'sawtooth',gain:.088,a:.06,cut:520,cutEnd:240,vib:3.4,vibAmt:1.8,bus:B});
   }
   MUS.bar++;
 }
@@ -6278,7 +6389,7 @@ function updateMusic(dt){
     MUS.fade=Math.max(0,MUS.fade-dt*1.1);
     if(MUS.fade<=0){ MUS.key=MUS.next; MUS.next=null; MUS.bar=0; MUS.nextT=now; }
   } else MUS.fade=Math.min(1,MUS.fade+dt*.7);
-  SND.mus.gain.setTargetAtTime(.5*MUS.fade,now,.12);
+  SND.mus.gain.setTargetAtTime(SND.musVol*MUS.fade,now,.12);
   const tr=TRACKS[MUS.key]||TRACKS.naktis;
   if(MUS.nextT<now+.05) MUS.nextT=now+.12;
   if(MUS.nextT-now<.6){
@@ -6313,6 +6424,21 @@ function toggleToolMenu(force){
 document.getElementById('bMenu').onclick=()=>toggleToolMenu();
 document.getElementById('mBag').onclick=()=>{toggleToolMenu(false);togglePanel('pBag',null);};
 document.getElementById('mCraft').onclick=()=>{toggleToolMenu(false);togglePanel('pCraft',null);drawCraft();};
+/* v184: garsumo slankikliai. Muzikos — per SND.musVol (jį naudoja updateMusic
+   kiekviename kadre), garsų — tiesiai į fx magistralę. */
+function bindVol(id,set){
+  const el=document.getElementById(id); if(!el) return;
+  const f=()=>{ const v=Math.max(0,Math.min(100,+el.value||0))/100; set(v); };
+  el.oninput=f; el.onchange=f;
+}
+bindVol('oMusVol',v=>{
+  SND.musVol=v;
+  if(SND.mus&&SND.ctx&&SND.musOn) SND.mus.gain.setTargetAtTime(v*MUS.fade,SND.ctx.currentTime,.08);
+});
+bindVol('oSndVol',v=>{
+  SND.sfxVol=v;
+  if(SND.fx&&SND.ctx) SND.fx.gain.setTargetAtTime(v,SND.ctx.currentTime,.08);
+});
 document.getElementById('mActive').onclick=()=>{toggleToolMenu(false);openSkillTab('active');};
 document.getElementById('mSpells').onclick=()=>{toggleToolMenu(false);openSkillTab('spells');};
 document.getElementById('mSet').onclick=()=>{toggleToolMenu(false);togglePanel('pSet',null);};
@@ -6875,7 +7001,7 @@ document.getElementById('oSnd').onclick=e=>{
 };
 document.getElementById('oMus').onclick=e=>{
   SND.musOn=!SND.musOn;
-  if(SND.mus&&SND.ctx) SND.mus.gain.setTargetAtTime(SND.musOn?.5:0,SND.ctx.currentTime,.1);
+  if(SND.mus&&SND.ctx) SND.mus.gain.setTargetAtTime(SND.musOn?SND.musVol:0,SND.ctx.currentTime,.1);
   e.target.textContent=SND.musOn?T('onA'):T('offA');
 };
 document.getElementById('oLang').onclick=()=>{ LANG=LANG==='lt'?'en':'lt'; applyStaticLang(); };
@@ -7016,6 +7142,14 @@ function buildCatalog(){
     swingClip:'stepAtk',debug:true,
     d:LANG==='en'?'Swings with the stepping attack (blue no.40) whose second half rewinds the legs back to the start. Marked debug:true so it does not count toward the 160-item set.'
       :'Kerta žingsnio ataka (mėlyna nr40), kurios antroje pusėje kojos atsukamos atgal iki pradžios. Pažymėtas debug:true, kad neįskaitytų į 160 daiktų rinkinį.'};
+  /* v184: KUMŠTINĖ — ginklas, kurio kirtis yra 18 + tas pats 18 veidrodinis
+     (dešinė, tada kairė). Naujas laukas swingSeq (kelių klipų seka), žr.
+     triggerPlayerSwingClip. Be modelio rankoje — kaunamasi kumščiais. */
+  CATALOG['irankis_kumstine']={id:'irankis_kumstine',n:LANG==='en'?'Knuckle wrap':'Kumštinė',i:'🥊',
+    slot:'ginklas',mat:'oda',type:'kumstine',b:{zala:2.4,atakosSparta:.18},tier:.75,c:'#7a5a3a',
+    swingSeq:['fist1','fist1m'],debug:true,
+    d:LANG==='en'?'Leather-wrapped knuckles: the strike is animation 18 and the same 18 mirrored — right hand, then left. Marked debug:true so it does not count toward the 160-item set.'
+      :'Oda apvyniotos kumščių apsaugos: kirtis — 18 animacija ir ta pati 18 veidrodinė, t. y. dešine, tada kaire. Pažymėta debug:true, kad neįskaitytų į 160 daiktų rinkinį.'};
   CATALOG['irankis_kirtiklis']={id:'irankis_kirtiklis',n:LANG==='en'?'Mining pick':'Kirtiklis',i:'⛏',
     slot:'ginklas',mat:'titnagas',type:'kirtiklis',b:{},tier:.45,c:'#9aa0a6',
     debug:true,
@@ -7516,6 +7650,7 @@ function drawFish(){
 document.getElementById('bCast').onclick=()=>toggleMeditate();
 const bSprintEl=document.getElementById('bSprint');
 bSprintEl.onclick=()=>{
+  if(sprintLock&&!sprintToggle){ log(T('staminaDepleted'),'lg-h'); return; }   // v184
   sprintToggle=!sprintToggle;
   sprintOn=sprintToggle||sprintHold;
   if(sprintToggle&&player.stam<=.5) log(T('staminaDepleted'),'lg-h');
@@ -8823,13 +8958,16 @@ function updatePlayer(dt){
     if(player.xpTick>=1){ player.xpTick=0; addXp(player.swimming?'plaukimas':'istverme',2); }
     player.stam=Math.max(0,player.stam-dt*17);
   }else{
-    if(sp>0&&sprintOn&&sprintToggle&&player.stam<=.5){
-      sprintToggle=false;                        // išsekus pats išsijungia
+    if(sprintOn&&player.stam<=.5){
+      sprintToggle=false; sprintHold=false; sprintOn=false;   // v184: ir laikant Shift
+      sprintLock=true;                                       // neįsijungs, kol neatsigaus
       log(T('sprintStaminaOut'),'lg-h');
     }
     if(!player.swimming&&!player.meditating)     // vandenyje neatsistato; medituojant savo tarifas
       player.stam=Math.min(player.maxStam,player.stam+dt*(11+D.kovosAtsigavimas));
   }
+  /* v184: atrakinam, kai ištvermės vėl yra iš ko bėgti (trečdalis atsargos) */
+  if(sprintLock&&player.stam>=player.maxStam*.34) sprintLock=false;
   if(player.shieldCd>0) player.shieldCd-=dt;
   else if(player.shield<player.maxShield)
     player.shield=Math.min(player.maxShield,player.shield+dt*Math.max(.3,player.maxShield*.16));
@@ -9342,6 +9480,7 @@ function frame(now){
   }
   if(playerGltfMixer) playerGltfMixer.update(dt);
   for(const A of ENEMY_GLB) A.mixer.update(dt);
+  updateSpellClips();            // v184: burtų klipai 33/35/36/34
   updateSpellPose();             // v140: buvo updateThunderCastPose — dabar ir „heal"
   updateMiningPose(dt);          // v138: kirtiklio poza — irgi PO mikserio
   /* v160: katalogo (v96/v127) manekenai liko svarbūs — vartotojo sprendimu jie
@@ -9426,7 +9565,7 @@ buildWarriors();
 bag.sliekas=10; bag.moneta=6;
 owned.push('gelezis_kalavijas','oda_liemene','mediena_skydas','bandymu_kalavijas',
   'gelezis_kirvis','irankis_kirtiklis',
-  'zingsnio_kalavijas');   // v142: kirvis ir kirtiklis; v155: žingsnio kalavijas
+  'zingsnio_kalavijas','irankis_kumstine');   // v142: kirvis ir kirtiklis; v155: žingsnio kalavijas; v184: kumštinė
 equipItem('gelezis_kalavijas');
 if(START_LEVEL>1) grantLevels(START_LEVEL);
 bindToolTaps();

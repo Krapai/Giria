@@ -625,8 +625,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v171';
-const GAME_CHANGES='dešinė ranka nebelenda į liemenį — apeina jį pirmyn';
+const GAME_VERSION='v172';
+const GAME_CHANGES='titnago garsas ir skeveldros — smūgio metu, ne mosto pradžioje';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -3585,6 +3585,15 @@ function poseMining(p,wIn,spin){
   /* PO stuburo/pečių IR po pastūmimo — IK skaito pasaulio matricas */
   poseGripLeftIK(w, spin?mineShaftLocal(w,_gripAx):null, spin?_gripFit:null);
 }
+/* v172: pats smūgio momentas — garsas ir skeveldros. Kviečiama iš
+   updateMiningPose, kai mostas pasiekia MINE_POSE.fallEnd, ir iš gather(),
+   jei mostas nutraukiamas nespėjus smūgiuoti. */
+function mineHit(m){
+  if(!m||m.hit) return;
+  m.hit=true;
+  burst(m.hx,m.hy,m.hz,12,m.hc,2.2);
+  sfx('chop');
+}
 /* Kviečiama kadre PO playerGltfMixer.update() — kaip ir Perkūno poza, kitaip
    mikseris perrašytų mūsų kaulus. player.mine nustatomas gather() metu. */
 /* v167: KASIMO SVORIS GYVENA ATSKIRAI NUO MOSTO. Iki v167 jis buvo
@@ -3612,7 +3621,9 @@ function updateMiningPose(dt){
     if(mineOn){ mineOn=false; resetWeaponSpin(); updatePlayerWeaponVisual(); }
     return;
   }
-  poseMining(player.mine?player.mine.t/player.mine.dur:1,mineW,true);
+  const pm=player.mine?player.mine.t/player.mine.dur:1;
+  if(player.mine&&!player.mine.hit&&pm>=MINE_POSE.fallEnd) mineHit(player.mine);
+  poseMining(pm,mineW,true);
   applyMineSpin(mineW);                          // v153: tas pats svoris kaip pozos
 }
 /* v153: kirtiklio orientacija kasimo metu. Rankų neliečia — tik paties modelio
@@ -8318,14 +8329,33 @@ function gather(n){
   gatherCd=Math.random()<D.tvirtos?0:Math.max(.25,(1.1-(D.meistryste-1)*.9)*(1-cdCut));
   player.obj.userData.swing=1;
   player.yaw=Math.atan2(n.pos.x-player.pos.x,n.pos.z-player.pos.z);
-  burst(n.pos.x,n.pos.y+.3,n.pos.z,12,n.kind.color,2.2);
+  /* v172: titnagui garsas ir dulkės nebe ČIA. Kirtiklio mostas smūgiuoja ties
+     MINE_POSE.fallEnd (0,53 mosto), o ne pradžioje — nuo v167, kai kritimas
+     tapo trumpas ir greitėjantis, tas skirtumas pasidarė matomas ir girdimas.
+     Kitiems darbams (medis, žolė) paliekama kaip buvo: jų klipai iš UAL2
+     paketo, kurio šiame kompiuteryje NĖRA, tad smūgio momento išmatuoti
+     negaliu ir spėti nenoriu (žr. ISTORIJA.md v172). */
+  const stone=n.kind.key==='akmuo';
+  if(!stone) burst(n.pos.x,n.pos.y+.3,n.pos.z,12,n.kind.color,2.2);
   /* v138: kiekvienas veiksmas turi savo animaciją ir kartojasi tol, kol
      šaltinis išsenka (žr. NODE_HITS). Medis — paketo klipas nr38; titnagas —
      sukurta kirtiklio poza (poseMining); žolės — geltona nr5. */
   if(n.kind.key==='mediena') triggerPlayerClip(playerGltfActions.chop,1);
-  else if(n.kind.key==='akmuo'){ player.mine={t:0,dur:Math.max(.6,gatherCd)}; updatePlayerWeaponVisual(); }
+  else if(stone){
+    /* jei ankstesnis mostas dar nespėjo smūgiuoti (labai greitas kasimas) —
+       paleisti jo garsą dabar, kad nė vienas kirtis neliktų tylus */
+    if(player.mine&&!player.mine.hit) mineHit(player.mine);
+    /* v172: mosto trukmė = kirčių tarpas. Su senuoju max(0,6; gatherCd)
+       greitai kasant (gatherCd 0,25…0,6) mostas būdavo ILGESNIS už tarpą, tad
+       kiekvienas kitas kirtis jį nutraukdavo viduryje: garsai ėjo savo dažniu,
+       o judesys niekada nepasiekdavo smūgio. Dabar 0,35 yra tik apatinė riba,
+       kad mostas nevirstų mirktelėjimu. */
+    player.mine={t:0,dur:Math.max(.35,gatherCd),hit:false,
+      hx:n.pos.x,hy:n.pos.y+.3,hz:n.pos.z,hc:n.kind.color};
+    updatePlayerWeaponVisual();
+  }
   else if(n.kind.key==='zole') triggerPlayerClip(playerGltfActions.herb,1);
-  sfx('chop');
+  if(!stone) sfx('chop');
   let qty=gatherMult(n.kind.key);
   if((n.kind.key==='mediena'||n.kind.key==='akmuo')&&Math.random()<(D.meistryste-1)) qty*=2;
   if(Math.random()<D.derlius) qty*=3;

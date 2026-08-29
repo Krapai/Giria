@@ -625,8 +625,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v170';
-const GAME_CHANGES='kertant dirba visas kūnas: klubai leidžiasi, keliai lenkiasi, pečiai';
+const GAME_VERSION='v171';
+const GAME_CHANGES='dešinė ranka nebelenda į liemenį — apeina jį pirmyn';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2949,7 +2949,8 @@ function cacheGltfBones(model){
     /* v170: dubuo ir kojos — kirtimo mostui (žr. poseMineBody). Dubens
        vietinė Z yra PASAULIO VERTIKALĖ (išmatuota: +0,10 → +0,10 y), o
        vietinė Y rodo ATGAL (+0,10 → −0,10 z). Žr. ir v137 pamoką. */
-    'pelvis','thigh_r','calf_r','foot_r','thigh_l','calf_l','foot_l'];
+    'pelvis','thigh_r','calf_r','foot_r','thigh_l','calf_l','foot_l',
+    'neck_01'];   // v171: liemens viršus — plaštakos atstumui skaičiuoti
   let found=0;
   for(const n of names){
     const b=model.getObjectByName(n);
@@ -3423,9 +3424,29 @@ function gripArmTo(ua,la,hl,l1,l2,L,w,poleWorld){
    riešo pataisa ≤26° (žmogaus riešas lenkiasi ~70°), koto linija per x
    −0,08…−0,02, kairės rankos siekio atsarga ≥0,086. */
 const MINE_CENTER=.12;
+/* v171: LIEMUO KAIP KLIŪTIS. Vartotojas: „dešinė ranka sulenda į kūną dėl
+   netinkamo rankos kampo, kairė nesulenda nes padaryta gerai" — ir buvo
+   teisus abiem atžvilgiais: kairę stato IK (ji visada ant koto), o dešinę
+   v169 paprasčiausiai pastūmiau 0,12 į šoną, tiesiai į liemenį.
+   IŠMATUOTA (liemens spinduliai — iš TINKLELIO, node glbmat.js): dubuo 0,151,
+   juosmuo 0,134, pilvas 0,163, krūtinė 0,204; plaštakos storis 0,102.
+   Su v170 laikysena dešinės RIEŠAS buvo 0,053 GILIAU liemens paviršiaus
+   (delnas dar +0,013 lauke) — blogiausiai ties p=0, kai ranka nuleista.
+   DABAR: pastūmus į vidurį taškas dar atstumiamas nuo artimiausios liemens
+   atkarpos, kol lieka MINE_CLEAR tarpas. Kryptis išeina savaime PIRMYN (ranka
+   apeina pilvą), o kur vietos užtenka — nekeičiama nieko. IŠMATUOTA po
+   pataisymo: riešas +0,020, delnas +0,086, kotas tebeeina per vidurį
+   (x −0,085…−0,015), ginklo kryptis nepakito (0,00°), kairės rankos siekio
+   atsarga 0,036 (buvo 0,086 — mažiau, nes įrankis pasitraukė pirmyn). */
+const MINE_TORSO=[['pelvis','spine_01',.151],['spine_01','spine_02',.134],
+                  ['spine_02','spine_03',.163],['spine_03','neck_01',.204]];
+const MINE_CLEAR=.02;   // kiek plaštakos centras turi likti nuo liemens paviršiaus
+const MINE_HAND_R=.05;  // pusė plaštakos storio (išmatuota 0,102)
 const _mc={p0:new THREE.Vector3(),q0:new THREE.Quaternion(),sh:new THREE.Vector3(),
   el:new THREE.Vector3(),dir:new THREE.Vector3(),pole:new THREE.Vector3(),
-  tgt:new THREE.Vector3(),qp:new THREE.Quaternion(),ql:new THREE.Quaternion()};
+  tgt:new THREE.Vector3(),qp:new THREE.Quaternion(),ql:new THREE.Quaternion(),
+  sa:new THREE.Vector3(),sb:new THREE.Vector3(),cp:new THREE.Vector3(),
+  out:new THREE.Vector3(),v:new THREE.Vector3()};
 function poseMineCenter(w){
   const ua=GLTF_BONES.upperarm_r, la=GLTF_BONES.lowerarm_r, hr=GLTF_BONES.hand_r;
   if(!ua||!la||!hr||!ua.parent||!hr.parent||!playerGltfModel||w<=0) return;
@@ -3442,6 +3463,26 @@ function poseMineCenter(w){
   /* taikinys: per MINE_CENTER modelio vietine +X (personažo kairėn = į vidurį) */
   m.tgt.set(1,0,0).applyQuaternion(playerGltfModel.quaternion)
        .multiplyScalar(MINE_CENTER).add(m.p0);
+  /* v171: jei taškas liemenyje — atstumti (kelios iteracijos, nes atstūmus
+     artimiausia atkarpa gali pasikeisti) */
+  for(let k=0;k<3;k++){
+    let bd=1e9;
+    for(const [an,bn,rad] of MINE_TORSO){
+      const A=GLTF_BONES[an], Bb=GLTF_BONES[bn];
+      if(!A||!Bb) continue;
+      m.sa.setFromMatrixPosition(A.matrixWorld);
+      m.sb.setFromMatrixPosition(Bb.matrixWorld).sub(m.sa);
+      const ll=m.sb.lengthSq(); if(ll<1e-8) continue;
+      const u=Math.max(0,Math.min(1,m.v.copy(m.tgt).sub(m.sa).dot(m.sb)/ll));
+      m.cp.copy(m.sa).addScaledVector(m.sb,u);
+      const d=m.tgt.distanceTo(m.cp)-rad-MINE_HAND_R;
+      if(d<bd){ bd=d; m.out.copy(m.cp); }
+    }
+    if(bd>=MINE_CLEAR) break;
+    m.v.copy(m.tgt).sub(m.out);
+    if(m.v.lengthSq()<1e-8) break;
+    m.tgt.addScaledVector(m.v.normalize(),MINE_CLEAR-bd);
+  }
   const l1=la.position.length(), l2=hr.position.length();
   g.sh.copy(m.sh); g.tgt.copy(m.tgt);
   gripArmTo(ua,la,hr,l1,l2,l1+l2,w,m.pole);

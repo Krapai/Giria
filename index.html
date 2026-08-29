@@ -675,8 +675,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v185';
-const GAME_CHANGES='fleita grąžinta, bruzgiantis padas išmestas, garsumas iki 200%, burtas nutraukia meditaciją';
+const GAME_VERSION='v186';
+const GAME_CHANGES='takelių garsumas suvienodintas, Kaimavietė kaip anksčiau, kumščių kirtis lėtesnis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -727,7 +727,7 @@ const I18N={
     pBag:'Krepšys', pGearBag:'Aprangos daiktai', gearHint:'Bakstelėk daiktą — pamatysi, ką jis duoda. 2× arba dešiniu pelės mygtuku — iškart užsidedi.',
     pFish:'Žvejyba', pSet:'Nustatymai',
     sLang:'Kalba', sGraphics:'Grafika', sMusic:'Muzika', sSound:'Garsai', sPlaying:'Skamba',
-    castStopsMeditation:'Burtas nutraukė meditaciją.',
+    castStopsMeditation:'Burtas nutraukė meditaciją.',
     sTrackPick:'Takelis', trackAuto:'Automatinis',
     sMerchantDetail:'Pirklio detalumas', sCloseDebug:'Uždarymo derinimas', sPanelSize:'Skydelio dydis',
     sEmptySlots:'Tušti įgūdžių slotai', sWindows:'Langų vietos ir dydžiai', sTimeOfDay:'Paros metas',
@@ -3044,7 +3044,9 @@ function stripRootMotionXZ(clips){
   }
 }
 let playerGltfModel=null, playerGltfMixer=null, playerGltfActions={}, playerGltfCurrent=null;
-let fistFlip=false;     // v184: kova be ginklo — kas antra pora eina veidrodinė (kita ranka)
+/* v186: kumščių kirtis — viena seka ir ginklui, ir plikoms rankoms */
+const FIST_SEQ=['fist1','fist1m'];
+const FIST_MIN=0.85;    // v186: trumpiausia visos poros trukmė sekundėmis (buvo per greita)
 const CATALOG_MIXERS=[], CATALOG_TAGS=[];    // v160: CATALOG_MIXERS = {mx,x,z}, žr. LOD frame() cikle
 let playerGltfSwingToggle=0;
 
@@ -3970,12 +3972,10 @@ function triggerPlayerSwingClip(crit,interval){
   else if(own&&playerGltfActions[own]) seq=[[playerGltfActions[own],true]];
   /* v184: BE GINKLO — geltoni 18 ir 19, o kas antrą kartą tie patys veidrodiniai,
      tad kirčiai eina dešine, dešine, kaire, kaire ir vėl iš pradžių. */
+  /* v186: BE GINKLO kertama TA PAČIA seka kaip su „Kumštine" — 18 dešine ir 18
+     veidrodinis kaire (vartotojo prašymu; v184 čia dar buvo 18/19 kaitaliojimas). */
   else if(!gear.ginklas&&playerGltfActions.fist1){
-    fistFlip=!fistFlip;
-    seq=fistFlip
-      ?[[playerGltfActions.fist1,true],[playerGltfActions.fist2,true]]
-      :[[playerGltfActions.fist1m||playerGltfActions.fist1,true],
-        [playerGltfActions.fist2m||playerGltfActions.fist2,true]];
+    seq=FIST_SEQ.map(k=>[playerGltfActions[k]||playerGltfActions.fist1,true]);
   }
   else if(crit) seq=[[playerGltfActions.crit,true],[rec(playerGltfActions.crit),false]];
   else{
@@ -3996,7 +3996,15 @@ function triggerPlayerSwingClip(crit,interval){
   seq=seq.filter(p=>p[0]);
   const act=seq[0][0];
   if(!act) return fallback;
-  const spd=swingSpeed();                              // v158: atakos sparta
+  let spd=swingSpeed();                                // v158: atakos sparta
+  /* v186: kumščių klipai trumpi, tad su atakos sparta jie sumirgėdavo (vartotojas:
+     „kumsčių atakos labai greitos"). Spartos apskritai neribojam — tik neleidžiam
+     VISAI porai trukti trumpiau nei FIST_MIN sekundės. */
+  const kumstis=a=>Object.keys(playerGltfActions).some(k=>/^fist/.test(k)&&playerGltfActions[k]===a);
+  if(seq.length&&seq.every(p=>kumstis(p[0]))){
+    const raw=seq.reduce((a,p)=>a+((p[0].getClip&&p[0].getClip().duration)||0),0);
+    if(raw>0&&raw/spd<FIST_MIN) spd=Math.max(.3,raw/FIST_MIN);
+  }
   playerSwingSpeed=spd;                                // ta pati ir grandinės tęsiniui
   triggerPlayerClip(act,spd);
   playerSwingChain=seq.slice(1).map(p=>p[0]);          // likusi grandinė
@@ -6196,31 +6204,36 @@ const MOTIF=[
    Senoji lėtoji „Naktis" ir „Vandenys" pašalinti (vartotojo sprendimas v182),
    tad lauke — vienas takelis, o kaime ir mūšyje — savi. */
 const TRACKS={
-  kaimas:{bpm:88,sc:DOR,oct:1,chords:[0,3,4,0],pad:0,drone:.075,pluck:[1,1,0,1,1,0,1,0],
-         plkG:.095,mel:.7,melEvery:2,drum:.5,cut:3000,name:{lt:'Kaimavietė',en:'Village'}},
-  naktis:{bpm:72,sc:DOR,oct:1,chords:[0,5,3,4],pad:.034,pluck:[1,0,1,1,0,1,0,1],
+  /* v186: viskas kaip iki v184, TIK pad:0 — pjūklinis klodas išjungtas. v185
+     sustiprintas dronas (0,075) grąžintas į įprastą 0,055: vartotojas prašė
+     nieko nepridėti, o tik išimti pjūklą. */
+  kaimas:{bpm:88,sc:DOR,oct:1,chords:[0,3,4,0],pad:0,pluck:[1,1,0,1,1,0,1,0],
+         plkG:.095,mel:.7,melEvery:2,drum:.5,cut:3000,vol:1,name:{lt:'Kaimavietė',en:'Village'}},
+  /* v186: pjūklinis padas patildytas 0,034 → 0,010 (vartotojo prašymu — visai
+     neišimtas, tik nebeužgožia) */
+  naktis:{bpm:72,sc:DOR,oct:1,chords:[0,5,3,4],pad:.010,pluck:[1,0,1,1,0,1,0,1],
          plkG:.085,mel:.55,melEvery:2,drum:0,cut:2400,
          swing:.055,vel:[1,.72,.88,1,.7,.92,.76,.86],shimmer:.012,fifth:2,
-         name:{lt:'Naktis',en:'Night'}},   /* v183: fleitos aidas išimtas — netiko */
+         vol:1.04,name:{lt:'Naktis',en:'Night'}},   /* v183: fleitos aidas išimtas — netiko */
   /* v183: AUŠRA — šviesėjimas. Reti, aukšti varpeliai (bell) ir lėtas padas;
      akordai kyla 0→3→5→4, tad frazė visą laiką traukia į viršų. */
-  ausra:{bpm:62,sc:DOR,oct:1,chords:[0,3,5,4],pad:0,drone:.070,pluck:[1,0,0,1,0,1,0,0],
+  ausra:{bpm:62,sc:DOR,oct:1,chords:[0,3,5,4],pad:0,pluck:[1,0,0,1,0,1,0,0],
          plkG:.070,mel:.45,melEvery:2,drum:0,cut:2000,
          vel:[1,.6,.6,.85,.6,.9,.6,.6],shimmer:.016,fifth:2,bell:{deg:[7,9,11],gain:.038},
-         name:{lt:'Aušra',en:'Dawn'}},
+         vol:1.17,name:{lt:'Aušra',en:'Dawn'}},
   /* v183: SUTARTINĖ — sava funkcija. Dvi giesmininkės gieda TĄ PAČIĄ frazę,
      antroji įstoja puse takto vėliau ir sekunda aukščiau; susidūrusios sekundos
      ir yra visas šitos muzikos garsas. */
   sutartine:{bpm:96,sc:DOR,oct:1,chords:[0,0,4,4],cut:2200,own:'sutartine',
-         name:{lt:'Sutartinė',en:'Sutartinė round song'}},
+         vol:1.2,name:{lt:'Sutartinė',en:'Sutartinė round song'}},
   /* v183: SKUDUČIAI — irgi sava funkcija. Hoketas: kiekvienas dūdelė turi vieną
      natą, tad melodija šokinėja tarp registrų, o po ja eina dronas ir barškis. */
   skuduciai:{bpm:104,sc:DOR,oct:1,chords:[0,4,5,4],cut:2600,own:'skuduciai',
-         name:{lt:'Skudučiai',en:'Panpipes'}},
+         vol:1.85,name:{lt:'Skudučiai',en:'Panpipes'}},
   /* barškučių raštas šešioliktinėmis: 1 — akcentas, .5 — tylus, 0 — pauzė */
   kova:{bpm:116,sc:AEOL,oct:1,chords:[0,0,5,4],cut:2000,own:'kova',
         rattle:[1,0,.5,1,0,.5,1,0,1,0,.5,0,1,.5,1,.5],
-        name:{lt:'Kova',en:'Battle'}}
+        vol:1.49,name:{lt:'Kova',en:'Battle'}}
 };
 const TRACK_KEYS=Object.keys(TRACKS);
 const MUS={key:'naktis',next:null,bar:0,nextT:0,fade:1,phrase:0,override:null};
@@ -6394,8 +6407,11 @@ function updateMusic(dt){
     MUS.fade=Math.max(0,MUS.fade-dt*1.1);
     if(MUS.fade<=0){ MUS.key=MUS.next; MUS.next=null; MUS.bar=0; MUS.nextT=now; }
   } else MUS.fade=Math.min(1,MUS.fade+dt*.7);
-  SND.mus.gain.setTargetAtTime(SND.musVol*MUS.fade,now,.12);
   const tr=TRACKS[MUS.key]||TRACKS.naktis;
+  /* v186: kiekvienas takelis turi savo vol — kitaip vieni skamba tyliau už kitus.
+     Reikšmės ne iš akies: išmatuota energija sekundei su dažnio svoriu (žemos
+     natos girdisi tyliau nei vidutinės), žr. ISTORIJA.md v186. */
+  SND.mus.gain.setTargetAtTime(SND.musVol*MUS.fade*(tr.vol||1),now,.12);
   if(MUS.nextT<now+.05) MUS.nextT=now+.12;
   if(MUS.nextT-now<.6){
     musicBar(MUS.key,MUS.nextT);
@@ -7153,7 +7169,7 @@ function buildCatalog(){
      triggerPlayerSwingClip. Be modelio rankoje — kaunamasi kumščiais. */
   CATALOG['irankis_kumstine']={id:'irankis_kumstine',n:LANG==='en'?'Knuckle wrap':'Kumštinė',i:'🥊',
     slot:'ginklas',mat:'oda',type:'kumstine',b:{zala:2.4,atakosSparta:.18},tier:.75,c:'#7a5a3a',
-    swingSeq:['fist1','fist1m'],debug:true,
+    swingSeq:FIST_SEQ,debug:true,
     d:LANG==='en'?'Leather-wrapped knuckles: the strike is animation 18 and the same 18 mirrored — right hand, then left. Marked debug:true so it does not count toward the 160-item set.'
       :'Oda apvyniotos kumščių apsaugos: kirtis — 18 animacija ir ta pati 18 veidrodinė, t. y. dešine, tada kaire. Pažymėta debug:true, kad neįskaitytų į 160 daiktų rinkinį.'};
   CATALOG['irankis_kirtiklis']={id:'irankis_kirtiklis',n:LANG==='en'?'Mining pick':'Kirtiklis',i:'⛏',

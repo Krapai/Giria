@@ -625,8 +625,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v172';
-const GAME_CHANGES='titnago garsas ir skeveldros — smūgio metu, ne mosto pradžioje';
+const GAME_VERSION='v173';
+const GAME_CHANGES='alkūnės nebelenda į liemenį — abi rankos pagal tą pačią taisyklę';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -3423,7 +3423,10 @@ function gripArmTo(ua,la,hl,l1,l2,L,w,poleWorld){
    IŠMATUOTA po pakeitimo per 11 mosto taškų: ginklo krypties klaida 0,00°,
    riešo pataisa ≤26° (žmogaus riešas lenkiasi ~70°), koto linija per x
    −0,08…−0,02, kairės rankos siekio atsarga ≥0,086. */
-const MINE_CENTER=.12;
+/* v173: 0,12 → 0,10. Su 0,12 dešinės alkūnė net ir pasukta likdavo −0,049,
+   o su 0,10 — −0,027, t. y. beveik kaip kairės (−0,010). Kotas vis tiek eina
+   per vidurį (išmatuota x −0,105…−0,035; kūno pusplotis ~0,15). */
+const MINE_CENTER=.10;
 /* v171: LIEMUO KAIP KLIŪTIS. Vartotojas: „dešinė ranka sulenda į kūną dėl
    netinkamo rankos kampo, kairė nesulenda nes padaryta gerai" — ir buvo
    teisus abiem atžvilgiais: kairę stato IK (ji visada ant koto), o dešinę
@@ -3442,6 +3445,67 @@ const MINE_TORSO=[['pelvis','spine_01',.151],['spine_01','spine_02',.134],
                   ['spine_02','spine_03',.163],['spine_03','neck_01',.204]];
 const MINE_CLEAR=.02;   // kiek plaštakos centras turi likti nuo liemens paviršiaus
 const MINE_HAND_R=.05;  // pusė plaštakos storio (išmatuota 0,102)
+const MINE_ELBOW_R=.073;// dilbio spindulys — IŠMATUOTA iš tinklelio (111 viršūnių)
+/* v173: ALKŪNĖ. Vartotojas: „dešinė ranka vis dar sulenda į kūną, palygink su
+   kaire" — ir palyginimas viską pasakė. IŠMATUOTA (tas pats modelis abiem):
+   be v169 pastūmimo dešinės alkūnė buvo −0,024 nuo liemens, kairės −0,018,
+   t. y. vienodai; po pastūmimo dešinė nukrito iki −0,123, nes pastūmus PLAŠTAKĄ
+   į vidurį kartu nukeliauja ir alkūnė. v171 atstūmimas gelbėjo tik plaštaką.
+   TAISYMAS: alkūnė sukama apie peties→taikinio ašį — tai vienintelis rankos
+   laisvės laipsnis, kuris NEJUDINA plaštakos (o plaštaka laiko kotą, tad jos
+   judinti negalima). Ieškoma kampo, kuriame alkūnė atsitraukia bent per
+   MINE_CLEAR. Tas pats taikoma IR kairei — vartotojo pastaba „palygink su
+   kaire" reiškia, kad abi rankos turi elgtis pagal tą pačią taisyklę.
+   IŠMATUOTA po pataisymo (su MINE_CENTER 0,10): dešinės alkūnė −0,027,
+   kairės −0,010 (buvo −0,123 ir −0,018), plaštakos +0,020 ir +0,165. */
+const _ep={ax:new THREE.Vector3(),pl:new THREE.Vector3(),out:new THREE.Vector3(),
+  kn:new THREE.Vector3(),n:new THREE.Vector3(),perp:new THREE.Vector3(),
+  sa:new THREE.Vector3(),sb:new THREE.Vector3(),cp:new THREE.Vector3(),
+  v:new THREE.Vector3(),q:new THREE.Quaternion()};
+function mineElbowClear(kn){
+  const e=_ep; let w=9;
+  for(const [an,bn,rad] of MINE_TORSO){
+    const A=GLTF_BONES[an], Bb=GLTF_BONES[bn]; if(!A||!Bb) continue;
+    e.sa.setFromMatrixPosition(A.matrixWorld);
+    e.sb.setFromMatrixPosition(Bb.matrixWorld).sub(e.sa);
+    const ll=e.sb.lengthSq(); if(ll<1e-8) continue;
+    const u=Math.max(0,Math.min(1,e.v.copy(kn).sub(e.sa).dot(e.sb)/ll));
+    e.cp.copy(e.sa).addScaledVector(e.sb,u);
+    w=Math.min(w,kn.distanceTo(e.cp)-rad-MINE_ELBOW_R);
+  }
+  return w;
+}
+/* Parenka alkūnės plokštumą (pole) taip, kad alkūnė neliktų liemenyje.
+   sh — petys, tgt — kur eis plaštaka, l1/l2 — kaulų ilgiai, pole — pageidaujama
+   plokštuma. Grąžina _ep.out. Plaštakos padėtis NESIKEIČIA. */
+function mineElbowPole(sh,tgt,l1,l2,pole){
+  const e=_ep;
+  e.ax.copy(tgt).sub(sh);
+  const dl=e.ax.length(); if(dl<1e-4){ return e.out.copy(pole); }
+  e.ax.divideScalar(dl);
+  const d=Math.max(Math.abs(l1-l2)+1e-3,Math.min(l1+l2-1e-3,dl));
+  const cs=(l1*l1+d*d-l2*l2)/(2*l1*d), a=Math.acos(Math.max(-1,Math.min(1,cs)));
+  const ca=Math.cos(a)*l1, sa=Math.sin(a)*l1;
+  const score=pl=>{
+    e.n.copy(e.ax).cross(pl);
+    if(e.n.lengthSq()<1e-8) return -9;
+    e.n.normalize(); e.perp.copy(e.n).cross(e.ax).normalize();
+    e.kn.copy(sh).addScaledVector(e.ax,ca).addScaledVector(e.perp,sa);
+    return mineElbowClear(e.kn);
+  };
+  let best=score(pole); e.out.copy(pole);
+  if(best>=MINE_CLEAR) return e.out;
+  for(const sgn of [-1,1]){
+    for(let deg=10;deg<=60;deg+=10){
+      e.q.setFromAxisAngle(e.ax,sgn*deg*Math.PI/180);
+      e.pl.copy(pole).applyQuaternion(e.q);
+      const s=score(e.pl);
+      if(s>best){ best=s; e.out.copy(e.pl); }
+    }
+    if(best>=MINE_CLEAR) break;
+  }
+  return e.out;
+}
 const _mc={p0:new THREE.Vector3(),q0:new THREE.Quaternion(),sh:new THREE.Vector3(),
   el:new THREE.Vector3(),dir:new THREE.Vector3(),pole:new THREE.Vector3(),
   tgt:new THREE.Vector3(),qp:new THREE.Quaternion(),ql:new THREE.Quaternion(),
@@ -3485,7 +3549,7 @@ function poseMineCenter(w){
   }
   const l1=la.position.length(), l2=hr.position.length();
   g.sh.copy(m.sh); g.tgt.copy(m.tgt);
-  gripArmTo(ua,la,hr,l1,l2,l1+l2,w,m.pole);
+  gripArmTo(ua,la,hr,l1,l2,l1+l2,w,mineElbowPole(m.sh,m.tgt,l1,l2,m.pole));
   /* riešas: ginklo orientacija pasaulyje lieka TA PATI, kaip be pastūmimo */
   la.updateMatrixWorld(true);
   hr.parent.getWorldQuaternion(m.qp);
@@ -3536,14 +3600,20 @@ function poseGripLeftIK(w,axisLocal,fitPos){
      kad ant koto atsidurtų DELNO CENTRAS. Nieko nespėjama: poslinkis imamas
      iš išmatuoto GRIP_PALM_L ir dabartinio kvaterniono. Patikrinta per 101
      tašką — delno nuokrypis nuo koto ≤0,002 (buvo 0,072). */
+  /* v173: kairė alkūnė — pagal tą pačią taisyklę kaip dešinė (žr.
+     mineElbowPole). Be kasimo (Ugnies pūga) lieka senas GRIP_POLE. */
+  g.pole.copy(GRIP_POLE).applyQuaternion(playerGltfModel.quaternion).normalize();
   g.tgt.copy(g.ring);
-  if(!gripArmTo(ua,la,hl,l1,l2,L,1)) return;
+  if(!gripArmTo(ua,la,hl,l1,l2,L,1,
+      axisLocal?mineElbowPole(g.sh,g.tgt,l1,l2,g.pole):null)) return;
   la.updateMatrixWorld(true);
   hl.getWorldQuaternion(g.qh);
   g.tgt.copy(g.ring).sub(g.v.copy(GRIP_PALM_L).applyQuaternion(g.qh));
   ua.quaternion.copy(g.saveUA); la.quaternion.copy(g.saveLA);
   ua.updateMatrixWorld(true);
-  gripArmTo(ua,la,hl,l1,l2,L,w);
+  g.pole.copy(GRIP_POLE).applyQuaternion(playerGltfModel.quaternion).normalize();
+  gripArmTo(ua,la,hl,l1,l2,L,w,
+    axisLocal?mineElbowPole(g.sh,g.tgt,l1,l2,g.pole):null);
 }
 /* wIn — svoris iš išorės (kasimas jį veda pats, žr. updateMiningPose); be jo
    skaičiuojamas senuoju būdu (taip kviečia Ugnies pūga). spin — ar plaštakoje

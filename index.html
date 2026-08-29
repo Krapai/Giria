@@ -665,8 +665,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v181';
-const GAME_CHANGES='gamybos receptai (kalvystė, odininkystė, dailidė) ir ryškėjančios pagrindinių savybių briaunos';
+const GAME_VERSION='v182';
+const GAME_CHANGES='muzika: Giria tapo Naktimi ir pagerinta, Kova perdaryta (liko tik barškučiai)';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -6080,20 +6080,25 @@ const MOTIF=[
   [[0,1],[1,1],[2,2],[4,2],[2,2]],
   [[2,2],[4,1],[5,1],[4,2],[2,2]]
 ];
+/* v182: trys takeliai. „Naktis" — buvusi „Giria": tas pats charakteris, tik
+   lėtesnė puse takto, platesnis padas, lengvas svingas, kvėpuojantys kanklių
+   akcentai (vel), fleitos aidas ir kas antrame takte žemai atsiliepianti kvinta.
+   Senoji lėtoji „Naktis" ir „Vandenys" pašalinti (vartotojo sprendimas v182),
+   tad lauke — vienas takelis, o kaime ir mūšyje — savi. */
 const TRACKS={
-  giria:{bpm:74,sc:DOR,oct:1,chords:[0,5,3,4],pad:.030,pluck:[1,0,1,1,0,1,0,1],
-         plkG:.085,mel:.55,melEvery:2,drum:0,cut:2600,name:{lt:'Giria',en:'Forest'}},
   kaimas:{bpm:88,sc:DOR,oct:1,chords:[0,3,4,0],pad:.026,pluck:[1,1,0,1,1,0,1,0],
          plkG:.095,mel:.7,melEvery:2,drum:.5,cut:3000,name:{lt:'Kaimavietė',en:'Village'}},
-  naktis:{bpm:56,sc:AEOL,oct:1,chords:[0,6,5,0],pad:.045,pluck:[1,0,0,0,1,0,0,0],
-         plkG:.06,mel:.35,melEvery:4,drum:0,cut:1500,name:{lt:'Naktis',en:'Night'}},
-  vanduo:{bpm:64,sc:DOR,oct:1,chords:[0,4,5,3],pad:.034,pluck:[1,0,0,1,0,0,1,0],
-         plkG:.07,mel:.6,melEvery:2,drum:0,cut:2200,name:{lt:'Vandenys',en:'Waters'}},
-  kova:{bpm:112,sc:AEOL,oct:1,chords:[0,0,5,4],pad:.030,pluck:[1,1,1,0,1,1,0,1],
-         plkG:.075,mel:.3,melEvery:4,drum:1,cut:2400,name:{lt:'Kova',en:'Battle'}}
+  naktis:{bpm:72,sc:DOR,oct:1,chords:[0,5,3,4],pad:.034,pluck:[1,0,1,1,0,1,0,1],
+         plkG:.085,mel:.55,melEvery:2,drum:0,cut:2400,
+         swing:.055,vel:[1,.72,.88,1,.7,.92,.76,.86],echo:{d:.75,g:.42},shimmer:.012,fifth:2,
+         name:{lt:'Naktis',en:'Night'}},
+  /* barškučių raštas šešioliktinėmis: 1 — akcentas, .5 — tylus, 0 — pauzė */
+  kova:{bpm:116,sc:AEOL,oct:1,chords:[0,0,5,4],cut:2000,own:true,
+        rattle:[1,0,.5,1,0,.5,1,0,1,0,.5,0,1,.5,1,.5],
+        name:{lt:'Kova',en:'Battle'}}
 };
 const TRACK_KEYS=Object.keys(TRACKS);
-const MUS={key:'giria',next:null,bar:0,nextT:0,fade:1,phrase:0,override:null};
+const MUS={key:'naktis',next:null,bar:0,nextT:0,fade:1,phrase:0,override:null};
 
 function scheduleBar(tr,t){
   const beat=60/tr.bpm, bar=beat*4;
@@ -6102,14 +6107,23 @@ function scheduleBar(tr,t){
   /* padas */
   for(const d of [0,2,4]) tone(t,deg(tr.sc,root+d,tr.oct-1),bar*.95,
     {type:'sawtooth',gain:tr.pad,a:bar*.28,cut:tr.cut*.32,bus:B});
+  /* v182: tylus aukštas atspindys — padui daugiau oro */
+  if(tr.shimmer) tone(t+beat*.5,deg(tr.sc,root+4,tr.oct+1),bar*.7,
+    {type:'sine',gain:tr.shimmer,a:bar*.35,cut:5200,bus:B});
   /* žemas dronas */
   tone(t,deg(tr.sc,root,tr.oct-1),bar*.98,{type:'sine',gain:.055,a:bar*.2,cut:340,bus:B});
+  /* v182: kas antrame takte bosas pajuda į kvintą — kitaip apačia stovi vietoje */
+  if(tr.fifth&&MUS.bar%tr.fifth===1)
+    tone(t+bar*.5,deg(tr.sc,root+4,tr.oct-1),bar*.45,{type:'sine',gain:.042,a:.12,cut:300,bus:B});
   /* kanklių arpedžas */
   const steps=[0,2,4,2,4,6,4,2];
   for(let i=0;i<8;i++){
     if(!tr.pluck[i]) continue;
-    tone(t+i*beat/2, deg(tr.sc,root+steps[i],tr.oct), .85,
-      {type:'triangle',gain:tr.plkG,cut:tr.cut,cutEnd:600,bus:B});
+    /* v182: svingas ir skirtingas stiprumas — kanklės nustoja skambėti kaip metronomas */
+    const sw=(tr.swing&&i%2===1)?tr.swing*beat:0;
+    const v=tr.vel?tr.vel[i]:1;
+    tone(t+i*beat/2+sw, deg(tr.sc,root+steps[i],tr.oct), .85,
+      {type:'triangle',gain:tr.plkG*v,cut:tr.cut,cutEnd:600,bus:B});
   }
   /* fleitos frazė */
   if(tr.mel&&MUS.bar%tr.melEvery===0){
@@ -6117,8 +6131,12 @@ function scheduleBar(tr,t){
     let off=0;
     for(const [d,len] of m){
       if(off>=4) break;
-      tone(t+off*beat, deg(tr.sc,root+d+7,tr.oct), len*beat*.85,
+      const f=deg(tr.sc,root+d+7,tr.oct);
+      tone(t+off*beat, f, len*beat*.85,
         {type:'sine',gain:.055*tr.mel,a:.07,cut:2600,vib:5.2,vibAmt:3.4,bus:B});
+      /* v182: tylus aidas — fleita nebeatrodo grojanti tuščiame kambaryje */
+      if(tr.echo) tone(t+(off+tr.echo.d)*beat, f, len*beat*.6,
+        {type:'sine',gain:.055*tr.mel*tr.echo.g,a:.09,cut:1700,bus:B});
       off+=len;
     }
   }
@@ -6132,15 +6150,51 @@ function scheduleBar(tr,t){
   }
   MUS.bar++;
 }
+/* v182: KOVA perdaryta iš pagrindų (vartotojo prašymu). Iš senojo takelio liko
+   TIK barškučiai — kanklių arpedžas, fleita ir padas iš čia išimti visiškai.
+   Vietoj jų: odinis būgnas, žemas gaudžiantis dronas ir rago šūksnis kas antrą
+   taktą. Todėl kova turi savo grojimo funkciją, o ne bendrą scheduleBar. */
+function scheduleKova(tr,t){
+  const beat=60/tr.bpm, bar=beat*4, six=beat/4, B=SND.mus;
+  const root=tr.chords[MUS.bar%tr.chords.length];
+  /* barškučiai — vienintelis dalykas, likęs iš senojo takelio */
+  for(let i=0;i<16;i++){
+    const a=tr.rattle[i]; if(!a) continue;
+    noiseHit(t+i*six+(i%2?.008:0), a>=1?.055:.035,
+      {cut:a>=1?7600:9200,hp:true,gain:a>=1?.052:.026,shape:2.4,bus:B});
+  }
+  /* kas ketvirtame takte — barškučių pabėrimas į pabaigą */
+  if(MUS.bar%4===3) for(let i=0;i<4;i++)
+    noiseHit(t+bar-six*(4-i),.03,{cut:9500,hp:true,gain:.018+i*.009,shape:2.6,bus:B});
+  /* odinis būgnas */
+  for(const b of [0,1.5,2.5]){
+    tone(t+b*beat,74,.30,{type:'sine',gain:.15,glide:44,cut:420,bus:B});
+    noiseHit(t+b*beat,.05,{cut:1100,gain:.045,shape:2.2,bus:B});
+  }
+  if(MUS.bar%2===1) tone(t+3.5*beat,66,.22,{type:'sine',gain:.11,glide:40,cut:400,bus:B});
+  /* žemas dronas — įtampa be akordų vaikščiojimo */
+  tone(t,deg(tr.sc,root,tr.oct-1),bar*.98,{type:'sawtooth',gain:.05,a:bar*.15,cut:300,bus:B});
+  /* rago šūksnis */
+  if(MUS.bar%2===0){
+    tone(t+beat*2,deg(tr.sc,root,tr.oct),beat*1.1,
+      {type:'sawtooth',gain:.075,a:.05,cut:1150,cutEnd:520,vib:4.4,vibAmt:2.6,bus:B});
+    tone(t+beat*3,deg(tr.sc,root+3,tr.oct),beat*.9,
+      {type:'sawtooth',gain:.062,a:.05,cut:1050,cutEnd:480,vib:4.4,vibAmt:2.6,bus:B});
+  }
+  MUS.bar++;
+}
+/* kuris takelis kaip grojamas — vienoje vietoje, kad updateMusic nežinotų vardų */
+function musicBar(key,t){
+  const tr=TRACKS[key]||TRACKS.naktis;
+  if(tr.own) scheduleKova(tr,t); else scheduleBar(tr,t);
+}
 function pickTrack(){
   if(player.dead) return 'naktis';
   if(player.targetId!==null) return 'kova';
   for(const e of enemies) if(!e.dead&&e.state==='chase'&&
     Math.hypot(e.pos.x-player.pos.x,e.pos.z-player.pos.z)<15) return 'kova';
-  if(player.fish) return 'vanduo';
   if(Math.hypot(player.pos.x,player.pos.z)<14) return 'kaimas';
-  if(isNight()) return 'naktis';
-  return 'giria';
+  return 'naktis';        // v182: lauke — vienas takelis, ir dieną, ir naktį
 }
 function updateMusic(dt){
   if(!SND.ctx||!SND.musOn) return;
@@ -6152,10 +6206,10 @@ function updateMusic(dt){
     if(MUS.fade<=0){ MUS.key=MUS.next; MUS.next=null; MUS.bar=0; MUS.nextT=now; }
   } else MUS.fade=Math.min(1,MUS.fade+dt*.7);
   SND.mus.gain.setTargetAtTime(.5*MUS.fade,now,.12);
-  const tr=TRACKS[MUS.key];
+  const tr=TRACKS[MUS.key]||TRACKS.naktis;
   if(MUS.nextT<now+.05) MUS.nextT=now+.12;
   if(MUS.nextT-now<.6){
-    scheduleBar(tr,MUS.nextT);
+    musicBar(MUS.key,MUS.nextT);
     MUS.nextT+=(60/tr.bpm)*4;
   }
 }

@@ -584,8 +584,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
     <div class="row"><span id="sLang">Kalba</span><button class="tbtn" id="oLang" style="width:auto;height:26px;padding:0 12px;font-size:12px">Lietuviškai</button></div>
     <div class="row"><span id="sDevice">Įrenginys</span><button class="tbtn" id="oDevice" style="width:auto;height:26px;padding:0 12px;font-size:12px">🖥 Kompiuteris</button></div>
     <div class="row"><span id="sGraphics">Grafika</span><button class="tbtn" id="oQual" style="width:auto;height:26px;padding:0 12px;font-size:12px">Aukšta</button></div>
-    <div class="row"><span id="sMusic">Muzika</span><span class="volRow"><input id="oMusVol" class="vol" type="range" min="0" max="100" value="85"><button class="tbtn" id="oMus" style="width:auto;height:26px;padding:0 12px;font-size:12px">Įjungta</button></span></div>
-    <div class="row"><span id="sSound">Garsai</span><span class="volRow"><input id="oSndVol" class="vol" type="range" min="0" max="100" value="85"><button class="tbtn" id="oSnd" style="width:auto;height:26px;padding:0 12px;font-size:12px">Įjungti</button></span></div>
+    <div class="row"><span id="sMusic">Muzika</span><span class="volRow"><input id="oMusVol" class="vol" type="range" min="0" max="200" value="85"><button class="tbtn" id="oMus" style="width:auto;height:26px;padding:0 12px;font-size:12px">Įjungta</button></span></div>
+    <div class="row"><span id="sSound">Garsai</span><span class="volRow"><input id="oSndVol" class="vol" type="range" min="0" max="200" value="85"><button class="tbtn" id="oSnd" style="width:auto;height:26px;padding:0 12px;font-size:12px">Įjungti</button></span></div>
     <div class="row"><span id="sPlaying">Skamba</span><span id="oTrack">—</span></div>
     <div class="row"><span id="sTrackPick">Takelis</span><button class="tbtn" id="oTrackPick" style="width:auto;height:26px;padding:0 12px;font-size:12px">Automatinis</button></div>
     <div class="row"><span id="sMerchantDetail">Pirklio detalumas</span><button class="tbtn" id="oNpc" style="width:auto;height:26px;padding:0 12px;font-size:12px">—</button></div>
@@ -675,8 +675,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v184';
-const GAME_CHANGES='garsumo slankikliai, burtų ir kumščių animacijos, sprintas išsijungia išsekus';
+const GAME_VERSION='v185';
+const GAME_CHANGES='fleita grąžinta, bruzgiantis padas išmestas, garsumas iki 200%, burtas nutraukia meditaciją';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -727,6 +727,7 @@ const I18N={
     pBag:'Krepšys', pGearBag:'Aprangos daiktai', gearHint:'Bakstelėk daiktą — pamatysi, ką jis duoda. 2× arba dešiniu pelės mygtuku — iškart užsidedi.',
     pFish:'Žvejyba', pSet:'Nustatymai',
     sLang:'Kalba', sGraphics:'Grafika', sMusic:'Muzika', sSound:'Garsai', sPlaying:'Skamba',
+    castStopsMeditation:'Burtas nutraukė meditaciją.',
     sTrackPick:'Takelis', trackAuto:'Automatinis',
     sMerchantDetail:'Pirklio detalumas', sCloseDebug:'Uždarymo derinimas', sPanelSize:'Skydelio dydis',
     sEmptySlots:'Tušti įgūdžių slotai', sWindows:'Langų vietos ir dydžiai', sTimeOfDay:'Paros metas',
@@ -935,7 +936,7 @@ const I18N={
     lvlPrimary:'Level ', lvlPrimaryEnd:' — +1 PRIMARY attribute point!',
     lvlSecondary:'Level ', lvlSecondaryEnd:' — +1 combat and +1 gathering point.',
     tooFarWater:'Get closer to the water.', bagFull:'Bag full (', bagFullEnd:').',
-    fullOfEnergy:'Already full of energy.', startMeditating:'You start meditating…',
+    castStopsMeditation:'The spell breaks your meditation.', fullOfEnergy:'Already full of energy.', startMeditating:'You start meditating…',
     nothingNearby:'Nothing nearby.', flameHitNothing:'The flame hit nothing.',
     spellNeedsTarget:'This spell needs a target.', spellEcho:'Spell echo!',
     extraLoot:'Found an extra trophy!', knockedOut:'You lost consciousness. You wake up by the fire…',
@@ -5618,6 +5619,11 @@ function startAct(k){
   if((a.proj||a.smite||a.root)&&(!tgt||tgt.dead)){ log(a.n+T('needsTargetMsg'),'lg-s'); return false; }
   /* vieno taikinio kirtis — leidžiam prieiti prie taikinio */
   if(a.kind==='melee'&&a.arc<2.0&&tgt&&!tgt.dead){ player.approach=true; player.autoAtk=true; }
+  /* v185: TIKRA KLAIDA — medituojant updateActs grįždavo anksti (žr. jo pradžią),
+     tad pradėtas būrimas sustingdavo ir pajudėdavo tik tada, kai atsistačiusi
+     mana pati baigdavo meditaciją. Dabar burtas meditaciją nutraukia ČIA, jau
+     praėjus visoms patikroms — jei manos nepakanka, meditacija nenutraukiama. */
+  if(player.meditating) stopMeditate(T('castStopsMeditation'));
   if(a.kind==='spell') player.mana-=cost; else player.stam-=cost;
   player.cds[k]=a.cd*(a.kind==='spell'?1/Math.max(.4,D.burtuSparta/0.67):1);
   if(a.kind==='spell'&&Math.random()<D.burtuAidas) player.cds[k]=0;
@@ -5784,6 +5790,8 @@ function magicHitFrom(e,mul,col){
 function updateActs(dt){
   for(const k of Object.keys(player.cds))
     if(player.cds[k]>0) player.cds[k]=Math.max(0,player.cds[k]-dt);
+  /* v185: apsauga — jei kada nors abu atsirastų kartu, veiksmas nesustingsta */
+  if(player.meditating&&player.act) stopMeditate(T('castStopsMeditation'));
   if(player.meditating){
     const m=MEDITATE;
     const before=player.hp+player.mana+player.stam;
@@ -6188,17 +6196,17 @@ const MOTIF=[
    Senoji lėtoji „Naktis" ir „Vandenys" pašalinti (vartotojo sprendimas v182),
    tad lauke — vienas takelis, o kaime ir mūšyje — savi. */
 const TRACKS={
-  kaimas:{bpm:88,sc:DOR,oct:1,chords:[0,3,4,0],pad:.026,pluck:[1,1,0,1,1,0,1,0],
-         plkG:.095,mel:.7,melEvery:2,drum:.5,cut:3000,melSoft:true,name:{lt:'Kaimavietė',en:'Village'}},
+  kaimas:{bpm:88,sc:DOR,oct:1,chords:[0,3,4,0],pad:0,drone:.075,pluck:[1,1,0,1,1,0,1,0],
+         plkG:.095,mel:.7,melEvery:2,drum:.5,cut:3000,name:{lt:'Kaimavietė',en:'Village'}},
   naktis:{bpm:72,sc:DOR,oct:1,chords:[0,5,3,4],pad:.034,pluck:[1,0,1,1,0,1,0,1],
          plkG:.085,mel:.55,melEvery:2,drum:0,cut:2400,
          swing:.055,vel:[1,.72,.88,1,.7,.92,.76,.86],shimmer:.012,fifth:2,
          name:{lt:'Naktis',en:'Night'}},   /* v183: fleitos aidas išimtas — netiko */
   /* v183: AUŠRA — šviesėjimas. Reti, aukšti varpeliai (bell) ir lėtas padas;
      akordai kyla 0→3→5→4, tad frazė visą laiką traukia į viršų. */
-  ausra:{bpm:62,sc:DOR,oct:1,chords:[0,3,5,4],pad:.040,pluck:[1,0,0,1,0,1,0,0],
+  ausra:{bpm:62,sc:DOR,oct:1,chords:[0,3,5,4],pad:0,drone:.070,pluck:[1,0,0,1,0,1,0,0],
          plkG:.070,mel:.45,melEvery:2,drum:0,cut:2000,
-         vel:[1,.6,.6,.85,.6,.9,.6,.6],shimmer:.016,fifth:2,bell:{deg:[7,9,11],gain:.038},melSoft:true,
+         vel:[1,.6,.6,.85,.6,.9,.6,.6],shimmer:.016,fifth:2,bell:{deg:[7,9,11],gain:.038},
          name:{lt:'Aušra',en:'Dawn'}},
   /* v183: SUTARTINĖ — sava funkcija. Dvi giesmininkės gieda TĄ PAČIĄ frazę,
      antroji įstoja puse takto vėliau ir sekunda aukščiau; susidūrusios sekundos
@@ -6221,14 +6229,17 @@ function scheduleBar(tr,t){
   const beat=60/tr.bpm, bar=beat*4;
   const root=tr.chords[MUS.bar%tr.chords.length];
   const B=SND.mus;
-  /* padas */
-  for(const d of [0,2,4]) tone(t,deg(tr.sc,root+d,tr.oct-1),bar*.95,
+  /* padas — v185: pjūklinis akordų klodas ir yra tas „storas bruzgiantis"
+     garsas; Aušroje ir Kaimavietėje jis IŠJUNGTAS (pad:0), Naktyje paliktas,
+     nes ten vartotojui tiko. */
+  if(tr.pad) for(const d of [0,2,4]) tone(t,deg(tr.sc,root+d,tr.oct-1),bar*.95,
     {type:'sawtooth',gain:tr.pad,a:bar*.28,cut:tr.cut*.32,bus:B});
   /* v182: tylus aukštas atspindys — padui daugiau oro */
   if(tr.shimmer) tone(t+beat*.5,deg(tr.sc,root+4,tr.oct+1),bar*.7,
     {type:'sine',gain:tr.shimmer,a:bar*.35,cut:5200,bus:B});
   /* žemas dronas */
-  tone(t,deg(tr.sc,root,tr.oct-1),bar*.98,{type:'sine',gain:.055,a:bar*.2,cut:340,bus:B});
+  /* v185: be pado apačia liktų tuščia, tad dronas ten kiek stipresnis (tr.drone) */
+  tone(t,deg(tr.sc,root,tr.oct-1),bar*.98,{type:'sine',gain:tr.drone||.055,a:bar*.2,cut:340,bus:B});
   /* v182: kas antrame takte bosas pajuda į kvintą — kitaip apačia stovi vietoje */
   if(tr.fifth&&MUS.bar%tr.fifth===1)
     tone(t+bar*.5,deg(tr.sc,root+4,tr.oct-1),bar*.45,{type:'sine',gain:.042,a:.12,cut:300,bus:B});
@@ -6248,16 +6259,10 @@ function scheduleBar(tr,t){
     let off=0;
     for(const [d,len] of m){
       if(off>=4) break;
-      /* v184: melSoft — vietoj aštrios fleitos minkštas, apvalus balsas
-         (trikampė banga, lėta ataka, žemas filtras, vos juntamas virpesys).
-         Naudoja Aušra ir Kaimavietė — vartotojui fleitos ten netiko. */
-      if(tr.melSoft)
-        tone(t+off*beat, deg(tr.sc,root+d+7,tr.oct), len*beat*.95,
-          {type:'triangle',gain:.050*tr.mel,a:len*beat*.35,cut:1300,cutEnd:700,
-           vib:3.0,vibAmt:1.5,bus:B});
-      else
-        tone(t+off*beat, deg(tr.sc,root+d+7,tr.oct), len*beat*.85,
-          {type:'sine',gain:.055*tr.mel,a:.07,cut:2600,vib:5.2,vibAmt:3.4,bus:B});
+      /* v185: fleita GRĄŽINTA — v184 ji buvo pakeista minkštu balsu, bet
+         vartotojui kliuvo ne ji, o pjūklinis padas (žr. tr.pad žemiau). */
+      tone(t+off*beat, deg(tr.sc,root+d+7,tr.oct), len*beat*.85,
+        {type:'sine',gain:.055*tr.mel,a:.07,cut:2600,vib:5.2,vibAmt:3.4,bus:B});
       off+=len;
     }
   }
@@ -6428,7 +6433,8 @@ document.getElementById('mCraft').onclick=()=>{toggleToolMenu(false);togglePanel
    kiekviename kadre), garsų — tiesiai į fx magistralę. */
 function bindVol(id,set){
   const el=document.getElementById(id); if(!el) return;
-  const f=()=>{ const v=Math.max(0,Math.min(100,+el.value||0))/100; set(v); };
+  /* v185: viršutinė riba 200 % — garsiausia padėtis dvigubai garsesnė nei buvo */
+  const f=()=>{ const v=Math.max(0,Math.min(200,+el.value||0))/100; set(v); };
   el.oninput=f; el.onchange=f;
 }
 bindVol('oMusVol',v=>{

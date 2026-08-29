@@ -625,8 +625,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v168';
-const GAME_CHANGES='kasant kairė plaštaka tikrai ant koto, nebe ant dešinės rankos';
+const GAME_VERSION='v169';
+const GAME_CHANGES='kasant kotas per vidurį, dešinė už koto galo, kairė virš jos';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2663,6 +2663,15 @@ const KIRTIKLIS_SPIN=Math.PI/2;
    (ne Euler tarpinimą — kitaip pakeliui apsiverstų). Rankų šie skaičiai
    NELIEČIA: jei kirtiklis atrodys ne taip, keisti TIK juos. */
 const KIRTIKLIS_MINE_ROT={x:1.4312, y:-1.3344, z:1.5024};
+/* v169: kiek įrankis pastumiamas SAVO KOTU kasimo metu, kad dešinė plaštaka
+   laikytų už koto GALO (to galo, kur nėra ašmenų), o ne per vidurį.
+   Skaičius = modelio koto galas × mastelis: 2,22 × 0,233 = 0,517 (modelio
+   ribos y nuo −2,22 iki +3,37, ašmenys prie +Y — iš v141 matavimo; PAČIO
+   .obj šiame kompiuteryje NĖRA, tad tai VIENINTELIS skaičius čia, kuris
+   paimtas iš senesnio matavimo, o ne permatuotas dabar. Jei kotas kyšos per
+   toli arba per mažai — keisti TIK šitą. Koto LINIJOS jis nekeičia (ji eina
+   per kumštį), tad rankų pozų neliečia. */
+const KIRTIKLIS_MINE_SLIDE=.517;
 /* v148: „kotas ten, kur pirštai susigniaužia į apskritimą". IŠMATUOTA:
    sugniaužus kumštį (tie patys kampai, kuriuos naudoja poseThunderFingers)
    pirštakauliai atsiduria hand_r vietinėje sistemoje taip:
@@ -3244,6 +3253,19 @@ function applyArmPose(A,B,t,w,pairs){
    modelio ilgį) — todėl ranka seka TIKRĄ ginklo padėtį, ne spėjimą. */
 /* v148: NEIGIAMAS — kairė plaštaka ant koto VIRŠ dešinės (link koto galo),
    nes smūgio metu geležtė nukreipta žemyn. Ženklas lemia, kuri ranka viršuje. */
+/* v169: −0,45 → +0,09. Vartotojas: „dešinė ranka laiko už koto galo — kitos
+   pusės galo negu ašmenys, kairės rankos delnas laiko už koto biskį aukščiau
+   nei dešinės rankos delnas". Neigiamas ženklas vedė kairę žemyn koto galo
+   link; teigiamas veda AUKŠTYN, ašmenų pusėn. Tai įmanoma tik kartu su
+   MINE_CENTER (žr. ten): be pastūmimo į vidurį kairė ranka virš dešinės
+   nepasiekdavo koto iš viso.
+   IŠMATUOTA su +0,09 ir MINE_CENTER=0,12: užsimojant kairės delnas +0,077…
+   +0,089 VIRŠ dešinės, delnai 0,098…0,111 vienas nuo kito (plaštakos plotis
+   0,069 — t. y. viena virš kitos, kaip prašyta), nuokrypis nuo koto ≤0,015,
+   iki dešinio dilbio ≥0,163, siekio atsarga ≥0,086. Kai kotas horizontalus
+   (laikymas, smūgis) aukščio skirtumo NĖRA ir būti negali — ten abu delnai
+   ant tos pačios horizontalios linijos (išmatuota −0,016).
+   SENA v168 PASTABA (kodėl neigiamas buvo blogas): */
 /* v168: 0,30 → 0,45. Su 0,30 kairė plaštaka atsidurdavo 0,039 nuo DEŠINIO
    DILBIO (plaštakos storis 0,102) — t. y. tiesiog ant jo, ir vartotojas
    teisingai pasakė „kairė ranka laiko už dešinės rankos". Priežastis
@@ -3254,7 +3276,7 @@ function applyArmPose(A,B,t,w,pairs){
    dalies už dešinės plaštakos (modelio galas −2,22 × mastelis 0,233), tad 0,45
    dar telpa — kairė plaštaka atsiduria beveik ant koto galo, kaip tikrai
    laikomas kirtiklis. Siekio atsarga lieka ≥0,150. */
-const GRIP_SPAN=-.45;                                 // plaštakų tarpas ant koto
+const GRIP_SPAN=.09;                                  // plaštakų tarpas ant koto (+ = kairė aukščiau)
 /* v150: alkūnės kryptis pataisyta — su v149 reikšme kairė alkūnė mosto metu
    nuklysdavo UŽ kūno (išmatuota alkūnės z iki −0,30, t. y. ranka lūžta atgal;
    vartotojas: „kairė per daug lenkiasi atgal"). Su (1; −1; 0,5) alkūnė per
@@ -3279,14 +3301,15 @@ const _gk={ax:new THREE.Vector3(),base:new THREE.Vector3(),sh:new THREE.Vector3(
 const GRIP_PALM_L=new THREE.Vector3(.006,.072,-.007);
 /* Vienas IK ratas: kairė ranka pastatoma taip, kad RIEŠAS atsidurtų g.tgt.
    Iškelta iš poseGripLeftIK, nes v168 skaičiuoja du ratus (žr. ten). */
-function gripArmTo(ua,la,hl,l1,l2,L,w){
+function gripArmTo(ua,la,hl,l1,l2,L,w,poleWorld){
   const g=_gk;
   g.v.copy(g.tgt).sub(g.sh);
   let d=g.v.length(); if(d<1e-4) return false;
   g.vn.copy(g.v).divideScalar(d);
   d=Math.max(Math.abs(l1-l2)+1e-3,Math.min(L-1e-3,d));
   const cs=(l1*l1+d*d-l2*l2)/(2*l1*d), a=Math.acos(Math.max(-1,Math.min(1,cs)));
-  g.pole.copy(GRIP_POLE).applyQuaternion(playerGltfModel.quaternion).normalize();
+  if(poleWorld) g.pole.copy(poleWorld).normalize();
+  else g.pole.copy(GRIP_POLE).applyQuaternion(playerGltfModel.quaternion).normalize();
   g.n.copy(g.vn).cross(g.pole);
   if(g.n.lengthSq()<1e-6) g.n.set(0,0,1).cross(g.vn);
   g.n.normalize();
@@ -3316,6 +3339,48 @@ function gripArmTo(ua,la,hl,l1,l2,L,w){
   ua.quaternion.copy(g.save).slerp(g.q1l,Math.min(1,w));
   la.quaternion.slerp(g.q2l,Math.min(1,w));
   return true;
+}
+/* v169: KOTAS PER KŪNO VIDURĮ. Vartotojas: „kotas dabar dešinėj žmogeliuko
+   pusėje, jį perkelti, jog būtų per vidurį". IŠMATUOTA: kasant koto linija ėjo
+   per x ≈ −0,13…−0,20 (kūno vidurys 0), t. y. tikrai kūno dešinėje, ir dėl to
+   kairė ranka jos negalėjo pasiekti VIRŠ dešinės — visas siekio langas ant
+   koto buvo −0,66…−0,04, vien žemiau.
+   POZOS (GRIP_*) SĄMONINGAI NEPALIESTOS — jų perskaičiavimas yra v151/v152
+   kelias, ir abu kartus vartotojas pasakė, kad rankos pablogėjo. Vietoj to
+   dešinė plaštaka po pozų PASTUMIAMA link vidurio tais pačiais dviem kaulais
+   (alkūnės plokštuma imama iš pačios pozos, tad ranka lieka ten, kur ją padėjo
+   v150), o riešas grąžina TIKSLIAI tą pačią ginklo orientaciją pasaulyje.
+   IŠMATUOTA po pakeitimo per 11 mosto taškų: ginklo krypties klaida 0,00°,
+   riešo pataisa ≤26° (žmogaus riešas lenkiasi ~70°), koto linija per x
+   −0,08…−0,02, kairės rankos siekio atsarga ≥0,086. */
+const MINE_CENTER=.12;
+const _mc={p0:new THREE.Vector3(),q0:new THREE.Quaternion(),sh:new THREE.Vector3(),
+  el:new THREE.Vector3(),dir:new THREE.Vector3(),pole:new THREE.Vector3(),
+  tgt:new THREE.Vector3(),qp:new THREE.Quaternion(),ql:new THREE.Quaternion()};
+function poseMineCenter(w){
+  const ua=GLTF_BONES.upperarm_r, la=GLTF_BONES.lowerarm_r, hr=GLTF_BONES.hand_r;
+  if(!ua||!la||!hr||!ua.parent||!hr.parent||!playerGltfModel||w<=0) return;
+  playerGltfModel.updateMatrixWorld(true);
+  const m=_mc, g=_gk;
+  m.p0.setFromMatrixPosition(hr.matrixWorld);
+  hr.getWorldQuaternion(m.q0);
+  m.sh.setFromMatrixPosition(ua.matrixWorld);
+  m.el.setFromMatrixPosition(la.matrixWorld);
+  /* alkūnės plokštuma iš DABARTINĖS pozos (statmena peties→plaštakos ašiai) */
+  m.dir.copy(m.p0).sub(m.sh).normalize();
+  m.pole.copy(m.el).sub(m.sh);
+  m.pole.addScaledVector(m.dir,-m.pole.dot(m.dir)).normalize();
+  /* taikinys: per MINE_CENTER modelio vietine +X (personažo kairėn = į vidurį) */
+  m.tgt.set(1,0,0).applyQuaternion(playerGltfModel.quaternion)
+       .multiplyScalar(MINE_CENTER).add(m.p0);
+  const l1=la.position.length(), l2=hr.position.length();
+  g.sh.copy(m.sh); g.tgt.copy(m.tgt);
+  gripArmTo(ua,la,hr,l1,l2,l1+l2,w,m.pole);
+  /* riešas: ginklo orientacija pasaulyje lieka TA PATI, kaip be pastūmimo */
+  la.updateMatrixWorld(true);
+  hr.parent.getWorldQuaternion(m.qp);
+  m.ql.copy(m.qp).invert().multiply(m.q0);
+  hr.quaternion.slerp(m.ql,Math.min(1,w));
 }
 function poseGripLeftIK(w,axisLocal,fitPos){
   const hr=GLTF_BONES.hand_r, ua=GLTF_BONES.upperarm_l,
@@ -3351,7 +3416,7 @@ function poseGripLeftIK(w,axisLocal,fitPos){
     if(disc>=0){ const r1=-b-Math.sqrt(disc), r2=-b+Math.sqrt(disc);
       t=Math.abs(r1-GRIP_SPAN)<Math.abs(r2-GRIP_SPAN)?r1:r2; }
     else t=-b;
-    t=Math.max(.18,Math.min(.52,Math.abs(t)))*(GRIP_SPAN<0?-1:1);   // v168: viršus 0,45 → 0,52
+    t=Math.max(.05,Math.min(.52,Math.abs(t)))*(GRIP_SPAN<0?-1:1);   // v169: apačia 0,18 → 0,05
   }
   g.ring.copy(g.base).addScaledVector(g.ax,t);     // kur ant koto turi būti DELNAS
   g.saveUA.copy(ua.quaternion); g.saveLA.copy(la.quaternion);
@@ -3401,7 +3466,8 @@ function poseMining(p,wIn,spin){
   poseBoneBlend('spine_01',lean*.30,0,0,w);
   poseBoneBlend('spine_02',lean*.34,0,0,w);
   poseBoneBlend('spine_03',lean*.36,0,0,w);
-  /* PO stuburo/pečių — IK skaito pasaulio matricas */
+  if(spin) poseMineCenter(w);               // v169: kotas per kūno vidurį
+  /* PO stuburo/pečių IR po pastūmimo — IK skaito pasaulio matricas */
   poseGripLeftIK(w, spin?mineShaftLocal(w,_gripAx):null, spin?_gripFit:null);
 }
 /* Kviečiama kadre PO playerGltfMixer.update() — kaip ir Perkūno poza, kitaip
@@ -3452,14 +3518,23 @@ function mineShaftLocal(w,out){
   _wqNow.copy(_wqBase).slerp(_wqMine,Math.max(0,Math.min(1,w)));
   return out.set(0,1,0).applyQuaternion(_wqNow);
 }
+const _wqPos=new THREE.Vector3(), _wqFit=new THREE.Vector3(
+  WEAPON_FIT.kirtiklis.pos.x,WEAPON_FIT.kirtiklis.pos.y,WEAPON_FIT.kirtiklis.pos.z);
 function applyMineSpin(w){
   if(!playerWeaponMesh||weaponVisualKind!=='kirtiklis') return;
-  playerWeaponMesh.quaternion.copy(_wqBase).slerp(_wqMine,Math.max(0,Math.min(1,w)));
+  const t=Math.max(0,Math.min(1,w));
+  playerWeaponMesh.quaternion.copy(_wqBase).slerp(_wqMine,t);
+  /* v169: modelis paslenka SAVO kotu — kumštyje atsiduria koto galas */
+  playerWeaponMesh.position.copy(_wqFit)
+    .addScaledVector(mineShaftLocal(t,_wqPos),KIRTIKLIS_MINE_SLIDE*t);
 }
 /* Modelis gyvena WEAPON_CACHE — tas pats objektas grąžinamas kitą kartą, tad
    pabaigus kasti orientaciją BŪTINA grąžinti, kitaip idle liktų apsuktas. */
 function resetWeaponSpin(){
-  if(playerWeaponMesh&&weaponVisualKind==='kirtiklis') playerWeaponMesh.quaternion.copy(_wqBase);
+  if(playerWeaponMesh&&weaponVisualKind==='kirtiklis'){
+    playerWeaponMesh.quaternion.copy(_wqBase);
+    playerWeaponMesh.position.copy(_wqFit);      // v169: grąžinti ir pastūmimą kotu
+  }
 }
 /* v96: bendras vienkartinis klipas (kirtis, mirtis, prisikėlimas, kapojimas).
    __isSwing = "šito kadro cikle netrukdyti" — žr. updatePlayer. */

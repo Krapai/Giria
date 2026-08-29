@@ -625,8 +625,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v175';
-const GAME_CHANGES='žingsnio kalavijas: koja nebegrįžta pakelta ir pakrypusi';
+const GAME_VERSION='v176';
+const GAME_CHANGES='taikinys po kirčių nebelieka švytėti — blyksnis nuvalomas visur';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -5751,10 +5751,33 @@ function magicHit(e,at){
   addXp('kova',Math.round(dmg*3.8));
   if(e.hp<=0) killEnemy(e);
 }
+/* v176: kirčio blyksnis. Vartotojas: „kartais po atakos targetas pasidaro
+   baltas ir kodėl po atakų targetas pasidaro balkšvos spalvos?" — abu klausimai
+   apie tą patį: emissive spalva uždedama, bet NE VISUR nuvaloma.
+   Nuvalymas buvo tik viename kelyje — updateEnemies gyvo prieso šakoje. Todėl:
+     - MANEKENAS (e.def.dummy) turi savo šaką be nuvalymo, tad po pirmo kirčio
+       likdavo švytėti VISAM LAIKUI, o kiekvienas naujas kirtis dar keisdavo
+       atspalvį (kritinis 0xffcc55 ant šviesaus modelio atrodo balsvai) —
+       tai ir yra „po atakų pasidaro balkšvos spalvos";
+     - MIRUSIO priešo šaka (e.dead) iškart daro continue, tad nukovus blyksnis
+       likdavo ant lavono IR ant to paties modelio po atgimimo — „kartais po
+       atakos pasidaro baltas".
+   Papildomai: senasis nuvalymas visiems dėdavo 0x000000, t. y. sunaikindavo
+   medžiagos SAVO švytėjimą (pvz. gintarinės dalys). Dabar pradinė reikšmė
+   įsimenama pirmo blyksnio metu ir grąžinama tiksliai ji. */
 function flashEnemy(e,color){
-  e.obj.traverse(o=>{ if(o.isMesh&&o.material&&o.material.emissive) o.material.emissive.setHex(color); });
-  if(e.glb) e.glb.model.traverse(o=>{ if(o.isMesh&&o.material&&o.material.emissive) o.material.emissive.setHex(color); });
+  const on=o=>{ if(o.isMesh&&o.material&&o.material.emissive){
+    if(o.userData.baseEmis===undefined) o.userData.baseEmis=o.material.emissive.getHex();
+    o.material.emissive.setHex(color); } };
+  e.obj.traverse(on);
+  if(e.glb) e.glb.model.traverse(on);
   e.flash=.18;
+}
+function clearFlash(e){
+  const off=o=>{ if(o.isMesh&&o.material&&o.material.emissive&&o.userData.baseEmis!==undefined)
+    o.material.emissive.setHex(o.userData.baseEmis); };
+  e.obj.traverse(off);
+  if(e.glb) e.glb.model.traverse(off);
 }
 function killEnemy(e){
   if(e.def.dummy){ e.hp=e.maxHp; return; }        // v96: taikinio manekenas nemiršta
@@ -8510,8 +8533,9 @@ function updateEnemies(dt){
       if(e.home){ e.pos.x=e.home.x; e.pos.z=e.home.z; }   // v104: atatranka jo nepajudina
       e.pos.y=heightAt(e.pos.x,e.pos.z);
       e.obj.position.copy(e.pos); e.obj.rotation.y=e.yaw;
-      if(e.flash>0){ e.flash-=dt; e.obj.scale.setScalar(e.def.scale*(1+e.flash*.9)); }
-      else e.obj.scale.setScalar(e.def.scale);
+      if(e.flash>0){ e.flash-=dt; e.obj.scale.setScalar(e.def.scale*(1+e.flash*.9));
+        if(e.flash<=0) clearFlash(e);           // v176: manekenas nebelieka švytėti
+      }else e.obj.scale.setScalar(e.def.scale);
       if(e.glb) glbLoop(e.glb,e.glb.acts.dummyIdle||e.glb.acts.idle);
       placeTag(e.tag,e.pos.x,e.pos.y+2.45*e.def.scale,e.pos.z,46);
       if(e.tag.bar) e.tag.bar.style.width='100%';
@@ -8519,6 +8543,9 @@ function updateEnemies(dt){
     }
     if(e.dead){
       e.respawn-=dt;
+      /* v176: nukautas priešas irgi turi nustoti švytėti — kitaip blyksnys
+         lieka ant lavono ir grįžta kartu su juo po atgimimo */
+      if(e.flash>0){ e.flash-=dt; if(e.flash<=0) clearFlash(e); }
       if(e.sink>0){                       // nugrimzta į žemę
         e.sink-=dt;
         e.obj.position.y=e.pos.y-(1.2-e.sink)*1.6;
@@ -8617,10 +8644,7 @@ function updateEnemies(dt){
     if(e.flash>0){
       e.flash-=dt;
       e.obj.scale.setScalar(e.def.scale*(1+e.flash*.9));
-      if(e.flash<=0){
-        e.obj.traverse(o=>{ if(o.isMesh&&o.material&&o.material.emissive) o.material.emissive.setHex(0x000000); });
-        if(e.glb) e.glb.model.traverse(o=>{ if(o.isMesh&&o.material&&o.material.emissive) o.material.emissive.setHex(0x000000); });
-      }
+      if(e.flash<=0) clearFlash(e);
     }else e.obj.scale.setScalar(e.def.scale);
 
     if(e.glb){                       // v96: ėjimas/stovėjimas, kai nevyksta vienkartinis klipas

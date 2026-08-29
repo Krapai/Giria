@@ -625,8 +625,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v174';
-const GAME_CHANGES='kairė sauja pagaliau ant koto — taikoma į kumščio žiedą, ne delną';
+const GAME_VERSION='v175';
+const GAME_CHANGES='žingsnio kalavijas: koja nebegrįžta pakelta ir pakrypusi';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -2844,12 +2844,26 @@ const MIRROR_LEG_BONES=['thigh_l','thigh_r','calf_l','calf_r','foot_l','foot_r',
 function isMirroredTrack(tr){
   const b=rootMotionNodeName(tr.name);
   if(MIRROR_LEG_BONES.indexOf(b)>=0) return true;
-  return b==='pelvis'&&/\.position$/.test(tr.name);   // v156: tik dubens padėtis, ne sukimas
+  /* v175: dubuo VISAS — ir padėtis, ir POSŪKIS. v156 posūkio nesukdavo atgal,
+     todėl atgalinėje pusėje kojų kampai eidavo iš vieno laiko, o dubuo, ant
+     kurio jos kabo, iš kito: IŠMATUOTA, kad dešinė pėda pakildavo iki 0,163 ir
+     pakrypdavo nuo −31° iki −14° („lyg pakrypus, lyg pakelta"). Atsukus ir
+     posūkį pėdos vėl atkartoja savo kelią (aukščiausia 0,042), o krūtinės
+     pasaulinė orientacija grąžinama per spine_01, tad ginklo mostas nepakinta
+     NĖ 0,0° (žr. mirrorLegsClip pabaigą). */
+  return b==='pelvis';
 }
 function mirrorLegsClip(clip,name){
   const c=clip.clone(); c.name=name||(clip.name+'_LegMirror');
   const T=c.duration, half=T/2;
-  const sel=c.tracks.filter(isMirroredTrack);
+  /* v175: dubens posūkį atsukti galima TIK jei yra kuo kompensuoti krūtinę */
+  const isQ=(t,b)=>rootMotionNodeName(t.name)===b&&/\.quaternion$/.test(t.name);
+  const oPel=clip.tracks.find(t=>isQ(t,'pelvis')),
+        oSpn=clip.tracks.find(t=>isQ(t,'spine_01')),
+        cSpn=c.tracks.find(t=>isQ(t,'spine_01'));
+  const canFix=!!(oPel&&oSpn&&cSpn);
+  let sel=c.tracks.filter(isMirroredTrack);
+  if(!canFix) sel=sel.filter(t=>!isQ(t,'pelvis'));
   if(!sel.length||half<=0) return c;
   const interp=sel.map(tr=>tr.createInterpolant());
   const size=sel.map(tr=>tr.getValueSize());
@@ -2891,6 +2905,30 @@ function mirrorLegsClip(clip,name){
     put(half,half);
     for(let j=1;j<=M;j++) put(half+half*j/M, srcAt(1-j/M));
     tr.times=new Float32Array(outT); tr.values=new Float32Array(outV);
+  }
+  /* v175: KRŪTINĖS KOMPENSACIJA. Dubuo antroje pusėje pasuktas atgal (į laiką
+     src), o viršutinė kūno dalis turi likti ten, kur buvo (laike time), kitaip
+     kartu atgal nueitų ir kalavijas. spine_01 vietinis posūkis perskaičiuojamas:
+       naujas = dubuo(src) atvirkštinis * dubuo(time) * spine_01(time)
+     Tada krūtinės PASAULINĖ orientacija sutampa su originalu (IŠMATUOTA: 0,0°
+     per visą klipą), o kojos gauna teisingai pasuktą dubenį. */
+  if(canFix){
+    const ipP=oPel.createInterpolant(), ipS=oSpn.createInterpolant();
+    const qa=new THREE.Quaternion(), qb=new THREE.Quaternion(), qc=new THREE.Quaternion();
+    const rd=(ip,at,q)=>{ const r=ip.evaluate(at); q.set(r[0],r[1],r[2],r[3]); return q; };
+    const outT=[], outV=[];
+    const put=(time,q)=>{ outT.push(time); outV.push(q.x,q.y,q.z,q.w); };
+    for(let k=0;k<cSpn.times.length;k++) if(cSpn.times[k]<half){
+      outT.push(cSpn.times[k]);
+      for(let m=0;m<4;m++) outV.push(cSpn.values[k*4+m]);
+    }
+    put(half,rd(ipS,half,qc));
+    for(let j=1;j<=M;j++){
+      const time=half+half*j/M, src=srcAt(1-j/M);
+      rd(ipP,src,qa); rd(ipP,time,qb); rd(ipS,time,qc);
+      put(time,qa.invert().multiply(qb).multiply(qc));
+    }
+    cSpn.times=new Float32Array(outT); cSpn.values=new Float32Array(outV);
   }
   return c;
 }

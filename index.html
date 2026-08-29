@@ -301,6 +301,11 @@ body.touch #attrPopupClose{display:block}
 #bagGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 /* v177: savybių grafas — trikampis su priartinimu (pakeitė v112 mygtukų eiles) */
 .atBar{display:flex;gap:5px;align-items:center;margin:0 0 6px}
+.atHead{margin-bottom:7px;display:flex;align-items:center;gap:7px}
+.atHelp{display:inline-grid;place-items:center;width:19px;height:19px;border-radius:50%;
+  border:1px solid rgba(217,152,47,.55);color:var(--amber-lit);font-size:12px;line-height:1;
+  cursor:pointer;flex:0 0 auto;touch-action:manipulation}
+.atHelp:hover{background:#1d2a20;border-color:var(--amber-lit)}
 .atBar .atZ{width:28px;height:24px;font-size:14px;border-radius:6px;display:inline-grid}
 .atBar .rstBtn{width:auto;height:24px;padding:0 11px;font-size:11px;border-radius:6px;margin-left:auto}
 .atWrap{position:relative;overflow:hidden;height:min(56vh,420px);border-radius:10px;
@@ -322,8 +327,8 @@ body.touch #attrPopupClose{display:block}
 .atNode.can{box-shadow:0 0 0 2px rgba(217,152,47,.5),0 2px 9px rgba(0,0,0,.5)}
 .atNode:hover,.atHub:hover,.atGrp:hover{border-color:var(--amber-lit)}
 .atHub{background:#1b2a20}
-.atHub i{font-size:26px}
-.atHub b{font-size:14px;color:var(--amber-lit);font-weight:400;line-height:1.1}
+.atHub i{font-size:22px}
+.atHub b{font-size:26px;color:var(--amber-lit);font-weight:400;line-height:1;margin-top:1px}
 .atHub.can{box-shadow:0 0 0 3px rgba(217,152,47,.45),0 2px 9px rgba(0,0,0,.5)}
 .atGrp{background:#16211a}
 .atGrp i{font-size:15px}
@@ -646,8 +651,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v177';
-const GAME_CHANGES='savybių langas — trikampio grafas su piktogramomis ir priartinimu';
+const GAME_VERSION='v178';
+const GAME_CHANGES='grafas: ryškėjančios linijos, „?" antraštė, rinkimas ir amatai kyla nuo veiklos';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -722,7 +727,7 @@ const I18N={
     shopWares:' prekės · ', haveCoins:'Turi: ', gearHeader:'Apranga', unusedPoints:'Nepanaudota taškų: ',
     levelLbl:'Lygis ', toNext:'% iki ',
     combatPtsLbl:'kovos taškų', gatherPtsLbl:'rinkimo taškų', craftPtsLbl:'amatų taškų', primaryPtsLbl:'pagrindinių taškų',
-    treeHint:'Vilk — stumdai žemėlapį, ratukas arba +/− — mastelis. Užvesk ant taško — aprašymas, spustelėk — kelk rangą (telefone: bakstelk, tada dar kartą).', atPrimaryInfo:'Pagrindinė savybė — nuo jos priklauso grupių talpa. Dabar:', atClickRaise:'Spustelėk — pakelsi savybę', atGroupInfo:'Grupė — kiek joje telpa rangų, lemia pagrindinės savybės.', atCapLbl:'užimta: ',
+    treeHint:'Vilk — stumdai žemėlapį, ratukas arba +/− — mastelis. Užvesk ant taško — aprašymas, spustelėk — kelk rangą (telefone: bakstelk, tada dar kartą).', atPrimaryInfo:'Pagrindinė savybė — nuo jos priklauso grupių talpa. Dabar:', atClickRaise:'Spustelėk — pakelsi savybę', atGroupInfo:'Grupė — kiek joje telpa rangų, lemia pagrindinės savybės.', atCapLbl:'užimta: ', atRanksSum:'rangų iš viso: ', atRisesBy:'kyla darant: ', atEarnedGroup:'Šios grupės atributai neperkami — jie kyla patys, kai dirbi tą darbą.', atNoPrimaryHere:'Pagrindinės savybės čia nekeliamos — tik kovos lange.', atEarnedTree:'Taškų čia nėra: rangai kyla patys, kai renki, žvejoji, kerti ar gamini.', atSpendHint:'Spustelėk mazgą — išleisi tašką.',
     resetAllAttrs:'↺ Atstatyti visas savybes', capReached:'riba pasiekta — daugiau nebeauga',
     nextRank:'kitas rangas: ', groupLocked:'grupė dar neatrakinta', ranksLbl:' · rangų: ',
     charTabTraveler:'Keliautojas', charTabMastery:'Meistrystės', charTabCombat:'Kovos', charTabGather:'Rinkimas', charTabCraft:'Amatai',
@@ -848,7 +853,7 @@ const I18N={
     shopWares:' wares · ', haveCoins:'You have: ', gearHeader:'Gear', unusedPoints:'Unused points: ',
     levelLbl:'Level ', toNext:'% to ',
     combatPtsLbl:'combat points', gatherPtsLbl:'gathering points', craftPtsLbl:'crafting points', primaryPtsLbl:'primary points',
-    treeHint:'Drag to move the map, wheel or +/− to zoom. Hover a node for its description, click to raise its rank (on phone: tap, then tap again).', atPrimaryInfo:'Primary attribute — group capacity depends on it. Now:', atClickRaise:'Click to raise it', atGroupInfo:'Group — its capacity comes from the primary attributes.', atCapLbl:'used: ',
+    treeHint:'Drag to move the map, wheel or +/− to zoom. Hover a node for its description, click to raise its rank (on phone: tap, then tap again).', atPrimaryInfo:'Primary attribute — group capacity depends on it. Now:', atClickRaise:'Click to raise it', atGroupInfo:'Group — its capacity comes from the primary attributes.', atCapLbl:'used: ', atRanksSum:'ranks in total: ', atRisesBy:'rises by: ', atEarnedGroup:'These attributes are not bought — they grow as you do the work.', atNoPrimaryHere:'Primary attributes are raised in the combat window only.', atEarnedTree:'No points here: ranks grow on their own as you gather, fish, chop or craft.', atSpendHint:'Click a node to spend a point.',
     resetAllAttrs:'↺ Reset all attributes', capReached:'cap reached — no further growth',
     nextRank:'next rank: ', groupLocked:'group not unlocked yet', ranksLbl:' · ranks: ',
     charTabTraveler:'Traveler', charTabMastery:'Masteries', charTabCombat:'Combat', charTabGather:'Gathering', charTabCraft:'Crafting',
@@ -4236,7 +4241,7 @@ const START_LEVEL=1;             // normali pradžia
 const ATTR={jega:1,vikrumas:1,intelektas:1};
 const RANK={};
 const gear={};        // užsidėti daiktai pagal vietas (skelbiama anksti — naudoja derive)
-let primaryPts=0, combatPts=0, gatherPts=0, craftPts=0, charXp=0, charLvl=1;
+let primaryPts=0, combatPts=0, charXp=0, charLvl=1;   /* v178: rinkimo ir amatų taškų nebėra */
 const xpForChar=l=>Math.floor(40*Math.pow(l,1.60));
 function charLevelOf(xp){let l=1;while(l<99&&xp>=xpForChar(l+1))l++;return l;}
 
@@ -4296,51 +4301,51 @@ const CGROUPS=[
 /* ========= RINKIMO MEDIS (40) ========= */
 const GGROUPS=[
  {id:'g_jega',kind:'primary',key:'jega',n:{lt:'Jėga · kirtimas',en:'Strength · woodcutting'},i:'🪓',c:'#e08a5a',sub:[
-   {k:'kirtimas',ic:'🪓', n:{lt:'Kirtimo galia',en:'Chopping power'},  v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
-   {k:'skaldymas',ic:'⛏️',n:{lt:'Akmenskaldys',en:'Stonebreaker'},   v:r=>Math.min(0.50,r*0.028), f:v=>'−'+(v*100).toFixed(0)+'%'},
-   {k:'talpa',ic:'🎒',    n:{lt:'Nešulys',en:'Carry load'},        v:r=>12+r*3.0, f:v=>Math.round(v)},
-   {k:'tvirtos',ic:'🤲',  n:{lt:'Tvirtos rankos',en:'Steady hands'}, v:r=>Math.min(0.30,r*0.020), f:v=>(v*100).toFixed(0)+'%'},
-   {k:'valas',ic:'🪢',    n:{lt:'Tvirtas valas',en:'Sturdy line'}, v:r=>r*0.07,   f:v=>'+'+v.toFixed(2)+' s'}]},
+   {k:'kirtimas',ic:'🪓',act:'kirtimas', n:{lt:'Kirtimo galia',en:'Chopping power'},  v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
+   {k:'skaldymas',ic:'⛏️',act:'skaldymas',n:{lt:'Akmenskaldys',en:'Stonebreaker'},   v:r=>Math.min(0.50,r*0.028), f:v=>'−'+(v*100).toFixed(0)+'%'},
+   {k:'talpa',ic:'🎒',act:'istverme',    n:{lt:'Nešulys',en:'Carry load'},        v:r=>12+r*3.0, f:v=>Math.round(v)},
+   {k:'tvirtos',ic:'🤲',act:'kirtimas',  n:{lt:'Tvirtos rankos',en:'Steady hands'}, v:r=>Math.min(0.30,r*0.020), f:v=>(v*100).toFixed(0)+'%'},
+   {k:'valas',ic:'🪢',act:'zvejyba',    n:{lt:'Tvirtas valas',en:'Sturdy line'}, v:r=>r*0.07,   f:v=>'+'+v.toFixed(2)+' s'}]},
  {id:'g_vikrumas',kind:'primary',key:'vikrumas',n:{lt:'Vikrumas · vikrios rankos',en:'Agility · nimble hands'},i:'🫐',c:'#8fd07a',sub:[
-   {k:'uogos',ic:'🫐',     n:{lt:'Uogautojas',en:'Berry picker'},        v:r=>Math.min(0.50,r*0.030), f:v=>'−'+(v*100).toFixed(0)+'%'},
-   {k:'grybai',ic:'🍄',    n:{lt:'Grybautojas',en:'Mushroom picker'},       v:r=>Math.min(0.50,r*0.030), f:v=>'−'+(v*100).toFixed(0)+'%'},
-   {k:'zvitrus',ic:'✋',   n:{lt:'Žvitrios rankos',en:'Quick hands'},   v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
-   {k:'pakirtimas',ic:'🎣',n:{lt:'Taiklus pakirtimas',en:'Sharp hook-set'},v:r=>r*0.06,   f:v=>'+'+v.toFixed(2)+' s'}]},
+   {k:'uogos',ic:'🫐',act:'rinkimas',     n:{lt:'Uogautojas',en:'Berry picker'},        v:r=>Math.min(0.50,r*0.030), f:v=>'−'+(v*100).toFixed(0)+'%'},
+   {k:'grybai',ic:'🍄',act:'rinkimas',    n:{lt:'Grybautojas',en:'Mushroom picker'},       v:r=>Math.min(0.50,r*0.030), f:v=>'−'+(v*100).toFixed(0)+'%'},
+   {k:'zvitrus',ic:'✋',act:'rinkimas',   n:{lt:'Žvitrios rankos',en:'Quick hands'},   v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
+   {k:'pakirtimas',ic:'🎣',act:'zvejyba',n:{lt:'Taiklus pakirtimas',en:'Sharp hook-set'},v:r=>r*0.06,   f:v=>'+'+v.toFixed(2)+' s'}]},
  {id:'g_intelektas',kind:'primary',key:'intelektas',n:{lt:'Intelektas · girios išmanymas',en:'Intellect · forest lore'},i:'🌿',c:'#7fbfe0',sub:[
-   {k:'giriosPatirtis',ic:'🌲',n:{lt:'Girios patirtis',en:'Forest experience'}, v:r=>1+r*0.045,f:v=>'×'+v.toFixed(2)},
-   {k:'gintarininkas',ic:'🟠', n:{lt:'Gintaro žinovas',en:'Amber expert'}, v:r=>Math.min(0.50,r*0.030), f:v=>'−'+(v*100).toFixed(0)+'%'},
-   {k:'zoles',ic:'🌿',         n:{lt:'Vaistažolininkas',en:'Herbalist'},v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
-   {k:'zuvuPazinimas',ic:'🐟', n:{lt:'Žuvų pažinimas',en:'Fish knowledge'},  v:r=>1+r*0.050,f:v=>'×'+v.toFixed(2)},
-   {k:'derybos',ic:'🤝',       n:{lt:'Derybos',en:'Negotiation'},         v:r=>Math.min(0.60,r*0.040), f:v=>'−'+(v*100).toFixed(0)+'%'},
-   {k:'izvalga',ic:'🔭',   n:{lt:'Žvalgas',en:'Scout'},           v:r=>16+r*2.4, f:v=>v.toFixed(0)+' m'}]},
+   {k:'giriosPatirtis',ic:'🌲',act:'pedsekyste',n:{lt:'Girios patirtis',en:'Forest experience'}, v:r=>1+r*0.045,f:v=>'×'+v.toFixed(2)},
+   {k:'gintarininkas',ic:'🟠',act:'skaldymas', n:{lt:'Gintaro žinovas',en:'Amber expert'}, v:r=>Math.min(0.50,r*0.030), f:v=>'−'+(v*100).toFixed(0)+'%'},
+   {k:'zoles',ic:'🌿',act:'gydymas',         n:{lt:'Vaistažolininkas',en:'Herbalist'},v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
+   {k:'zuvuPazinimas',ic:'🐟',act:'zvejyba', n:{lt:'Žuvų pažinimas',en:'Fish knowledge'},  v:r=>1+r*0.050,f:v=>'×'+v.toFixed(2)},
+   {k:'derybos',ic:'🤝',act:'derybos',       n:{lt:'Derybos',en:'Negotiation'},         v:r=>Math.min(0.60,r*0.040), f:v=>'−'+(v*100).toFixed(0)+'%'},
+   {k:'izvalga',ic:'🔭',act:'pedsekyste',   n:{lt:'Žvalgas',en:'Scout'},           v:r=>16+r*2.4, f:v=>v.toFixed(0)+' m'}]},
 
  {id:'g_ji',kind:'mix',keys:['jega','intelektas'],n:{lt:'Jėga + Intelektas · amatas',en:'Strength + Intellect · craft'},i:'⚗',c:'#d9a06a',sub:[
-   {k:'meistryste',ic:'🛠️',      n:{lt:'Meistrystė',en:'Mastery'},       v:r=>1+r*0.025, f:v=>'×'+v.toFixed(2)},
-   {k:'irankiai',ic:'🧰',        n:{lt:'Įrankių priežiūra',en:'Tool care'},v:r=>Math.min(0.45,r*0.025), f:v=>'−'+(v*100).toFixed(0)+'%'},
-   {k:'zvejoNuojauta',ic:'🪝',   n:{lt:'Žvejo nuojauta',en:"Angler's instinct"},   v:r=>1+r*0.055, f:v=>'×'+v.toFixed(2)},
-   {k:'rekordas',ic:'🏆',     n:{lt:'Rekordinė žuvis',en:'Record fish'},     v:r=>1+r*0.040, f:v=>'×'+v.toFixed(2)}]},
+   {k:'meistryste',ic:'🛠️',act:'amatai',      n:{lt:'Meistrystė',en:'Mastery'},       v:r=>1+r*0.025, f:v=>'×'+v.toFixed(2)},
+   {k:'irankiai',ic:'🧰',act:'amatai',        n:{lt:'Įrankių priežiūra',en:'Tool care'},v:r=>Math.min(0.45,r*0.025), f:v=>'−'+(v*100).toFixed(0)+'%'},
+   {k:'zvejoNuojauta',ic:'🪝',act:'zvejyba',   n:{lt:'Žvejo nuojauta',en:"Angler's instinct"},   v:r=>1+r*0.055, f:v=>'×'+v.toFixed(2)},
+   {k:'rekordas',ic:'🏆',act:'zvejyba',     n:{lt:'Rekordinė žuvis',en:'Record fish'},     v:r=>1+r*0.040, f:v=>'×'+v.toFixed(2)}]},
  {id:'g_jv',kind:'mix',keys:['jega','vikrumas'],n:{lt:'Jėga + Vikrumas · darbo ištvermė',en:'Strength + Agility · work stamina'},i:'⚗',c:'#bfd07a',sub:[
-   {k:'istverme',ic:'🫀',          n:{lt:'Ištvermės atsarga',en:'Stamina reserve'},           v:r=>25+r*3.5, f:v=>Math.round(v)},
-   {k:'ritmingasKvepavimas',ic:'🌬️', n:{lt:'Ritmingas kvėpavimas',en:'Rhythmic breathing'}, v:r=>Math.min(0.55,r*0.032), f:v=>'−'+(v*100).toFixed(0)+'%'},
-   {k:'antrasKvepavimas',ic:'💨',  n:{lt:'Antras kvėpavimas',en:'Second wind'},  v:r=>Math.min(1.0,r*0.10), f:v=>(v*100).toFixed(0)+'%'},
-   {k:'aktyvusPoilsis',ic:'🛌',     n:{lt:'Aktyvus poilsis',en:'Active rest'},     v:r=>r*0.5,   f:v=>'+'+v.toFixed(1)+'/s'}]},
+   {k:'istverme',ic:'🫀',act:'istverme',          n:{lt:'Ištvermės atsarga',en:'Stamina reserve'},           v:r=>25+r*3.5, f:v=>Math.round(v)},
+   {k:'ritmingasKvepavimas',ic:'🌬️',act:'istverme', n:{lt:'Ritmingas kvėpavimas',en:'Rhythmic breathing'}, v:r=>Math.min(0.55,r*0.032), f:v=>'−'+(v*100).toFixed(0)+'%'},
+   {k:'antrasKvepavimas',ic:'💨',act:'plaukimas',  n:{lt:'Antras kvėpavimas',en:'Second wind'},  v:r=>Math.min(1.0,r*0.10), f:v=>(v*100).toFixed(0)+'%'},
+   {k:'aktyvusPoilsis',ic:'🛌',act:'meditacija',     n:{lt:'Aktyvus poilsis',en:'Active rest'},     v:r=>r*0.5,   f:v=>'+'+v.toFixed(1)+'/s'}]},
  {id:'g_vi',kind:'mix',keys:['vikrumas','intelektas'],n:{lt:'Vikrumas + Intelektas · nuojauta',en:'Agility + Intellect · instinct'},i:'⚗',c:'#9fd0d9',sub:[
-   {k:'pirklioAkis',ic:'🪙',  n:{lt:'Pirklio akis',en:"Merchant's eye"},        v:r=>Math.min(3,r*0.09), f:v=>'+'+v.toFixed(1)+' vnt.'},
-   {k:'masaloTaupymas',ic:'🪱',  n:{lt:'Taupus masalas',en:'Bait saver'},   v:r=>Math.min(0.60,r*0.035), f:v=>(v*100).toFixed(0)+'%'}]},
+   {k:'pirklioAkis',ic:'🪙',act:'derybos',  n:{lt:'Pirklio akis',en:"Merchant's eye"},        v:r=>Math.min(3,r*0.09), f:v=>'+'+v.toFixed(1)+' vnt.'},
+   {k:'masaloTaupymas',ic:'🪱',act:'zvejyba',  n:{lt:'Taupus masalas',en:'Bait saver'},   v:r=>Math.min(0.60,r*0.035), f:v=>(v*100).toFixed(0)+'%'}]},
 
  {id:'g_jvi',kind:'tri',n:{lt:'Jėga + Vikrumas + Intelektas · girios globa',en:'Strength + Agility + Intellect · forest stewardship'},i:'✧',c:'#e5c07a',sub:[
-   {k:'giriosRysys',ic:'🌳', n:{lt:'Girios ryšys',en:'Forest bond'},   v:r=>1+r*0.28, f:v=>'×'+v.toFixed(2)},
-   {k:'gamtosDovana',ic:'🎁',n:{lt:'Gamtos dovana',en:"Nature's gift"},  v:r=>1+r*0.11, f:v=>'×'+v.toFixed(2)},
-   {k:'pilnatis',ic:'🌕',    n:{lt:'Pilnatis',en:'Full moon'},       v:r=>1+r*0.16, f:v=>'naktį ×'+v.toFixed(2)},
-   {k:'rytoRasa',ic:'🌫️',    n:{lt:'Ryto rasa',en:'Morning dew'},      v:r=>1+r*0.16, f:v=>'aušroje ×'+v.toFixed(2)},
-   {k:'derlius',ic:'🌾',     n:{lt:'Derlius',en:'Harvest'},        v:r=>Math.min(0.50,r*0.060), f:v=>(v*100).toFixed(0)+'%'},
-   {k:'nenuilstantis',ic:'🔋',n:{lt:'Nenuilstantis',en:'Tireless'}, v:r=>Math.min(0.50,r*0.050), f:v=>'−'+(v*100).toFixed(0)+'%'},
-   {k:'giriosAkis',ic:'🦉',  n:{lt:'Girios akis',en:'Forest eye'},    v:r=>r*6,      f:v=>'+'+v.toFixed(0)+' m'},
-   {k:'zvejoLaime',ic:'🐠',  n:{lt:'Žvejo laimė',en:"Angler's luck"},    v:r=>Math.min(0.50,r*0.060), f:v=>(v*100).toFixed(0)+'%'},
-   {k:'amatininkas',ic:'🔨', n:{lt:'Amatininkas',en:'Craftsman'},    v:r=>r*6,      f:v=>'+'+Math.round(v)},
-   {k:'gamtosGloba',ic:'🍃', n:{lt:'Gamtos globa',en:"Nature's care"},   v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
-   {k:'lobiuNuojauta',ic:'💎',n:{lt:'Lobių nuojauta',en:'Treasure sense'},      v:r=>1+r*0.035, f:v=>'×'+v.toFixed(2)},
-   {k:'trofejai',ic:'🦌',     n:{lt:'Trofėjų medžiotojas',en:'Trophy hunter'}, v:r=>Math.min(0.60,r*0.045), f:v=>(v*100).toFixed(0)+'%'}]}
+   {k:'giriosRysys',ic:'🌳',act:'pedsekyste', n:{lt:'Girios ryšys',en:'Forest bond'},   v:r=>1+r*0.28, f:v=>'×'+v.toFixed(2)},
+   {k:'gamtosDovana',ic:'🎁',act:'rinkimas',n:{lt:'Gamtos dovana',en:"Nature's gift"},  v:r=>1+r*0.11, f:v=>'×'+v.toFixed(2)},
+   {k:'pilnatis',ic:'🌕',act:'meditacija',    n:{lt:'Pilnatis',en:'Full moon'},       v:r=>1+r*0.16, f:v=>'naktį ×'+v.toFixed(2)},
+   {k:'rytoRasa',ic:'🌫️',act:'rinkimas',    n:{lt:'Ryto rasa',en:'Morning dew'},      v:r=>1+r*0.16, f:v=>'aušroje ×'+v.toFixed(2)},
+   {k:'derlius',ic:'🌾',act:'rinkimas',     n:{lt:'Derlius',en:'Harvest'},        v:r=>Math.min(0.50,r*0.060), f:v=>(v*100).toFixed(0)+'%'},
+   {k:'nenuilstantis',ic:'🔋',act:'istverme',n:{lt:'Nenuilstantis',en:'Tireless'}, v:r=>Math.min(0.50,r*0.050), f:v=>'−'+(v*100).toFixed(0)+'%'},
+   {k:'giriosAkis',ic:'🦉',act:'pedsekyste',  n:{lt:'Girios akis',en:'Forest eye'},    v:r=>r*6,      f:v=>'+'+v.toFixed(0)+' m'},
+   {k:'zvejoLaime',ic:'🐠',act:'zvejyba',  n:{lt:'Žvejo laimė',en:"Angler's luck"},    v:r=>Math.min(0.50,r*0.060), f:v=>(v*100).toFixed(0)+'%'},
+   {k:'amatininkas',ic:'🔨',act:'amatai', n:{lt:'Amatininkas',en:'Craftsman'},    v:r=>r*6,      f:v=>'+'+Math.round(v)},
+   {k:'gamtosGloba',ic:'🍃',act:'gydymas', n:{lt:'Gamtos globa',en:"Nature's care"},   v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
+   {k:'lobiuNuojauta',ic:'💎',act:'skaldymas',n:{lt:'Lobių nuojauta',en:'Treasure sense'},      v:r=>1+r*0.035, f:v=>'×'+v.toFixed(2)},
+   {k:'trofejai',ic:'🦌',act:'medziokle',     n:{lt:'Trofėjų medžiotojas',en:'Trophy hunter'}, v:r=>Math.min(0.60,r*0.045), f:v=>(v*100).toFixed(0)+'%'}]}
 ];
 /* ========= AMATŲ MEDIS (40) — v123, vartotojo prašymu =========
    4 profesijos suskirstytos pagal pagrindines/mišrias grupes:
@@ -4351,54 +4356,54 @@ const GGROUPS=[
    neįdiegta" meistrystės) — čia tik atributų DUOMENYS, paruošti ateičiai. */
 const AGROUPS=[
  {id:'a_jega',kind:'primary',key:'jega',n:{lt:'Jėga · metalurgija',en:'Strength · metalwork'},i:'🔨',c:'#e08a5a',sub:[
-   {k:'ginkluKalimas',ic:'⚒️', n:{lt:'Ginklų kalimas',en:'Weapon forging'},   v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
-   {k:'sarvuKalimas',ic:'🦺',  n:{lt:'Šarvų kalimas',en:'Armor forging'},     v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
-   {k:'metaloTaupymas',ic:'♻️',n:{lt:'Metalo taupymas',en:'Metal saving'},    v:r=>Math.min(0.50,r*0.030), f:v=>'−'+(v*100).toFixed(0)+'%'},
-   {k:'kaltoIgudis',ic:'🔩',   n:{lt:'Kalto įgūdis',en:'Forge skill'},        v:r=>Math.min(0.50,r*0.028), f:v=>'−'+(v*100).toFixed(0)+'%'},
-   {k:'lydiniai',ic:'⚙️',      n:{lt:'Lydiniai',en:'Alloys'},                 v:r=>Math.min(0.35,r*0.022), f:v=>(v*100).toFixed(0)+'%'}]},
+   {k:'ginkluKalimas',ic:'⚒️',act:'amatai', n:{lt:'Ginklų kalimas',en:'Weapon forging'},   v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
+   {k:'sarvuKalimas',ic:'🦺',act:'amatai',  n:{lt:'Šarvų kalimas',en:'Armor forging'},     v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
+   {k:'metaloTaupymas',ic:'♻️',act:'amatai',n:{lt:'Metalo taupymas',en:'Metal saving'},    v:r=>Math.min(0.50,r*0.030), f:v=>'−'+(v*100).toFixed(0)+'%'},
+   {k:'kaltoIgudis',ic:'🔩',act:'amatai',   n:{lt:'Kalto įgūdis',en:'Forge skill'},        v:r=>Math.min(0.50,r*0.028), f:v=>'−'+(v*100).toFixed(0)+'%'},
+   {k:'lydiniai',ic:'⚙️',act:'amatai',      n:{lt:'Lydiniai',en:'Alloys'},                 v:r=>Math.min(0.35,r*0.022), f:v=>(v*100).toFixed(0)+'%'}]},
  {id:'a_vikrumas',kind:'primary',key:'vikrumas',n:{lt:'Vikrumas · siuvėjas',en:'Agility · tailoring'},i:'🧵',c:'#8fd07a',sub:[
-   {k:'oduApdirbimas',ic:'🥾',   n:{lt:'Odų apdirbimas',en:'Leatherworking'},    v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
-   {k:'drabuziuSiuvimas',ic:'👕',n:{lt:'Drabužių siuvimas',en:'Clothing sewing'},v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
-   {k:'medziagosTaupymas',ic:'🧶',n:{lt:'Medžiagos taupymas',en:'Material saving'},v:r=>Math.min(0.50,r*0.030), f:v=>'−'+(v*100).toFixed(0)+'%'},
-   {k:'greitiSiuvimas',ic:'🪡',  n:{lt:'Greiti siuvimas',en:'Fast stitching'},   v:r=>Math.min(0.50,r*0.028), f:v=>'−'+(v*100).toFixed(0)+'%'},
-   {k:'tvirtiSiulai',ic:'🧵',    n:{lt:'Tvirti siūlai',en:'Sturdy stitching'},   v:r=>Math.min(0.45,r*0.025), f:v=>'−'+(v*100).toFixed(0)+'%'}]},
+   {k:'oduApdirbimas',ic:'🥾',act:'amatai',   n:{lt:'Odų apdirbimas',en:'Leatherworking'},    v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
+   {k:'drabuziuSiuvimas',ic:'👕',act:'amatai',n:{lt:'Drabužių siuvimas',en:'Clothing sewing'},v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
+   {k:'medziagosTaupymas',ic:'🧶',act:'amatai',n:{lt:'Medžiagos taupymas',en:'Material saving'},v:r=>Math.min(0.50,r*0.030), f:v=>'−'+(v*100).toFixed(0)+'%'},
+   {k:'greitiSiuvimas',ic:'🪡',act:'amatai',  n:{lt:'Greiti siuvimas',en:'Fast stitching'},   v:r=>Math.min(0.50,r*0.028), f:v=>'−'+(v*100).toFixed(0)+'%'},
+   {k:'tvirtiSiulai',ic:'🧵',act:'amatai',    n:{lt:'Tvirti siūlai',en:'Sturdy stitching'},   v:r=>Math.min(0.45,r*0.025), f:v=>'−'+(v*100).toFixed(0)+'%'}]},
  {id:'a_intelektas',kind:'primary',key:'intelektas',n:{lt:'Intelektas · virtuvė',en:'Intellect · cooking'},i:'🍲',c:'#7fbfe0',sub:[
-   {k:'maistoGaminimas',ic:'🍲',n:{lt:'Maisto gaminimas',en:'Food cooking'},   v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
-   {k:'vaistuGaminimas',ic:'💊',n:{lt:'Vaistų gaminimas',en:'Medicine making'},v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
-   {k:'nuoduGaminimas',ic:'☠️', n:{lt:'Nuodų gaminimas',en:'Poison making'},   v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
-   {k:'receptuZinojimas',ic:'📖',n:{lt:'Receptų žinojimas',en:'Recipe knowledge'},v:r=>1+r*0.045,f:v=>'×'+v.toFixed(2)},
-   {k:'ilgaGaliojimo',ic:'🍯',  n:{lt:'Ilga galiojimo trukmė',en:'Long shelf life'},v:r=>Math.min(0.50,r*0.030), f:v=>'−'+(v*100).toFixed(0)+'%'}]},
+   {k:'maistoGaminimas',ic:'🍲',act:'virtuve',n:{lt:'Maisto gaminimas',en:'Food cooking'},   v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
+   {k:'vaistuGaminimas',ic:'💊',act:'gydymas',n:{lt:'Vaistų gaminimas',en:'Medicine making'},v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
+   {k:'nuoduGaminimas',ic:'☠️',act:'virtuve', n:{lt:'Nuodų gaminimas',en:'Poison making'},   v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
+   {k:'receptuZinojimas',ic:'📖',act:'virtuve',n:{lt:'Receptų žinojimas',en:'Recipe knowledge'},v:r=>1+r*0.045,f:v=>'×'+v.toFixed(2)},
+   {k:'ilgaGaliojimo',ic:'🍯',act:'virtuve',  n:{lt:'Ilga galiojimo trukmė',en:'Long shelf life'},v:r=>Math.min(0.50,r*0.030), f:v=>'−'+(v*100).toFixed(0)+'%'}]},
 
  {id:'a_jv',kind:'mix',keys:['jega','vikrumas'],n:{lt:'Jėga + Vikrumas · dailidė',en:'Strength + Agility · carpentry'},i:'🪚',c:'#bfd07a',sub:[
-   {k:'lankuGamyba',ic:'🏹',    n:{lt:'Lankų gamyba',en:'Bow making'},        v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
-   {k:'irankiuGamyba',ic:'🪚',  n:{lt:'Įrankių gamyba',en:'Tool making'},     v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
-   {k:'medzioApdirbimas',ic:'🪵',n:{lt:'Medžio apdirbimas',en:'Woodworking'}, v:r=>1+r*0.08, f:v=>'×'+v.toFixed(2)},
-   {k:'laivuStatyba',ic:'⛵',   n:{lt:'Laivų statyba',en:'Shipbuilding'},     v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
-   {k:'tikslusMatavimas',ic:'📏',n:{lt:'Tikslus matavimas',en:'Precise measuring'},v:r=>Math.min(0.45,r*0.028), f:v=>'−'+(v*100).toFixed(0)+'%'}]},
+   {k:'lankuGamyba',ic:'🏹',act:'amatai',    n:{lt:'Lankų gamyba',en:'Bow making'},        v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
+   {k:'irankiuGamyba',ic:'🪚',act:'amatai',  n:{lt:'Įrankių gamyba',en:'Tool making'},     v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
+   {k:'medzioApdirbimas',ic:'🪵',act:'amatai',n:{lt:'Medžio apdirbimas',en:'Woodworking'}, v:r=>1+r*0.08, f:v=>'×'+v.toFixed(2)},
+   {k:'laivuStatyba',ic:'⛵',act:'amatai',   n:{lt:'Laivų statyba',en:'Shipbuilding'},     v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
+   {k:'tikslusMatavimas',ic:'📏',act:'amatai',n:{lt:'Tikslus matavimas',en:'Precise measuring'},v:r=>Math.min(0.45,r*0.028), f:v=>'−'+(v*100).toFixed(0)+'%'}]},
  {id:'a_vi',kind:'mix',keys:['vikrumas','intelektas'],n:{lt:'Vikrumas + Intelektas · smulkus darbas',en:'Agility + Intellect · fine work'},i:'🔍',c:'#9fd0d9',sub:[
-   {k:'detaluKokybe',ic:'🔍',     n:{lt:'Detalų kokybė',en:'Detail quality'},      v:r=>Math.min(0.40,r*0.025), f:v=>(v*100).toFixed(0)+'%'},
-   {k:'eksperimentavimas',ic:'⚗️',n:{lt:'Eksperimentavimas',en:'Experimentation'},v:r=>Math.min(0.35,r*0.022), f:v=>(v*100).toFixed(0)+'%'},
-   {k:'retuMedziagu',ic:'💎',     n:{lt:'Retų medžiagų žinojimas',en:'Rare materials'},v:r=>1+r*0.06, f:v=>'×'+v.toFixed(2)},
-   {k:'greitiEksperimentai',ic:'⏱️',n:{lt:'Greiti eksperimentai',en:'Quick experiments'},v:r=>Math.min(0.50,r*0.030), f:v=>'−'+(v*100).toFixed(0)+'%'},
-   {k:'papildomiIsteklius',ic:'📦',n:{lt:'Papildomi ištekliai',en:'Byproduct'},   v:r=>Math.min(0.35,r*0.020), f:v=>(v*100).toFixed(0)+'%'}]},
+   {k:'detaluKokybe',ic:'🔍',act:'amatai',     n:{lt:'Detalų kokybė',en:'Detail quality'},      v:r=>Math.min(0.40,r*0.025), f:v=>(v*100).toFixed(0)+'%'},
+   {k:'eksperimentavimas',ic:'⚗️',act:'amatai',n:{lt:'Eksperimentavimas',en:'Experimentation'},v:r=>Math.min(0.35,r*0.022), f:v=>(v*100).toFixed(0)+'%'},
+   {k:'retuMedziagu',ic:'💎',act:'amatai',     n:{lt:'Retų medžiagų žinojimas',en:'Rare materials'},v:r=>1+r*0.06, f:v=>'×'+v.toFixed(2)},
+   {k:'greitiEksperimentai',ic:'⏱️',act:'amatai',n:{lt:'Greiti eksperimentai',en:'Quick experiments'},v:r=>Math.min(0.50,r*0.030), f:v=>'−'+(v*100).toFixed(0)+'%'},
+   {k:'papildomiIsteklius',ic:'📦',act:'amatai',n:{lt:'Papildomi ištekliai',en:'Byproduct'},   v:r=>Math.min(0.35,r*0.020), f:v=>(v*100).toFixed(0)+'%'}]},
  {id:'a_ji',kind:'mix',keys:['jega','intelektas'],n:{lt:'Jėga + Intelektas · sunkioji pramonė',en:'Strength + Intellect · heavy industry'},i:'⚙',c:'#d9a06a',sub:[
-   {k:'lydymoZinios',ic:'🔥',      n:{lt:'Lydymo žinios',en:'Smelting knowledge'}, v:r=>1+r*0.08, f:v=>'×'+v.toFixed(2)},
-   {k:'konstravimas',ic:'🏗️',      n:{lt:'Konstravimas',en:'Construction'},        v:r=>1+r*0.09, f:v=>'×'+v.toFixed(2)},
-   {k:'specialiosTechnikos',ic:'🧩',n:{lt:'Specialios technikos',en:'Special techniques'},v:r=>Math.min(0.30,r*0.020), f:v=>(v*100).toFixed(0)+'%'},
-   {k:'patvarumas',ic:'🪨',        n:{lt:'Patvarumas',en:'Durability'},            v:r=>Math.min(0.45,r*0.025), f:v=>'−'+(v*100).toFixed(0)+'%'},
-   {k:'masineGamyba',ic:'🏭',      n:{lt:'Masinė gamyba',en:'Mass production'},    v:r=>Math.min(0.25,r*0.015), f:v=>(v*100).toFixed(0)+'%'}]},
+   {k:'lydymoZinios',ic:'🔥',act:'amatai',      n:{lt:'Lydymo žinios',en:'Smelting knowledge'}, v:r=>1+r*0.08, f:v=>'×'+v.toFixed(2)},
+   {k:'konstravimas',ic:'🏗️',act:'amatai',      n:{lt:'Konstravimas',en:'Construction'},        v:r=>1+r*0.09, f:v=>'×'+v.toFixed(2)},
+   {k:'specialiosTechnikos',ic:'🧩',act:'amatai',n:{lt:'Specialios technikos',en:'Special techniques'},v:r=>Math.min(0.30,r*0.020), f:v=>(v*100).toFixed(0)+'%'},
+   {k:'patvarumas',ic:'🪨',act:'amatai',        n:{lt:'Patvarumas',en:'Durability'},            v:r=>Math.min(0.45,r*0.025), f:v=>'−'+(v*100).toFixed(0)+'%'},
+   {k:'masineGamyba',ic:'🏭',act:'amatai',      n:{lt:'Masinė gamyba',en:'Mass production'},    v:r=>Math.min(0.25,r*0.015), f:v=>(v*100).toFixed(0)+'%'}]},
 
  {id:'a_jvi',kind:'tri',n:{lt:'Jėga + Vikrumas + Intelektas · meistriškumas',en:'Strength + Agility + Intellect · mastery'},i:'✧',c:'#e5c07a',sub:[
-   {k:'amatininkoRanka',ic:'🤚',n:{lt:'Amatininko ranka',en:"Craftsman's hand"},  v:r=>Math.min(2.0,1+r*0.13), f:v=>'×'+v.toFixed(2)},
-   {k:'kokybesGarantija',ic:'✅',n:{lt:'Kokybės garantija',en:'Quality guarantee'},v:r=>Math.min(0.50,r*0.055), f:v=>'−'+(v*100).toFixed(0)+'%'},
-   {k:'zaliavuZinojimas',ic:'📚',n:{lt:'Žaliavų žinojimas',en:'Material expertise'},v:r=>Math.min(0.40,r*0.035), f:v=>'−'+(v*100).toFixed(0)+'%'},
-   {k:'meistroVardas',ic:'🎖️',  n:{lt:'Meistro vardas',en:"Master's name"},       v:r=>Math.min(0.60,r*0.045), f:v=>'+'+(v*100).toFixed(0)+'%'},
-   {k:'unikalusDizainas',ic:'🎨',n:{lt:'Unikalus dizainas',en:'Unique design'},   v:r=>Math.min(0.30,r*0.030), f:v=>(v*100).toFixed(0)+'%'},
-   {k:'amatuIspejimas',ic:'💡', n:{lt:'Amatų įsijautimas',en:'Craft insight'},    v:r=>Math.min(2.0,1+r*0.10), f:v=>'×'+v.toFixed(2)},
-   {k:'taisymoMenas',ic:'🩹',   n:{lt:'Taisymo menas',en:'Repair art'},           v:r=>Math.min(0.55,r*0.050), f:v=>'−'+(v*100).toFixed(0)+'%'},
-   {k:'dvigubaPatirtis',ic:'⭐',n:{lt:'Dviguba patirtis',en:'Double experience'}, v:r=>Math.min(0.35,r*0.035), f:v=>(v*100).toFixed(0)+'%'},
-   {k:'legendinisAmatas',ic:'👑',n:{lt:'Legendinis amatas',en:'Legendary craft'}, v:r=>Math.min(0.15,r*0.012), f:v=>(v*100).toFixed(0)+'%'},
-   {k:'amatuIstverme',ic:'🔋',  n:{lt:'Amatų ištvermė',en:'Craft endurance'},     v:r=>Math.min(0.40,r*0.030), f:v=>'−'+(v*100).toFixed(0)+'%'}]}
+   {k:'amatininkoRanka',ic:'🤚',act:'amatai',n:{lt:'Amatininko ranka',en:"Craftsman's hand"},  v:r=>Math.min(2.0,1+r*0.13), f:v=>'×'+v.toFixed(2)},
+   {k:'kokybesGarantija',ic:'✅',act:'amatai',n:{lt:'Kokybės garantija',en:'Quality guarantee'},v:r=>Math.min(0.50,r*0.055), f:v=>'−'+(v*100).toFixed(0)+'%'},
+   {k:'zaliavuZinojimas',ic:'📚',act:'amatai',n:{lt:'Žaliavų žinojimas',en:'Material expertise'},v:r=>Math.min(0.40,r*0.035), f:v=>'−'+(v*100).toFixed(0)+'%'},
+   {k:'meistroVardas',ic:'🎖️',act:'amatai',  n:{lt:'Meistro vardas',en:"Master's name"},       v:r=>Math.min(0.60,r*0.045), f:v=>'+'+(v*100).toFixed(0)+'%'},
+   {k:'unikalusDizainas',ic:'🎨',act:'amatai',n:{lt:'Unikalus dizainas',en:'Unique design'},   v:r=>Math.min(0.30,r*0.030), f:v=>(v*100).toFixed(0)+'%'},
+   {k:'amatuIspejimas',ic:'💡',act:'amatai', n:{lt:'Amatų įsijautimas',en:'Craft insight'},    v:r=>Math.min(2.0,1+r*0.10), f:v=>'×'+v.toFixed(2)},
+   {k:'taisymoMenas',ic:'🩹',act:'amatai',   n:{lt:'Taisymo menas',en:'Repair art'},           v:r=>Math.min(0.55,r*0.050), f:v=>'−'+(v*100).toFixed(0)+'%'},
+   {k:'dvigubaPatirtis',ic:'⭐',act:'amatai',n:{lt:'Dviguba patirtis',en:'Double experience'}, v:r=>Math.min(0.35,r*0.035), f:v=>(v*100).toFixed(0)+'%'},
+   {k:'legendinisAmatas',ic:'👑',act:'amatai',n:{lt:'Legendinis amatas',en:'Legendary craft'}, v:r=>Math.min(0.15,r*0.012), f:v=>(v*100).toFixed(0)+'%'},
+   {k:'amatuIstverme',ic:'🔋',act:'istverme',  n:{lt:'Amatų ištvermė',en:'Craft endurance'},     v:r=>Math.min(0.40,r*0.030), f:v=>'−'+(v*100).toFixed(0)+'%'}]}
 ];
 const GROUPS=CGROUPS.concat(GGROUPS).concat(AGROUPS);
 for(const g of GROUPS) for(const sb of g.sub) RANK[sb.k]=0;
@@ -4578,7 +4583,21 @@ const usedIn=g=>g.sub.reduce((a,sb)=>a+RANK[sb.k],0);
 const groupOfKey=k=>GROUPS.find(g=>g.sub.some(sb=>sb.k===k));
 
 const D={};
+/* v178: rinkimo ir amatų atributai NEPERKAMI taškais — jų rangas seka tos
+   veiklos meistrystės lygį (sub laukas act). Rangas = lygis−1, kad pradžioje
+   (visos meistrystės 1 lygio) būtų 0, kaip ir buvo. Skaičiuojam derive()
+   pradžioje, tad po kiekvieno addXp viskas susidėlioja savaime. */
+function syncActRanks(){
+  for(const g of GROUPS){
+    if(!isGather(g)&&!isCraft(g)) continue;
+    for(const sb of g.sub){
+      const s=SKILLS[sb.act];
+      RANK[sb.k]=s?Math.max(0,s.lv-1):0;
+    }
+  }
+}
 function derive(){
+  syncActRanks();
   for(const g of GROUPS) for(const sb of g.sub) D[sb.k]=sb.v(RANK[sb.k]);
   /* --- aprangos priedai --- */
   for(const sk of Object.keys(gear)){
@@ -4612,26 +4631,24 @@ function spendPrimary(k){
   burst(player.pos.x,player.pos.y+1.2,player.pos.z,18,0xffc861,2.8);
   return true;
 }
-function ptsPoolOf(g){ return isGather(g)?'gatherPts':(isCraft(g)?'craftPts':'combatPts'); }
 function spendSecondary(k){
   const g=groupOfKey(k); if(!g) return false;
-  const pool=ptsPoolOf(g);
-  if((pool==='gatherPts'?gatherPts:pool==='craftPts'?craftPts:combatPts)<=0) return false;
+  if(isGather(g)||isCraft(g)) return false;      // v178: kyla nuo veiklos, ne nuo taškų
+  if(combatPts<=0) return false;
   if(usedIn(g)>=capacity(g)) return false;
-  if(pool==='gatherPts') gatherPts--; else if(pool==='craftPts') craftPts--; else combatPts--;
+  combatPts--;
   RANK[k]++; derive(); refreshUI();
   return true;
 }
 function resetAttrs(){
-  let p=0,cb=0,gt=0,cr=0;
+  let p=0,cb=0;
   for(const k of Object.keys(ATTR)){ p+=ATTR[k]-1; ATTR[k]=1; }
-  for(const g of GROUPS) for(const sb of g.sub){
-    const pool=ptsPoolOf(g);
-    if(pool==='gatherPts') gt+=RANK[sb.k]; else if(pool==='craftPts') cr+=RANK[sb.k]; else cb+=RANK[sb.k];
-    RANK[sb.k]=0;
+  for(const g of GROUPS){
+    if(isGather(g)||isCraft(g)) continue;        // v178: uždirbtų rangų negrąžinam ir nenulinam
+    for(const sb of g.sub){ cb+=RANK[sb.k]; RANK[sb.k]=0; }
   }
-  primaryPts+=p; combatPts+=cb; gatherPts+=gt; craftPts+=cr;
-  const sec=cb+gt+cr;
+  primaryPts+=p; combatPts+=cb;
+  const sec=cb;
   derive();
   player.hp=player.maxHp; player.mana=player.maxMana;
   player.stam=player.maxStam; player.workStam=player.maxWorkStam; player.shield=player.maxShield;
@@ -4641,8 +4658,10 @@ function resetAttrs(){
 }
 const isGather=g=>g.id.slice(0,2)==='g_';
 const isCraft=g=>g.id.slice(0,2)==='a_';
+/* v178: lygis duoda TIK pagrindinius ir kovos taškus — rinkimo ir amatų
+   atributai nebeperkami, jie kyla nuo pačios veiklos (žr. syncActRanks). */
 function grantLevels(to){
-  for(let l=2;l<=to;l++){ if(l%5===0) primaryPts++; else { combatPts++; gatherPts++; craftPts++; } }
+  for(let l=2;l<=to;l++){ if(l%5===0) primaryPts++; else combatPts++; }
   charLvl=to; charXp=xpForChar(to);
 }
 function gainCharXp(amount){
@@ -4651,7 +4670,7 @@ function gainCharXp(amount){
   while(charLvl<nl){
     charLvl++;
     if(charLvl%5===0){ primaryPts++; log(T('lvlPrimary')+charLvl+T('lvlPrimaryEnd'),'lg-a'); }
-    else { combatPts++; gatherPts++; craftPts++; log(T('lvlSecondary')+charLvl+T('lvlSecondaryEnd'),'lg-a'); }
+    else { combatPts++; log(T('lvlSecondary')+charLvl+T('lvlSecondaryEnd'),'lg-a'); }
     sfx('levelup');
     burst(player.pos.x,player.pos.y+1,player.pos.z,44,0xffc861,4.2,-2.2);
     shockRing(player.pos.x,player.pos.y+.15,player.pos.z,0xffc861,.9);
@@ -5150,7 +5169,8 @@ function addXp(skill,amount){
   const before=s.lv;
   const gained=Math.max(1,Math.round(amount));
   s.xp+=gained; s.lv=levelOf(s.xp);
-  if(s.lv>before) log(Lx(s.n)+T('leveledUp')+s.lv+T('leveledUpEnd'),'lg-g');
+  /* v178: pakilusi meistrystė iškart pakelia savo rinkimo/amatų atributų rangus */
+  if(s.lv>before){ derive(); log(Lx(s.n)+T('leveledUp')+s.lv+T('leveledUpEnd'),'lg-g'); }
   gainCharXp(gained);
   refreshUI();
 }
@@ -7040,7 +7060,7 @@ function charKey(tab){
 function charInfoHtml(){
   const base=xpForChar(charLvl), next=xpForChar(charLvl+1);
   const xpPct=clamp((charXp-base)/(next-base),0,1)*100;
-  const free=primaryPts+combatPts+gatherPts+craftPts;
+  const free=primaryPts+combatPts;
   const worn=ALL_SLOTS.filter(sl=>gear[sl.k]).length;
   let h='<div class="row" style="border-bottom:1px solid rgba(217,152,47,.28)">'+
     '<span style="font-family:Fraunces,serif;color:#d9a06a">'+T('gearHeader')+'</span>'+
@@ -7175,8 +7195,8 @@ function drawCharPanel(){
   if(charTab==='char'){       box.innerHTML=charInfoHtml(); bindGear(box); }
   else if(charTab==='skills'){ box.innerHTML=masteryHtml(); bindMastery(box); }
   else if(charTab==='combat'){ box.innerHTML=treeHtml(CGROUPS,combatPts,T('combatPtsLbl'),'combat'); bindTree(box); }
-  else if(charTab==='gather'){ box.innerHTML=treeHtml(GGROUPS,gatherPts,T('gatherPtsLbl'),'gather'); bindTree(box); }
-  else                       { box.innerHTML=treeHtml(AGROUPS,craftPts,T('craftPtsLbl'),'craft'); bindTree(box); }
+  else if(charTab==='gather'){ box.innerHTML=treeHtml(GGROUPS,0,T('gatherPtsLbl'),'gather'); bindTree(box); }
+  else                       { box.innerHTML=treeHtml(AGROUPS,0,T('craftPtsLbl'),'craft'); bindTree(box); }
   drawGearBag();                       // v105: kartu atnaujinam aprangos langą
   const nav=document.getElementById('charNav');
   if(nav.querySelectorAll) nav.querySelectorAll('button').forEach(b=>{
@@ -7346,66 +7366,95 @@ function atNodeHtml(cls,key,x,y,r,g,extraCls,inner,data){
     ' style="left:'+(x-r).toFixed(1)+'px;top:'+(y-r).toFixed(1)+'px;width:'+(2*r)+'px;height:'+(2*r)+
     'px;border-color:'+g.c+'">'+inner+'</div>';
 }
-/* vienos grupės aprašymas popup'ui (talpa ir ką ji reiškia) */
+/* ar šis medis perkamas taškais (kova), ar kyla nuo veiklos (rinkimas/amatai) */
+const atEarned=g=>isGather(g)||isCraft(g);
+/* stipino ryškumas pagal rangą (v178): kuo daugiau taškų ant atributo, tuo
+   ryškesnė ir storesnė nuo jo einanti linija. */
+function atSpoke(r){
+  const n=Math.min(1,(r||0)/6);
+  return {a:(0.20+0.80*n).toFixed(2), w:(2+2.2*n).toFixed(1)};
+}
+/* vienos grupės aprašymas popup'ui (talpa arba veikla, ką ji reiškia) */
 function atGroupPopup(g){
-  const cap=capacity(g), use=usedIn(g);
+  const gali=g.kind==='primary'&&primaryPts>0&&!atEarned(g);
+  let apacia;
+  if(atEarned(g)) apacia='<span style="font-size:10.5px">'+T('atRanksSum')+usedIn(g)+'</span>';
+  else apacia='<span style="font-size:10.5px">'+T('atCapLbl')+usedIn(g)+'/'+capacity(g)+'</span>';
   POPUP_HTML['G'+g.id]='<b style="color:'+g.c+'">'+g.i+' '+Lx(g.n)+'</b><br>'+
     (g.kind==='primary'
-      ? T('atPrimaryInfo')+' <b>'+ATTR[g.key]+'</b>'+(primaryPts>0?'<br><span style="color:#ffc861">'+T('atClickRaise')+'</span>':'')
-      : T('atGroupInfo'))+
-    '<br><span style="font-size:10.5px">'+T('atCapLbl')+use+'/'+cap+'</span>';
+      ? T('atPrimaryInfo')+' <b>'+ATTR[g.key]+'</b>'+
+        (gali?'<br><span style="color:#ffc861">'+T('atClickRaise')+'</span>':'')+
+        (atEarned(g)?'<br><span style="opacity:.75">'+T('atNoPrimaryHere')+'</span>':'')
+      : (atEarned(g)?T('atEarnedGroup'):T('atGroupInfo')))+
+    '<br>'+apacia;
 }
 function graphHtml(groups,which,pts){
   const L=attrLayout(groups);
   atGeom[which]=L;
-  const V=L.V, ln=(a,b,c,w)=>'<line x1="'+a.x.toFixed(1)+'" y1="'+a.y.toFixed(1)+'" x2="'+b.x.toFixed(1)+
-    '" y2="'+b.y.toFixed(1)+'" stroke="'+c+'" stroke-width="'+w+'"/>';
+  const V=L.V, ln=(a,b,c,w,o)=>'<line x1="'+a.x.toFixed(1)+'" y1="'+a.y.toFixed(1)+'" x2="'+b.x.toFixed(1)+
+    '" y2="'+b.y.toFixed(1)+'" stroke="'+c+'" stroke-width="'+w+'"'+(o?' stroke-opacity="'+o+'"':'')+'/>';
   let s='<svg class="atSvg" width="'+L.w+'" height="'+L.h+'" viewBox="0 0 '+L.w+' '+L.h+'">';
   s+=ln(V.jega,V.intelektas,'rgba(217,152,47,.34)',2.5)+ln(V.intelektas,V.vikrumas,'rgba(217,152,47,.34)',2.5)+
      ln(V.vikrumas,V.jega,'rgba(217,152,47,.34)',2.5);
-  for(const nd of L.nodes) s+=ln({x:nd.ox,y:nd.oy},nd,nd.g.c+'88',2);
+  for(const nd of L.nodes){
+    const sp=atSpoke(RANK[nd.k]);
+    s+=ln({x:nd.ox,y:nd.oy},nd,nd.g.c,sp.w,sp.a);
+  }
   s+='</svg>';
   let h='';
   for(const hb of L.hubs){
     atGroupPopup(hb.g);
-    h+=atNodeHtml('atHub','G'+hb.g.id,hb.x,hb.y,AT_HUB,hb.g,primaryPts>0?' can':'',
-      '<i>'+hb.g.i+'</i><b>'+ATTR[hb.key]+'</b>',' data-p="'+hb.key+'"');
+    const gali=primaryPts>0&&!atEarned(hb.g);
+    h+=atNodeHtml('atHub','G'+hb.g.id,hb.x,hb.y,AT_HUB,hb.g,gali?' can':'',
+      '<i>'+hb.g.i+'</i><b>'+ATTR[hb.key]+'</b>',
+      atEarned(hb.g)?'':' data-p="'+hb.key+'"');   // v178: rinkime/amatuose savybės nekeliamos
   }
   for(const md of L.mids){
     atGroupPopup(md.g);
-    h+=atNodeHtml('atGrp','G'+md.g.id,md.x,md.y,AT_GRP,md.g,capacity(md.g)?'':' off',
-      '<i>'+md.g.i+'</i><b>'+usedIn(md.g)+'/'+capacity(md.g)+'</b>');
+    const uzd=atEarned(md.g);
+    h+=atNodeHtml('atGrp','G'+md.g.id,md.x,md.y,AT_GRP,md.g,(uzd||capacity(md.g))?'':' off',
+      '<i>'+md.g.i+'</i><b>'+usedIn(md.g)+(uzd?'':'/'+capacity(md.g))+'</b>');
   }
   for(const nd of L.nodes){
-    const g=nd.g, cap=capacity(g), can=pts>0&&cap>0&&usedIn(g)<cap;
-    atAttrPopup(nd.sb,cap);
-    h+=atNodeHtml('atNode ainfo',nd.k,nd.x,nd.y,AT_NODE,g,(cap?'':' off')+(can?' can':''),
+    const g=nd.g, uzd=atEarned(g), cap=capacity(g), can=!uzd&&pts>0&&cap>0&&usedIn(g)<cap;
+    atAttrPopup(nd.sb,uzd?1:cap,uzd);
+    h+=atNodeHtml('atNode ainfo',nd.k,nd.x,nd.y,AT_NODE,g,(uzd||cap?'':' off')+(can?' can':''),
       '<i>'+nd.ic+'</i>'+(RANK[nd.k]?'<b>'+RANK[nd.k]+'</b>':''));
   }
   return '<div class="atWrap"><div class="atStage" style="width:'+L.w+'px;height:'+L.h+'px">'+s+h+'</div></div>';
 }
-/* v123 aprašymo turinys — nepakeistas, tik iškeltas iš groupBlock() */
-function atAttrPopup(sb,cap){
+/* v123 aprašymo turinys; v178 — uždirbamiems atributams vietoj „kitas rangas"
+   rašom, KOKIA VEIKLA juos kelia. */
+function atAttrPopup(sb,cap,uzd){
   const r0=RANK[sb.k], cur=sb.v(r0), nxt=sb.v(r0+1);
   const step=cap
     ? (Math.abs(nxt-cur)<1e-9
         ? '<span style="color:#c4462f">'+T('capReached')+'</span>'
         : T('nextRank')+'<b>'+sb.f(cur)+'</b> → <b style="color:#ffc861">'+sb.f(nxt)+'</b>')
     : '<span style="opacity:.7">'+T('groupLocked')+'</span>';
+  const sk=uzd&&SKILLS[sb.act];
   POPUP_HTML[sb.k]='<b style="color:#ffc861">'+sb.ic+' '+Lx(sb.n)+'</b><br>'+
-    (Lx(ATTR_INFO[sb.k])||'')+'<br><span style="font-size:10.5px">'+step+T('ranksLbl')+r0+'</span>';
+    (Lx(ATTR_INFO[sb.k])||'')+'<br>'+
+    (sk?'<span style="color:#8fd07a">'+T('atRisesBy')+sk.i+' '+Lx(sk.n)+' ('+T('levelLbl')+sk.lv+')</span><br>':'')+
+    '<span style="font-size:10.5px">'+step+T('ranksLbl')+r0+'</span>';
 }
 function treeHtml(groups, pts, label, which){
   const w=which||'combat';
-  let html='<div class="hint" style="margin-bottom:7px">'+
-    '<b style="color:#ffc861">'+T('levelLbl')+charLvl+'</b> · '+T('primaryPtsLbl')+': <b>'+primaryPts+
-    '</b> · '+label+': <b>'+pts+'</b><br>'+
-    '<span style="opacity:.75">'+T('treeHint')+'</span></div>';
+  const uzd=atEarned(groups[0]);          // rinkimo/amatų medis — be taškų
+  /* v178: antraštėje lieka TIK lygis (ir pagrindiniai taškai kovoje);
+     visa kita — po „?" ženklu, kad neužimtų trijų eilučių. */
+  POPUP_HTML['?']='<b style="color:#ffc861">'+T('levelLbl')+charLvl+'</b><br>'+
+    (uzd?T('atEarnedTree'):label+': <b>'+pts+'</b><br>'+T('atSpendHint'))+
+    '<br><span style="font-size:10.5px;opacity:.85">'+T('treeHint')+'</span>';
+  let html='<div class="hint atHead">'+
+    '<b style="color:#ffc861">'+T('levelLbl')+charLvl+'</b>'+
+    (uzd?'':' · '+T('primaryPtsLbl')+': <b>'+primaryPts+'</b>')+
+    ' <span class="atHelp" data-a="?">?</span></div>';
   html+='<div class="atBar">'+
     '<button class="tbtn atZ" data-z="out">−</button>'+
     '<button class="tbtn atZ" data-z="in">+</button>'+
     '<button class="tbtn atZ" data-z="fit">⤢</button>'+
-    '<button class="tbtn rstBtn">'+T('resetAllAttrs')+'</button></div>';
+    (uzd?'':'<button class="tbtn rstBtn">'+T('resetAllAttrs')+'</button>')+'</div>';
   html+=graphHtml(groups,w,pts);
   return html;
 }
@@ -7491,12 +7540,15 @@ function bindTree(box){
     atTapKey=null; hideAttrPopup(); resetAttrs(); redrawSkillsUI();
   });
   box.querySelectorAll('.atZ').forEach(b=>b.onclick=()=>atZoomBtn(b.dataset.z));
-  box.querySelectorAll('.atNode').forEach(el=>atBindNode(el,el.dataset.a,()=>{
-    if(spendSecondary(el.dataset.a)) redrawSkillsUI();
-  }));
-  box.querySelectorAll('.atHub').forEach(el=>atBindNode(el,el.dataset.a,()=>{
-    if(spendPrimary(el.dataset.p)) redrawSkillsUI();
-  }));
+  box.querySelectorAll('.atHelp').forEach(el=>atBindNode(el,'?',null));
+  box.querySelectorAll('.atNode').forEach(el=>{
+    const g=groupOfKey(el.dataset.a);
+    atBindNode(el,el.dataset.a, (g&&atEarned(g))?null:()=>{
+      if(spendSecondary(el.dataset.a)) redrawSkillsUI();
+    });
+  });
+  box.querySelectorAll('.atHub').forEach(el=>atBindNode(el,el.dataset.a,
+    el.dataset.p?()=>{ if(spendPrimary(el.dataset.p)) redrawSkillsUI(); }:null));
   box.querySelectorAll('.atGrp').forEach(el=>atBindNode(el,el.dataset.a,null));
 }
 let skillTab='passive';          // passive | active | spells
@@ -7603,7 +7655,7 @@ function refreshUI(){
   const pct=clamp(player.hp/player.maxHp,0,1)*100;
   document.getElementById('hpFill').style.width=pct+'%';
   document.getElementById('hpTxt').textContent=Math.max(0,Math.ceil(player.hp))+' / '+player.maxHp;
-  const freePts=primaryPts+combatPts+gatherPts+craftPts;
+  const freePts=primaryPts+combatPts;
   document.getElementById('cbLvl').textContent=charLvl;
   document.getElementById('pPts').textContent=freePts>0?'+'+freePts:'';
   document.getElementById('playerCard').classList.toggle('hasPts',freePts>0);

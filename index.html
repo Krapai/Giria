@@ -625,8 +625,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v167';
-const GAME_CHANGES='kasimas: kairė ranka ant koto, greitesnis smūgis, nebepersisuka kirtiklis';
+const GAME_VERSION='v168';
+const GAME_CHANGES='kasant kairė plaštaka tikrai ant koto, nebe ant dešinės rankos';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -3244,7 +3244,17 @@ function applyArmPose(A,B,t,w,pairs){
    modelio ilgį) — todėl ranka seka TIKRĄ ginklo padėtį, ne spėjimą. */
 /* v148: NEIGIAMAS — kairė plaštaka ant koto VIRŠ dešinės (link koto galo),
    nes smūgio metu geležtė nukreipta žemyn. Ženklas lemia, kuri ranka viršuje. */
-const GRIP_SPAN=-.30;                                 // plaštakų tarpas ant koto
+/* v168: 0,30 → 0,45. Su 0,30 kairė plaštaka atsidurdavo 0,039 nuo DEŠINIO
+   DILBIO (plaštakos storis 0,102) — t. y. tiesiog ant jo, ir vartotojas
+   teisingai pasakė „kairė ranka laiko už dešinės rankos". Priežastis
+   geometrinė: kasimo metu kotas eina beveik išilgai dešinio dilbio (išmatuota
+   21°), tad visa koto atkarpa UŽ dešinės plaštakos guli ant tos pačios rankos.
+   IŠMATUOTA per 101 mosto tašką: 0,30 → 0,039 nuo dilbio · 0,36 → 0,059 ·
+   0,40 → 0,075 · 0,45 → 0,110 (ir 0,105 nuo žasto). Kotas turi 0,517 laisvos
+   dalies už dešinės plaštakos (modelio galas −2,22 × mastelis 0,233), tad 0,45
+   dar telpa — kairė plaštaka atsiduria beveik ant koto galo, kaip tikrai
+   laikomas kirtiklis. Siekio atsarga lieka ≥0,150. */
+const GRIP_SPAN=-.45;                                 // plaštakų tarpas ant koto
 /* v150: alkūnės kryptis pataisyta — su v149 reikšme kairė alkūnė mosto metu
    nuklysdavo UŽ kūno (išmatuota alkūnės z iki −0,30, t. y. ranka lūžta atgal;
    vartotojas: „kairė per daug lenkiasi atgal"). Su (1; −1; 0,5) alkūnė per
@@ -3257,7 +3267,56 @@ const _gk={ax:new THREE.Vector3(),base:new THREE.Vector3(),sh:new THREE.Vector3(
   pole:new THREE.Vector3(),dir:new THREE.Vector3(),a1:new THREE.Vector3(),a2:new THREE.Vector3(),
   qw:new THREE.Quaternion(),qp:new THREE.Quaternion(),qa:new THREE.Quaternion(),
   q1w:new THREE.Quaternion(),q1l:new THREE.Quaternion(),q2w:new THREE.Quaternion(),
-  q2l:new THREE.Quaternion(),qi:new THREE.Quaternion(),save:new THREE.Quaternion()};
+  q2l:new THREE.Quaternion(),qi:new THREE.Quaternion(),save:new THREE.Quaternion(),
+  ring:new THREE.Vector3(),qh:new THREE.Quaternion(),
+  saveUA:new THREE.Quaternion(),saveLA:new THREE.Quaternion()};
+/* v168: KAIRĖS PLAŠTAKOS CENTRAS kaulo vietinėje sistemoje — IŠMATUOTA iš
+   paties tinklelio (65 viršūnės, kurių svoris hand_l > 0,5; skaičiuota per
+   inverseBindMatrix): hand_l (0,006; 0,072; −0,007), hand_r veidrodinis
+   (−0,006; 0,072; −0,007) — veidrodis TIK per X, Y ir Z sutampa.
+   Iki v168 IK ant koto statydavo kaulo PRADŽIĄ (riešą), tad delnas likdavo
+   0,072 — visą plaštakos plotį — šalia koto: ranka koto neliesdavo. */
+const GRIP_PALM_L=new THREE.Vector3(.006,.072,-.007);
+/* Vienas IK ratas: kairė ranka pastatoma taip, kad RIEŠAS atsidurtų g.tgt.
+   Iškelta iš poseGripLeftIK, nes v168 skaičiuoja du ratus (žr. ten). */
+function gripArmTo(ua,la,hl,l1,l2,L,w){
+  const g=_gk;
+  g.v.copy(g.tgt).sub(g.sh);
+  let d=g.v.length(); if(d<1e-4) return false;
+  g.vn.copy(g.v).divideScalar(d);
+  d=Math.max(Math.abs(l1-l2)+1e-3,Math.min(L-1e-3,d));
+  const cs=(l1*l1+d*d-l2*l2)/(2*l1*d), a=Math.acos(Math.max(-1,Math.min(1,cs)));
+  g.pole.copy(GRIP_POLE).applyQuaternion(playerGltfModel.quaternion).normalize();
+  g.n.copy(g.vn).cross(g.pole);
+  if(g.n.lengthSq()<1e-6) g.n.set(0,0,1).cross(g.vn);
+  g.n.normalize();
+  g.perp.copy(g.n).cross(g.vn).normalize();
+  g.elbow.copy(g.sh).addScaledVector(g.vn,l1*Math.cos(a)).addScaledVector(g.perp,l1*Math.sin(a));
+  /* žastas → alkūnė. Kaulo ašis šiame skelete yra vietinė +Y (vaikas guli ties
+     (0; 0,274; 0) — IŠMATUOTA), todėl kryptis imama iš vaiko kaulo vietos. */
+  ua.getWorldQuaternion(g.qw);
+  g.a1.copy(la.position).normalize().applyQuaternion(g.qw);
+  g.dir.copy(g.elbow).sub(g.sh).normalize();
+  g.qa.setFromUnitVectors(g.a1,g.dir);
+  g.q1w.copy(g.qa).multiply(g.qw);
+  ua.parent.getWorldQuaternion(g.qp);
+  g.q1l.copy(g.qp).invert().multiply(g.q1w);
+  /* dilbis → plaštakos taikinys (skaičiuojama su JAU pasuktu žastu) */
+  g.save.copy(ua.quaternion);
+  ua.quaternion.copy(g.q1l);
+  ua.updateMatrixWorld(true);
+  la.getWorldQuaternion(g.qw);
+  g.a2.copy(hl.position).normalize().applyQuaternion(g.qw);
+  g.dir.copy(g.tgt).sub(g.elbow).normalize();
+  g.qa.setFromUnitVectors(g.a2,g.dir);
+  g.q2w.copy(g.qa).multiply(g.qw);
+  g.qi.copy(g.q1w).invert();
+  g.q2l.copy(g.qi).multiply(g.q2w);
+  /* svoris — kaip poseBoneBlend: sklandžiai iš mikserio pozos ir atgal */
+  ua.quaternion.copy(g.save).slerp(g.q1l,Math.min(1,w));
+  la.quaternion.slerp(g.q2l,Math.min(1,w));
+  return true;
+}
 function poseGripLeftIK(w,axisLocal,fitPos){
   const hr=GLTF_BONES.hand_r, ua=GLTF_BONES.upperarm_l,
         la=GLTF_BONES.lowerarm_l, hl=GLTF_BONES.hand_l;
@@ -3292,43 +3351,24 @@ function poseGripLeftIK(w,axisLocal,fitPos){
     if(disc>=0){ const r1=-b-Math.sqrt(disc), r2=-b+Math.sqrt(disc);
       t=Math.abs(r1-GRIP_SPAN)<Math.abs(r2-GRIP_SPAN)?r1:r2; }
     else t=-b;
-    t=Math.max(.18,Math.min(.45,Math.abs(t)))*(GRIP_SPAN<0?-1:1);
+    t=Math.max(.18,Math.min(.52,Math.abs(t)))*(GRIP_SPAN<0?-1:1);   // v168: viršus 0,45 → 0,52
   }
-  g.tgt.copy(g.base).addScaledVector(g.ax,t);
-  g.v.copy(g.tgt).sub(g.sh);
-  let d=g.v.length(); if(d<1e-4) return;
-  g.vn.copy(g.v).divideScalar(d);
-  d=Math.max(Math.abs(l1-l2)+1e-3,Math.min(L-1e-3,d));
-  const cs=(l1*l1+d*d-l2*l2)/(2*l1*d), a=Math.acos(Math.max(-1,Math.min(1,cs)));
-  g.pole.copy(GRIP_POLE).applyQuaternion(playerGltfModel.quaternion).normalize();
-  g.n.copy(g.vn).cross(g.pole);
-  if(g.n.lengthSq()<1e-6) g.n.set(0,0,1).cross(g.vn);
-  g.n.normalize();
-  g.perp.copy(g.n).cross(g.vn).normalize();
-  g.elbow.copy(g.sh).addScaledVector(g.vn,l1*Math.cos(a)).addScaledVector(g.perp,l1*Math.sin(a));
-  /* žastas → alkūnė. Kaulo ašis šiame skelete yra vietinė +Y (vaikas guli ties
-     (0; 0,274; 0) — IŠMATUOTA), todėl kryptis imama iš vaiko kaulo vietos. */
-  ua.getWorldQuaternion(g.qw);
-  g.a1.copy(la.position).normalize().applyQuaternion(g.qw);
-  g.dir.copy(g.elbow).sub(g.sh).normalize();
-  g.qa.setFromUnitVectors(g.a1,g.dir);
-  g.q1w.copy(g.qa).multiply(g.qw);
-  ua.parent.getWorldQuaternion(g.qp);
-  g.q1l.copy(g.qp).invert().multiply(g.q1w);
-  /* dilbis → plaštakos taikinys (skaičiuojama su JAU pasuktu žastu) */
-  g.save.copy(ua.quaternion);
-  ua.quaternion.copy(g.q1l);
+  g.ring.copy(g.base).addScaledVector(g.ax,t);     // kur ant koto turi būti DELNAS
+  g.saveUA.copy(ua.quaternion); g.saveLA.copy(la.quaternion);
+  /* v168: DU RATAI. Pirmas pastato riešą ant koto ir tik tam, kad sužinotume
+     TIKRĄ plaštakos orientaciją (jos niekas nevaldo — hand_l lieka mikserio).
+     Iš jos apskaičiuojamas delno poslinkis ir antras ratas nuveda riešą tiek,
+     kad ant koto atsidurtų DELNO CENTRAS. Nieko nespėjama: poslinkis imamas
+     iš išmatuoto GRIP_PALM_L ir dabartinio kvaterniono. Patikrinta per 101
+     tašką — delno nuokrypis nuo koto ≤0,002 (buvo 0,072). */
+  g.tgt.copy(g.ring);
+  if(!gripArmTo(ua,la,hl,l1,l2,L,1)) return;
+  la.updateMatrixWorld(true);
+  hl.getWorldQuaternion(g.qh);
+  g.tgt.copy(g.ring).sub(g.v.copy(GRIP_PALM_L).applyQuaternion(g.qh));
+  ua.quaternion.copy(g.saveUA); la.quaternion.copy(g.saveLA);
   ua.updateMatrixWorld(true);
-  la.getWorldQuaternion(g.qw);
-  g.a2.copy(hl.position).normalize().applyQuaternion(g.qw);
-  g.dir.copy(g.tgt).sub(g.elbow).normalize();
-  g.qa.setFromUnitVectors(g.a2,g.dir);
-  g.q2w.copy(g.qa).multiply(g.qw);
-  g.qi.copy(g.q1w).invert();
-  g.q2l.copy(g.qi).multiply(g.q2w);
-  /* svoris — kaip poseBoneBlend: sklandžiai iš mikserio pozos ir atgal */
-  ua.quaternion.copy(g.save).slerp(g.q1l,Math.min(1,w));
-  la.quaternion.slerp(g.q2l,Math.min(1,w));
+  gripArmTo(ua,la,hl,l1,l2,L,w);
 }
 /* wIn — svoris iš išorės (kasimas jį veda pats, žr. updateMiningPose); be jo
    skaičiuojamas senuoju būdu (taip kviečia Ugnies pūga). spin — ar plaštakoje

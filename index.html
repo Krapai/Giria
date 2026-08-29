@@ -325,6 +325,7 @@ body.touch #attrPopupClose{display:block}
   border-radius:8px;padding:0 3px}
 .atNode.off{opacity:.3}
 .atNode.can{box-shadow:0 0 0 2px rgba(217,152,47,.5),0 2px 9px rgba(0,0,0,.5)}
+.atNode.lit{background:#1b2a20;border-width:3px}
 .atNode:hover,.atHub:hover,.atGrp:hover{border-color:var(--amber-lit)}
 .atHub{background:#1b2a20}
 .atHub i{font-size:22px}
@@ -496,13 +497,6 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
   <input id="chatIn" maxlength="200" placeholder="rašyk ir spausk Enter" autocomplete="off" style="display:none">
   <div id="stressBox" class="card" style="position:absolute;left:10px;top:78px;padding:7px 10px;
     border-radius:10px;font-size:11.5px;line-height:1.5;display:none;font-variant-numeric:tabular-nums"></div>
-  <!-- v132: LAIKINA diagnostika (žr. PROJEKTAS.md 5 sk. — "nebespėti, pridėti
-       matomą diagnostiką"). VISADA matoma, niekas neuždengia (fixed, aukštas
-       z-index), rodo TIKRĄ personažo Y per A→B kirčio grandinę. Ištrinti,
-       kai kojų prasmegimo klausimas bus tikrai išspręstas ir patvirtintas. -->
-  <div id="animDbg" style="position:fixed;top:4px;right:4px;z-index:99;
-    background:rgba(0,0,0,.8);color:#8fe08f;font:11px/1.5 monospace;
-    padding:5px 9px;border-radius:5px;white-space:pre;pointer-events:none"></div>
 
   <div id="stick"><div id="knob"></div></div>
 
@@ -651,8 +645,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v178';
-const GAME_CHANGES='grafas: ryškėjančios linijos, „?" antraštė, rinkimas ir amatai kyla nuo veiklos';
+const GAME_VERSION='v180';
+const GAME_CHANGES='pradžia nuo 30 lygio; pašalinta diagnostika viršutiniame dešiniame kampe';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -4237,7 +4231,7 @@ const bag={};
            triguba grupė     = min(jėga, vikrumas, intelektas)
    Lygiai: 5, 10, 15… → +1 pagrindinės savybės taškas
            visi kiti        → +1 antraeilis taškas                     */
-const START_LEVEL=1;             // normali pradžia
+const START_LEVEL=30;            // v180: vartotojo prašymu žaidimas prasideda 30 lygiu
 const ATTR={jega:1,vikrumas:1,intelektas:1};
 const RANK={};
 const gear={};        // užsidėti daiktai pagal vietas (skelbiama anksti — naudoja derive)
@@ -7371,8 +7365,10 @@ const atEarned=g=>isGather(g)||isCraft(g);
 /* stipino ryškumas pagal rangą (v178): kuo daugiau taškų ant atributo, tuo
    ryškesnė ir storesnė nuo jo einanti linija. */
 function atSpoke(r){
-  const n=Math.min(1,(r||0)/6);
-  return {a:(0.20+0.80*n).toFixed(2), w:(2+2.2*n).toFixed(1)};
+  r=r||0;
+  if(!r) return {a:'0.15', w:'1.6'};        // tuščias — vos matomas
+  const n=Math.min(1,(r-1)/3);              // 1 rangas jau AIŠKIAI dega, nuo 4 — pilnai
+  return {a:(0.60+0.40*n).toFixed(2), w:(3+2.4*n).toFixed(1)};
 }
 /* vienos grupės aprašymas popup'ui (talpa arba veikla, ką ji reiškia) */
 function atGroupPopup(g){
@@ -7418,7 +7414,7 @@ function graphHtml(groups,which,pts){
   for(const nd of L.nodes){
     const g=nd.g, uzd=atEarned(g), cap=capacity(g), can=!uzd&&pts>0&&cap>0&&usedIn(g)<cap;
     atAttrPopup(nd.sb,uzd?1:cap,uzd);
-    h+=atNodeHtml('atNode ainfo',nd.k,nd.x,nd.y,AT_NODE,g,(uzd||cap?'':' off')+(can?' can':''),
+    h+=atNodeHtml('atNode ainfo',nd.k,nd.x,nd.y,AT_NODE,g,(uzd||cap?'':' off')+(can?' can':'')+(RANK[nd.k]?' lit':''),
       '<i>'+nd.ic+'</i>'+(RANK[nd.k]?'<b>'+RANK[nd.k]+'</b>':''));
   }
   return '<div class="atWrap"><div class="atStage" style="width:'+L.w+'px;height:'+L.h+'px">'+s+h+'</div></div>';
@@ -7443,12 +7439,12 @@ function treeHtml(groups, pts, label, which){
   const uzd=atEarned(groups[0]);          // rinkimo/amatų medis — be taškų
   /* v178: antraštėje lieka TIK lygis (ir pagrindiniai taškai kovoje);
      visa kita — po „?" ženklu, kad neužimtų trijų eilučių. */
-  POPUP_HTML['?']='<b style="color:#ffc861">'+T('levelLbl')+charLvl+'</b><br>'+
-    (uzd?T('atEarnedTree'):label+': <b>'+pts+'</b><br>'+T('atSpendHint'))+
+  POPUP_HTML['?']=(uzd?T('atEarnedTree'):T('atSpendHint'))+
     '<br><span style="font-size:10.5px;opacity:.85">'+T('treeHint')+'</span>';
   let html='<div class="hint atHead">'+
     '<b style="color:#ffc861">'+T('levelLbl')+charLvl+'</b>'+
-    (uzd?'':' · '+T('primaryPtsLbl')+': <b>'+primaryPts+'</b>')+
+    (uzd?'':' · '+T('primaryPtsLbl')+': <b>'+primaryPts+'</b>'+
+          ' · '+label+': <b style="color:#ffc861">'+pts+'</b>')+
     ' <span class="atHelp" data-a="?">?</span></div>';
   html+='<div class="atBar">'+
     '<button class="tbtn atZ" data-z="out">−</button>'+
@@ -9053,49 +9049,6 @@ function frame(now){
     placeTag(merchant.tag,merchant.pos.x,merchant.pos.y+2.35,merchant.pos.z,30);
   }
   if(playerGltfMixer) playerGltfMixer.update(dt);
-  /* v132: LAIKINA diagnostika — žr. PROJEKTAS.md 5 sk. Rodo TIKRĄ personažo
-     modelio Y ir root/pelvis kaulų vietinę Y kiekviename kadre, kad
-     A→B kirčio grandinės metu matytųsi realūs skaičiai, ne spėjimas.
-     v163: papildyta HORIZONTALIA diagnostika — v159 taisymas (dash visiems
-     kirčiams) NEPADĖJO ("vis dar sulenda"), tad pagal 5 sk. taisyklę antrą
-     kartą nebespėjama, o rodomi tikri skaičiai: player.pos x/z, ar dash
-     šiuo metu aktyvus ir kokia jo kryptis/greitis, dabartinio klipo
-     __rootXZ dydis (ar apskritai užfiksuotas root poslinkis), ir atstumas
-     iki artimiausio kūno (bodies[]) — jei per kirtį šis atstumas nukrenta
-     žemiau MOVER_R+kūno spindulio, TAI IR YRA sulindimas, matomas skaičiais. */
-  if(playerGltfModel){
-    const dbg=document.getElementById('animDbg');
-    if(dbg){
-      const rb=playerGltfModel.getObjectByName('root');
-      const pb=playerGltfModel.getObjectByName('pelvis');
-      const clip=playerGltfCurrent&&playerGltfCurrent.getClip&&playerGltfCurrent.getClip();
-      const rmc=clip&&clip.__rootXZ;
-      let nearest=Infinity, nearId='-';
-      /* v164: atstumas iki PAŽYMĖTO taikinio ir jo kirčio nuotolis — kad iš
-         karto matytųsi, ar personažas stovi kirčio nuotoliu (~1,9), ar
-         prispaustas prie kūno (0,80). */
-      let dbgTgt=null, dbgReach=0;
-      { const te=player.targetId!==null?enemies[player.targetId]:null;
-        if(te&&!te.dead){ dbgTgt=Math.hypot(player.pos.x-te.pos.x,player.pos.z-te.pos.z);
-                          dbgReach=1.9*(te.def.scale||1); } }
-      for(const b of bodies){
-        if(b.p===player.pos) continue;
-        if(b.live&&!b.live()) continue;
-        const dd=Math.hypot(player.pos.x-b.p.x,player.pos.z-b.p.z)-(b.r+MOVER_R);
-        if(dd<nearest){nearest=dd;}
-      }
-      dbg.textContent='klipas: '+(clip?clip.name:'-')+
-        '\nmodelio Y: '+playerGltfModel.position.y.toFixed(3)+
-        '\nroot vietinė Y: '+(rb?rb.position.y.toFixed(3):'nėra tokio mazgo')+
-        '\npelvis vietinė Y: '+(pb?pb.position.y.toFixed(3):'nėra tokio mazgo')+
-        '\n--- v163 horizontali ---'+
-        '\npos x/z: '+player.pos.x.toFixed(3)+' / '+player.pos.z.toFixed(3)+
-        '\nrootXZ dydis: '+(rmc?Math.hypot(rmc[0],rmc[1]).toFixed(3):'nėra')+
-        '\ndash: '+(player.dash?('vx='+player.dash.vx.toFixed(2)+' vz='+player.dash.vz.toFixed(2)+' left='+player.dash.left.toFixed(2)):'—')+
-        '\nartimiausias kūnas: '+(nearest===Infinity?'—':nearest.toFixed(3))+' (neig.=sulindo)'+
-        '\niki taikinio: '+(dbgTgt===null?'—':dbgTgt.toFixed(3)+' (nuotolis '+dbgReach.toFixed(2)+')');
-    }
-  }
   for(const A of ENEMY_GLB) A.mixer.update(dt);
   updateSpellPose();             // v140: buvo updateThunderCastPose — dabar ir „heal"
   updateMiningPose(dt);          // v138: kirtiklio poza — irgi PO mikserio

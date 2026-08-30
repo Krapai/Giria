@@ -326,6 +326,10 @@ body.touch #log{bottom:200px}
   pointer-events:auto;display:none}
 body.touch #attrPopup{pointer-events:auto}
 body.touch #attrPopupClose{display:block}
+/* v194: prisegtas aprašymas (paspaudus daiktą) turi matomą ✕ ir ryškesnį rėmą —
+   kitaip nesimatytų, kad jis dabar nedings pats */
+#attrPopup.pinned{border-color:rgba(217,152,47,.95);box-shadow:0 6px 26px rgba(0,0,0,.6)}
+#attrPopup.pinned #attrPopupClose{display:block}
 #charNav{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;flex:0 0 auto;
   margin-top:9px;padding-top:9px;border-top:1px solid rgba(217,152,47,.25)}
 #charNav button{height:44px;border-radius:9px;border:1px solid rgba(217,152,47,.28);
@@ -702,8 +706,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v194';
-const GAME_CHANGES='pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
+const GAME_VERSION='v195';
+const GAME_CHANGES='C lange daiktą pagaliau galima nuimti (aprašymas prisegamas paspaudus); pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -5054,9 +5058,13 @@ const POPUP_HTML={};   // v123: atributų/meistrysčių aprašymų HTML, rodomas
 /* v123: bendras hover(PC)/tap(telefonas) info popup — pakeičia senąjį inline-expand
    aprašymų mechanizmą (žr. PROJEKTAS.md „KO NEDARYTI" — popup NEDENGIA kito UI,
    nes jis mažas ir seka pelę/palietimą, ne fiksuota vieta). */
-function showAttrPopup(key,evt){
+function showAttrPopup(key,evt,prisegti){
+  /* kol aprašymas prisegtas, pelės užvedimai (prisegti=false) jo nekeičia —
+     kitaip kelias iki mygtuko jį sunaikintų (žr. p33 komentarą) */
+  if(popupPinned&&!prisegti) return;
   const html=POPUP_HTML[key]; if(!html) return;
   const p=document.getElementById('attrPopup'); if(!p) return;
+  if(prisegti){ popupPinned=true; p.classList.add('pinned'); }
   const body=document.getElementById('attrPopupBody');
   body.innerHTML=html;
   /* v124: kai kuriuose popup'uose (aprangos daiktai) yra veiksmo mygtukas —
@@ -5088,12 +5096,15 @@ function showAttrPopup(key,evt){
 }
 /* v190: slėpimas su maža delsa — kad spėtum nuvesti pelę nuo daikto ant paties
    aprašymo ir paspausti jame esantį mygtuką. */
-let popupHideT=null;
+let popupHideT=null, popupPinned=false;
 function hideAttrPopup(){
   if(popupHideT){ clearTimeout(popupHideT); popupHideT=null; }
-  const p=document.getElementById('attrPopup'); if(p) p.style.display='none';
+  popupPinned=false;
+  const p=document.getElementById('attrPopup');
+  if(p){ p.style.display='none'; p.classList.remove('pinned'); }
 }
 function hideAttrPopupSoon(ms){
+  if(popupPinned) return;                    // prisegtas nedingsta nuo pelės
   if(popupHideT) clearTimeout(popupHideT);
   popupHideT=setTimeout(()=>{ popupHideT=null; hideAttrPopup(); }, ms||240);
 }
@@ -5104,10 +5115,13 @@ function bindPopups(box,sel,attr){
   box.querySelectorAll(sel).forEach(el=>{
     const key=el.dataset[attr];
     if(isTouch){
-      el.onclick=e=>{ e.stopPropagation(); if(trackOpenInfo) openInfo=key; showAttrPopup(key,e); };
+      el.onclick=e=>{ e.stopPropagation(); if(trackOpenInfo) openInfo=key; showAttrPopup(key,e,true); };
     }else{
       el.onmouseenter=e=>{ if(trackOpenInfo) openInfo=key; showAttrPopup(key,e); };
       el.onmouseleave=()=>hideAttrPopupSoon();      // v190: spėti nueiti iki mygtuko
+      /* v194: paspaudus — prisegam, kad būtų galima ramiai nuvesti pelę iki
+         „Nusiimti"/„Užsidėti"/„Išmesti" mygtuko */
+      el.onclick=e=>{ e.stopPropagation(); if(trackOpenInfo) openInfo=key; showAttrPopup(key,e,true); };
     }
   });
 }
@@ -7748,6 +7762,12 @@ document.getElementById('oMus').onclick=e=>{
 document.getElementById('oLang').onclick=()=>{ LANG=LANG==='lt'?'en':'lt'; applyStaticLang(); };
 document.getElementById('oDevice').onclick=()=>{ setDevice(!isTouch); applyStaticLang(); };
 document.getElementById('attrPopupClose').onclick=hideAttrPopup;
+if(document.addEventListener) document.addEventListener('pointerdown',e=>{
+  if(!popupPinned) return;
+  const t=e.target;
+  if(t&&t.closest&&t.closest('#attrPopup')) return;   // paties aprašymo neliečiam
+  hideAttrPopup();
+},true);
 document.getElementById('oTrackPick').onclick=()=>{
   const opts=[null,...TRACK_KEYS];   // null = automatinis pasirinkimas pagal žaidimo būseną
   const i=opts.indexOf(MUS.override);
@@ -8688,6 +8708,10 @@ function atBindNode(el,key,act){
   }else{
     el.onmouseenter=e=>{ openInfo=key; showAttrPopup(key,e); };
     el.onmouseleave=()=>hideAttrPopupSoon();        // v190
+    if(!isTouch&&!el.__pinBound){                   // v194: paspaudimas prisega
+      el.__pinBound=1;
+      el.addEventListener('click',e=>{ showAttrPopup(key,e,true); },true);
+    }
     if(act) el.onclick=e=>{ if(e&&e.stopPropagation) e.stopPropagation(); if(!atMoved) act(); };
   }
 }

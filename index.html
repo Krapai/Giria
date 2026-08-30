@@ -703,7 +703,7 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
 const GAME_VERSION='v194';
-const GAME_CHANGES='pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, krūmai, akmenys, žvėrys; du nauji priešai — Kipšas ir Slogutis';
+const GAME_CHANGES='pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -772,7 +772,7 @@ const I18N={
     logPanelReset:'Skydelio dydis atstatytas.', logWinReset:'Langų vietos ir dydžiai atstatyti.',
     logAutoStart:'Auto riba: pridedama po 10 personažų kas 4 s, kol fps nukris žemiau 45.',
     logStressOn:'Apkrovos testas: ', logStressOnEnd:' personažų', logStressOff:'Apkrovos testas išjungtas',
-    assetsLoaded:'Girios modeliai įkelti: ', dunEnter:'Nusileidai: ', dunLeave:'Grįžai į girią.', dunExit:'Išėjimas',
+    assetsLoaded:'Girios modeliai įkelti: ', propsLoaded:'Daiktų modeliai įkelti: ', natureLoaded:'Augalijos modeliai įkelti: ', dunEnter:'Nusileidai: ', dunLeave:'Grįžai į girią.', dunExit:'Išėjimas',
     bioLaukai:'Laukai — atvira pieva.', bioMiskas:'Giria.', bioTamsus:'Tamsus miškas. Būk atsargus.',
     logGraphicsReduced:'Grafika sumažinta dėl našumo.', logMerchant:'Pirklys: ', logMerchantEnd:' piešimo iškvietimai.',
     material:'Žaliava', empty:'tuščia', slotLabel:'Vieta', unequip:'Nusiimti', equip:'Užsidėti',
@@ -900,7 +900,7 @@ const I18N={
     logPanelReset:'Panel size reset.', logWinReset:'Window positions and sizes reset.',
     logAutoStart:'Auto limit: adds 10 characters every 4s until fps drops below 45.',
     logStressOn:'Load test: ', logStressOnEnd:' characters', logStressOff:'Load test disabled',
-    assetsLoaded:'Forest models loaded: ', dunEnter:'You descend into: ', dunLeave:'Back in the forest.', dunExit:'Exit',
+    assetsLoaded:'Forest models loaded: ', propsLoaded:'Prop models loaded: ', natureLoaded:'Nature models loaded: ', dunEnter:'You descend into: ', dunLeave:'Back in the forest.', dunExit:'Exit',
     bioLaukai:'Fields — open meadow.', bioMiskas:'Forest.', bioTamsus:'Dark forest. Be careful.',
     logGraphicsReduced:'Graphics reduced due to performance.', logMerchant:'Merchant: ', logMerchantEnd:' draw calls.',
     material:'Material', empty:'empty', slotLabel:'Slot', unequip:'Unequip', equip:'Equip',
@@ -1166,6 +1166,11 @@ function heightAt(x,z){
   h+=(fbm(x*.038,z*.038)-.5)*2.6;
   const flat=clamp((d-11)/17,0,1);          // kaimavietė ties centru — lygi
   h*=lerp(.05,1,flat);
+  {                                         // katalogo aikštė — irgi lygi
+    const kx=clamp((Math.abs(x-11)-27)/8,0,1), kz=clamp((Math.abs(z-57)-15)/8,0,1);
+    const aikste=1-Math.max(kx,kz);
+    if(aikste>0) h=lerp(h,0.15,aikste);
+  }
   const edge=clamp((d-WORLD*.80)/(WORLD*.20),0,1);
   h+=edge*edge*30;                          // kalnai aplink kraštus
 
@@ -1586,9 +1591,12 @@ function crossQuad(w,h){
   g.setIndex(idx); g.computeVertexNormals();
   return g;
 }
-let grassMesh=null;
+let grassMesh=null, gamtaOn=false;
 function plantGrass(){
   if(grassMesh){ scene.remove(grassMesh); grassMesh=null; }
+  /* v194: kai užsikrauna Stylized Nature augalija, piešti žolės brūkšneliai
+     nebereikalingi — tekstūruoti kuokštai atrodo geriau ir jų vietoje. */
+  if(gamtaOn) return;
   const n=CFG.quality==='high'?2600:800;
   const mat=new THREE.MeshLambertMaterial({color:0x6f9257,map:grassTexture(),
     alphaTest:.5,side:THREE.DoubleSide});
@@ -11176,10 +11184,280 @@ function turtasInit(){
     if(!Object.keys(TURTAS).length) return;
     TURTAS_MAT=new THREE.MeshLambertMaterial({vertexColors:true});
     turtasOn=true;
-    dressForest(); dressRocks(); dressUndergrowth(); dressBoats(); faunaInit();
+    dressForest(); dressBoats(); faunaInit();
     applyQuality();
     log(T('assetsLoaded')+Object.keys(TURTAS).length,'lg-s');
   },()=>console.warn('GIRIA_TURTAS.glb neįkeltas — lieka paprasti medžiai'));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DAIKTAI (v194) — GIRIA_DAIKTAI.glb (Fantasy Props MegaKit)
+
+   30 modelių: statinės, dėžės, skrynios, narvas, grandinės, deglai, žibintai,
+   katilas, priekalas, ponkas, stalai, suolai, prekystaliai, ūkio dėžės su
+   obuoliais ir morkomis, ginklų stovas, žvakidė, galąstuvas.
+
+   TEKSTŪROS. Paketas naudoja keturias „trim" tekstūras po 2048×2048; paimtos
+   TIK trys reikalingos ir sumažintos iki 512×512 (275+172+299 KB). Normal ir
+   ORM neimti — Lambert medžiaga jų nenaudoja, o jie būtų kainavę dar 17 MB.
+   Visas failas — 2,85 MB.
+
+   KODĖL LAMBERT. GLTFLoader padaro MeshStandardMaterial (PBR). Čia jis
+   pakeičiamas MeshLambertMaterial su ta pačia tekstūra: telefone pigiau ir
+   dera su visu kitu žaidimo vaizdu, kuris irgi Lambert.
+
+   KAIP PIEŠIAMA. Vienas daiktas gali turėti kelias medžiagas (mediena +
+   metalas), tad GLTFLoader jį atiduoda kaip grupę su keliais tinkleliais.
+   daiktInst() kiekvienam tokiam tinkleliui padaro savo InstancedMesh su TOMIS
+   PAČIOMIS matricomis — tad, pvz., dvidešimt statinių tekainuoja du piešimo
+   iškvietimus.
+   ═══════════════════════════════════════════════════════════════════════ */
+const DAIKTAI={};
+let daiktaiOn=false;
+const DAIKTAI_URLS=glbUrls('GIRIA_DAIKTAI.glb');
+/* v194: Stylized Nature paketas — papartis, žolė, dobilai, gėlės, grybai,
+   krūmai, akmenys ir akmenukai su TIKROMIS tekstūromis. Medžių iš jo neimame:
+   jie po 5–15 tūkst. viršūnių (esami — po 400–900), o girioje jų 1100.
+   Krautuvas ir piešimas tie patys kaip MegaKit daiktų, tad guli tame pačiame
+   DAIKTAI registre. */
+const GAMTA_URLS=glbUrls('GIRIA_GAMTA.glb');
+
+function daiktInst(vardas,sarasas,tevas,sesely){
+  const dalys=DAIKTAI[vardas];
+  if(!dalys||!sarasas.length) return null;
+  const m=new THREE.Matrix4(),q=new THREE.Quaternion(),
+        s=new THREE.Vector3(),v=new THREE.Vector3(),up=new THREE.Vector3(0,1,0);
+  const isejo=[];
+  for(const d of dalys){
+    const im=new THREE.InstancedMesh(d.geo,d.mat,sarasas.length);
+    im.raycast=()=>{};
+    if(sesely){ im.castShadow=true; im.receiveShadow=true; im.userData.shad=true; }
+    sarasas.forEach((o,i)=>{
+      q.setFromAxisAngle(up,o.rot||0);
+      const sc=o.s===undefined?1:o.s;
+      s.set(sc,sc,sc); v.set(o.x,o.y,o.z);
+      m.compose(v,q,s); im.setMatrixAt(i,m);
+    });
+    im.instanceMatrix.needsUpdate=true;
+    if(tevas) tevas.add(im);
+    else { scene.add(im); OVERWORLD_HIDE.push(im); }
+    isejo.push(im);
+  }
+  return isejo;
+}
+
+/* --- KAIMAVIETĖ. Vietos parinktos rankomis (kalvė vienoje pusėje, valgymo
+   stalas kitoje, turgus trečioje), bet kiekviena dar patikrinama: jei ten jau
+   kas nors stovi (bodies — pirklys, kariai, manekenas, šaltiniai), praleidžiam.
+   Spindulys 10–14 m: arčiau yra laužas ir kariai, toliau — animacijų katalogas
+   (jis prasideda ties z≈44). --- */
+const KAIMO_DAIKTAI=[
+  /* kalvė */
+  {m:'Anvil_Log',   a:-0.55, r:11.5, rot:2.1, kunas:.55},
+  {m:'Workbench',   a:-0.90, r:12.6, rot:1.2, kunas:.9},
+  {m:'Whetstone',   a:-0.28, r:12.6, rot:0.4, kunas:.5},
+  {m:'WeaponStand', a:-1.15, r:11.2, rot:2.6, kunas:.6},
+  {m:'Peg_Rack',    a:-1.45, r:12.4, rot:1.6},
+  {m:'Barrel',      a:-0.70, r:13.8, rot:0.0, kunas:.35},
+  /* stalas prie laužo */
+  {m:'Table_Large', a: 1.55, r:11.8, rot:0.5, kunas:1.2},
+  {m:'Bench',       a: 1.55, r:13.2, rot:0.5, kunas:1.1},
+  {m:'Bench',       a: 1.55, r:10.4, rot:0.5, kunas:1.1},
+  {m:'Stool',       a: 1.85, r:12.0, rot:0.0, kunas:.3},
+  {m:'Stool',       a: 1.25, r:12.0, rot:0.0, kunas:.3},
+  {m:'CandleStick_Triple', a:1.55, r:11.8, rot:0.0, y:0.81},
+  /* turgus */
+  {m:'Stall_Empty', a: 2.55, r:12.2, rot:-0.9, kunas:.8},
+  {m:'Stall_Cart_Empty', a:2.95, r:13.4, rot:-1.3, kunas:1.2},
+  {m:'Barrel_Apples', a:2.35, r:11.4, rot:0.0, kunas:.35},
+  {m:'FarmCrate_Apple', a:2.75, r:11.2, rot:0.7},
+  {m:'FarmCrate_Carrot',a:2.62, r:12.0, rot:-0.4},
+  /* sandėlis */
+  {m:'Crate_Wooden',a: 3.45, r:11.6, rot:0.3, kunas:.55},
+  {m:'Crate_Wooden',a: 3.62, r:12.4, rot:1.1, kunas:.55},
+  {m:'Crate_Metal', a: 3.80, r:11.6, rot:0.6, kunas:.45},
+  {m:'Chest_Wood',  a: 3.98, r:11.0, rot:2.2, kunas:.6},
+  {m:'Bucket_Metal',a: 3.30, r:10.8, rot:0.0},
+  {m:'Cauldron',    a: 4.35, r:11.4, rot:0.0, kunas:.5}
+];
+function dressVillage(){
+  const grupes={};
+  for(const d of KAIMO_DAIKTAI){
+    const x=Math.cos(d.a)*d.r, z=Math.sin(d.a)*d.r;
+    if(!walkable(x,z)) continue;
+    let uzimta=false;
+    for(const b of bodies) if(!b.zone&&Math.hypot(x-b.p.x,z-b.p.z)<2.4){ uzimta=true; break; }
+    if(uzimta||!treeClear(x,z,2.2)) continue;
+    (grupes[d.m]=grupes[d.m]||[]).push({x,y:heightAt(x,z)+(d.y||0),z,rot:d.rot});
+    if(d.kunas) addBody({x,z},d.kunas);
+  }
+  for(const v in grupes) daiktInst(v,grupes[v],null,true);
+}
+
+/* --- POŽEMIAI. Daiktai statomi prie sienų (kad nekliudytų eiti koridoriaus
+   viduriu), o deglai — ant tų pačių langelių, kur jau dega liepsnelės. --- */
+const POZ_DAIKTAI=[
+  {m:'Barrel',       w:10, kunas:.35},
+  {m:'Crate_Wooden', w: 9, kunas:.55},
+  {m:'Crate_Metal',  w: 6, kunas:.45},
+  {m:'Chest_Wood',   w: 4, kunas:.6},
+  {m:'Cage_Small',   w: 1, kunas:.45},
+  {m:'Chain_Coil',   w: 2},
+  {m:'Rope_2',       w: 4},
+  {m:'Vase_Rubble_Medium', w:7},
+  {m:'Pot_1',        w: 5},
+  {m:'Bucket_Metal', w: 5},
+  {m:'SmallBottles_1',w:4},
+  {m:'Bottle_1',     w: 4},
+  {m:'Coin_Pile',    w: 3},
+  {m:'Cauldron',     w: 2, kunas:.5}
+];
+function dressDungeon(D0){
+  const rng=dunRng(D0.def.seed+4242);
+  const off=(D0.G-1)/2, C=DUN_C;
+  const svoris=[]; POZ_DAIKTAI.forEach((d,i)=>{ for(let k=0;k<d.w;k++) svoris.push(i); });
+  const grupes={};
+  const kiek=CFG.quality==='high'?85:40;
+  SPAWN_ZONE=D0.key;
+  let pad=0,guard=0;
+  while(pad<kiek&&guard++<kiek*30){
+    const i=1+Math.floor(rng()*(D0.G-2)), j=1+Math.floor(rng()*(D0.G-2));
+    if(D0.sol[j*D0.G+i]) continue;
+    /* prie kurios sienos priglausti */
+    const kryptys=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>D0.sol[(j+d[1])*D0.G+(i+d[0])]);
+    if(!kryptys.length) continue;
+    const k=kryptys[Math.floor(rng()*kryptys.length)];
+    const x=D0.ox+(i-off)*C+k[0]*(C/2-1.0)+(rng()-.5)*0.8;
+    const z=D0.oz+(j-off)*C+k[1]*(C/2-1.0)+(rng()-.5)*0.8;
+    const d=POZ_DAIKTAI[svoris[Math.floor(rng()*svoris.length)]];
+    (grupes[d.m]=grupes[d.m]||[]).push({x,y:0,z,rot:rng()*TAU});
+    if(d.kunas) addBody({x,z},d.kunas);
+    pad++;
+  }
+  /* sieniniai deglai — atsukti į koridorių */
+  const degl=[];
+  for(const c of (D0.degl||[])){
+    const kryptys=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>D0.sol[(c.j+d[1])*D0.G+(c.i+d[0])]);
+    if(!kryptys.length) continue;
+    const k=kryptys[0];
+    degl.push({x:c.x+k[0]*(C/2-0.22), y:2.35, z:c.z+k[1]*(C/2-0.22),
+               rot:Math.atan2(-k[0],-k[1])});
+  }
+  for(const v in grupes) daiktInst(v,grupes[v],D0.grp,false);
+  daiktInst('Torch_Metal',degl,D0.grp,false);
+  SPAWN_ZONE=null;
+}
+
+function daiktaiInit(){
+  if(typeof THREE==='undefined'||!THREE.GLTFLoader) return;
+  loadGlbAny(DAIKTAI_URLS,g=>{
+    surinkDaiktus(g);
+    if(!Object.keys(DAIKTAI).length) return;
+    daiktaiOn=true;
+    dressVillage();
+    for(const k in DUNS) dressDungeon(DUNS[k]);
+    applyQuality();
+    log(T('propsLoaded')+Object.keys(DAIKTAI).length,'lg-s');
+  },()=>console.warn('GIRIA_DAIKTAI.glb neįkeltas — kaimavietė ir požemiai lieka tušti'));
+}
+const DAIKT_MEDZ=new Map();
+function surinkDaiktus(g){
+    const medz=DAIKT_MEDZ;
+    g.scene.children.forEach(mazgas=>{
+      const dalys=[];
+      mazgas.traverse(o=>{
+        if(!o.isMesh||!o.geometry) return;
+        let mt=medz.get(o.material.uuid);
+        if(!mt){
+          /* PBR -> Lambert su ta pačia tekstūra (žr. komentarą bloko viršuje).
+             v194: alphaTest ir side perkeliami — be jų Stylized Nature lapų,
+             paparčių ir gėlių kortelės būtų stačiakampiai, o ne lapai. */
+          const at=o.material.alphaTest||0;
+          mt=new THREE.MeshLambertMaterial({map:o.material.map||null,
+            color:0xffffff, side:at?THREE.DoubleSide:THREE.FrontSide,
+            alphaTest:at, transparent:false});
+          if(mt.map) mt.map.encoding=THREE.sRGBEncoding;
+          medz.set(o.material.uuid,mt);
+        }
+        dalys.push({geo:o.geometry,mat:mt});
+      });
+      if(dalys.length) DAIKTAI[mazgas.name]=dalys;
+    });
+}
+function gamtaInit(){
+  if(typeof THREE==='undefined'||!THREE.GLTFLoader) return;
+  loadGlbAny(GAMTA_URLS,g=>{
+    const pries=Object.keys(DAIKTAI).length;
+    surinkDaiktus(g);
+    if(Object.keys(DAIKTAI).length===pries) return;
+    dressNature();
+    applyQuality();
+    log(T('natureLoaded')+(Object.keys(DAIKTAI).length-pries),'lg-s');
+  },()=>console.warn('GIRIA_GAMTA.glb neįkeltas — pomiškis lieka paprastas'));
+}
+
+/* --- POMIŠKIS IŠ TEKSTŪRUOTŲ MODELIŲ ---
+   Pakeičia ir seną žolės kuokštų sluoksnį (piešti brūkšneliai), ir
+   dvidešimtsienius akmenis. Kas kur:
+     laukai        — dobilai, gėlės, žema žolė, akmenukai
+     miškas        — paparčiai, augalai, grybai, krūmai, aukšta žolė
+     tamsus miškas — paparčiai, grybai, rečiau žolė
+   Riedulius (Rock_Medium) statom į tas pačias vietas, kur anksčiau buvo
+   dvidešimtsieniai (ROCK_SPOTS), tik mastelis mažesnis — modelis jau 2–3 m. */
+const GAM_LAUKAI=['Clover_1','Clover_2','Flower_3_Group','Flower_4_Group','Grass_Common_Short','Plant_7'];
+const GAM_MISKAS=['Fern_1','Plant_1','Plant_1_Big','Grass_Common_Tall','Grass_Wispy_Tall','Mushroom_Common','Grass_Common_Short'];
+const GAM_TAMSUS=['Fern_1','Mushroom_Laetiporus','Mushroom_Common','Plant_1','Grass_Wispy_Tall','Fern_1'];
+const GAM_KRUMAI=['Bush_Common','Bush_Common_Flowers'];
+const GAM_AKMENUKAI=['Pebble_Round_1','Pebble_Round_3','Pebble_Square_2'];
+const GAM_RIEDULIAI=['Rock_Medium_1','Rock_Medium_2','Rock_Medium_3'];
+function dressNature(){
+  /* rieduliai — ten pat, kur seni akmenys */
+  const gr={};
+  ROCK_SPOTS.forEach((r,i)=>{
+    const v=GAM_RIEDULIAI[i%GAM_RIEDULIAI.length];
+    (gr[v]=gr[v]||[]).push({x:r.x,y:r.y-.15,z:r.z,rot:Math.random()*TAU,s:r.sc*0.55});
+  });
+  let ok=false;
+  for(const v in gr) if(daiktInst(v,gr[v],null,true)) ok=true;
+  if(ok) for(const m of CONE_ROCKS) m.visible=false;
+
+  /* pomiškis */
+  const gp={};
+  const n=CFG.quality==='high'?2200:800;
+  for(let i=0;i<n;i++){
+    const a=Math.random()*TAU, r=Math.sqrt(Math.random())*(WORLD-14)+4;
+    const x=Math.cos(a)*r, z=Math.sin(a)*r, y=heightAt(x,z);
+    if(y<WATER+.45||y>20) continue;
+    if(!treeClear(x,z,.9)) continue;
+    const bio=biomeAt(x,z);
+    const sar=bio===BIO_LAUKAI?GAM_LAUKAI:bio===BIO_MISKAS?GAM_MISKAS:GAM_TAMSUS;
+    if(bio===BIO_TAMSUS&&Math.random()<.35) continue;      // tamsiam miške retesnis
+    const v=sar[i%sar.length];
+    (gp[v]=gp[v]||[]).push({x,y:y-.04,z,rot:Math.random()*TAU,s:rnd(.65,1.25)});
+  }
+  /* akmenukai — po kojomis, ten kur nuolydis */
+  for(let i=0;i<(CFG.quality==='high'?500:180);i++){
+    const a=Math.random()*TAU, r=Math.sqrt(Math.random())*(WORLD-14)+4;
+    const x=Math.cos(a)*r, z=Math.sin(a)*r, y=heightAt(x,z);
+    if(y<WATER+.3||y>22) continue;
+    const v=GAM_AKMENUKAI[i%GAM_AKMENUKAI.length];
+    (gp[v]=gp[v]||[]).push({x,y:y-.02,z,rot:Math.random()*TAU,s:rnd(.6,1.6)});
+  }
+  /* krūmai — atskirai ir gerokai rečiau (po 1800–2500 viršūnių) */
+  const gk={};
+  for(let i=0;i<(CFG.quality==='high'?130:50);i++){
+    const a=Math.random()*TAU, r=Math.sqrt(Math.random())*(WORLD-20)+16;
+    const x=Math.cos(a)*r, z=Math.sin(a)*r, y=heightAt(x,z);
+    if(y<WATER+.6||y>19) continue;
+    if(biomeAt(x,z)===BIO_LAUKAI||!treeClear(x,z,1.6)) continue;
+    const v=GAM_KRUMAI[i%GAM_KRUMAI.length];
+    (gk[v]=gk[v]||[]).push({x,y:y-.05,z,rot:Math.random()*TAU,s:rnd(.8,1.3)});
+  }
+  for(const v in gk) daiktInst(v,gk[v],null,true);
+  for(const v in gp) daiktInst(v,gp[v],null,false);
+  /* senoji piešta žolė nebereikalinga — tekstūruota atrodo geriau */
+  gamtaOn=true;
+  if(grassMesh){ scene.remove(grassMesh); grassMesh=null; }
 }
 /* ═══════════════════════════════════════════════════════════════════════
    POŽEMIAI (v194)
@@ -11377,6 +11655,7 @@ function dunBuild(def){
     pts.frustumCulled=false; pts.raycast=()=>{};
     D0.torchPts=pts; D0.grp.add(pts);
   }
+  D0.degl=degl.map(c=>({i:c.i,j:c.j,x:wx(c.i),z:wz(c.j)}));   // v194: sieniniams deglams
 
   /* pradžios langelis — arčiausias tinklelio kampui, kad kelias būtų ilgas */
   let best=atviri[0], bd=1e9;
@@ -11608,6 +11887,8 @@ function worldInit(){
   if(typeof dummies!=='undefined') for(const d of dummies) if(d.obj) OVERWORLD_HIDE.push(d.obj);
   dunInit();
   turtasInit();
+  daiktaiInit();
+  gamtaInit();
 }
 worldInit();
 requestAnimationFrame(frame);

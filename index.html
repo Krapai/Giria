@@ -706,8 +706,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v198';
-const GAME_CHANGES='v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
+const GAME_VERSION='v199';
+const GAME_CHANGES='v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -10673,7 +10673,8 @@ function frame(now){
   }
   /* v191: žemoje kokybėje GLB skeletų iš viso nesukam — jų niekas nemato */
   const glbOn=CFG.quality==='high';
-  if(!farPts&&glbOn) farInit();
+  /* v199: siluetų debesis reikalingas IR žemoje kokybėje — žr. žemiau. */
+  if(!farPts) farInit();
   farReset();
   if(glbOn&&playerGltfMixer) playerGltfMixer.update(dt);
   /* priešai: arti — visada, toliau — ratu pagal biudžetą (v193) */
@@ -10713,6 +10714,21 @@ function frame(now){
         A.model.visible=!toli;
         if(toli) farAdd(e.pos.x,e.pos.y+1.2*e.def.scale,e.pos.z);
       }
+    }
+  }
+  /* v199: ŽEMOJE kokybėje GLB modelių nėra, o pieštas kūnas statomas tik iki
+     120 m (procArti) — toliau priešas buvo VISIŠKAI nematomas, nors dieną
+     matomumas siekia ~300 m (vartotojas: „kai kurie monstrai neturi vaizdo
+     ant blogos grafikos"). Dabar toliau nei FAR_DIST jie rodomi tuo pačiu
+     siluetų debesiu kaip aukštoje kokybėje, o piešinys tuo metu paslepiamas —
+     taip dar ir pigiau. */
+  if(!glbOn&&LOD_ON){
+    const camX=player.pos.x, camZ=player.pos.z;
+    for(const e of enemies){
+      if(e.dead||(e.zone||null)!==ZONE) continue;
+      const toli=Math.hypot(e.pos.x-camX,e.pos.z-camZ)>FAR_DIST;
+      if(e.proc) e.proc.visible=!toli;
+      if(toli) farAdd(e.pos.x,e.pos.y+1.2*e.def.scale,e.pos.z);
     }
   }
   farFlush();
@@ -11271,54 +11287,68 @@ const FAUNA_DEF=[
    grąžinama pirmyn (glotni kreivė) — dėl to eisena atrodo kaip ėjimas, o ne
    kaip švytuoklė. */
 const FAUNA_LEG_TOP=0.27;
+/* v199: kelias (priekinėse — riešas, užpakalinėse — kulnas) yra apatiniame
+   kojos gale. Imama 0,45 kojos aukščio nuo žemės: blauzda — apatiniai 45 %,
+   šlaunis — viršutiniai 55 %. B — kiek koja sulenkiama moste. */
+const FAUNA_KNEE=0.45;
 const GAIT={
-  zingsnis:{fazes:[.25,.75,0,.5], A:.30, duty:.62, kilst:.010, linges:.012, ilgis:1.9},
-  riscia:  {fazes:[0,.5,.5,0],    A:.42, duty:.45, kilst:.045, linges:.020, ilgis:2.6},
-  suolis:  {fazes:[.45,.55,0,.1], A:.62, duty:.35, kilst:.085, linges:.055, ilgis:3.6}
+  zingsnis:{fazes:[.25,.75,0,.5], A:.30, duty:.62, kilst:.010, linges:.012, ilgis:1.9, B:.38},
+  riscia:  {fazes:[0,.5,.5,0],    A:.42, duty:.45, kilst:.045, linges:.020, ilgis:2.6, B:.62},
+  suolis:  {fazes:[.45,.55,0,.1], A:.62, duty:.35, kilst:.085, linges:.055, ilgis:3.6, B:.92}
 };
 /* Kojos masyve: 0 kairė priekinė, 1 dešinė priekinė, 2 kairė užpakalinė,
    3 dešinė užpakalinė (pagal centro x ir z ženklus). */
 function faunaSplit(geo){
-  const pos=geo.attributes.position, nor=geo.attributes.normal, col=geo.attributes.color;
+  const pos=geo.attributes.position;
   const idx=geo.index, kiek=idx?idx.count:pos.count;
   /* ribas skaičiuojam patys — computeBoundingBox() nėra testų aplinkoje, o
      mums tereikia Y rėžio */
   let ymin=1e9,ymax=-1e9;
   for(let i=0;i<pos.count;i++){ const y=pos.getY(i); if(y<ymin)ymin=y; if(y>ymax)ymax=y; }
   const H=ymax-ymin, riba=ymin+H*FAUNA_LEG_TOP;
-  const dal=[[],[],[],[],[]];
+  const kelis=ymin+(riba-ymin)*FAUNA_KNEE;          // v199: kelio/kulno aukštis
+  /* 0 liemuo · 1–4 šlaunys · 5–8 blauzdos (ta pati ketvirčių tvarka) */
+  const dal=[[],[],[],[],[],[],[],[],[]];
   const gi=i=>idx?idx.getX(i):i;
   for(let t=0;t+2<kiek;t+=3){
-    const a=gi(t),b=gi(t+1),c=gi(t+2);
-    const cy=(pos.getY(a)+pos.getY(b)+pos.getY(c))/3;
+    const i0=gi(t),i1=gi(t+1),i2=gi(t+2);
+    const cy=(pos.getY(i0)+pos.getY(i1)+pos.getY(i2))/3;
     let k=0;
     if(cy<riba){
-      const cx=(pos.getX(a)+pos.getX(b)+pos.getX(c))/3;
-      const cz=(pos.getZ(a)+pos.getZ(b)+pos.getZ(c))/3;
-      k=1+(cx>=0?0:1)+(cz>=0?0:2);
+      const cx=(pos.getX(i0)+pos.getX(i1)+pos.getX(i2))/3;
+      const cz=(pos.getZ(i0)+pos.getZ(i1)+pos.getZ(i2))/3;
+      k=1+(cx>=0?0:1)+(cz>=0?0:2)+(cy<kelis?4:0);
     }
-    dal[k].push(a,b,c);
+    dal[k].push(i0,i1,i2);
   }
+  /* v199 SVARBU: atributą kopijuojam IŠLAIKYDAMI jo tipą. COLOR_0 čia yra
+     unsigned byte su normalized=true (išmatuota .glb faile), tad v198
+     kopijavimas per getX/getY/getZ į Float32 davė 0..255 vietoj 0..1 —
+     visi žvėrys pabalo („baltas blynas"). Dabar kopijuojamas žalias masyvas
+     ir perduodama itemSize bei normalized. */
+  const kopija=(atr,v)=>{
+    if(!atr) return null;
+    const Tipas=atr.array.constructor, it=atr.itemSize||3;
+    const out=new Tipas(v.length*it);
+    for(let i=0;i<v.length;i++)
+      for(let c=0;c<it;c++) out[i*it+c]=atr.array[v[i]*it+c];
+    const n=new THREE.BufferAttribute(out,it);
+    n.normalized=!!atr.normalized;
+    return n;
+  };
   const dalys=[];
-  for(let k=0;k<5;k++){
+  for(let k=0;k<9;k++){
     const v=dal[k], g=new THREE.BufferGeometry();
-    const P=new Float32Array(v.length*3), N=nor?new Float32Array(v.length*3):null,
-          C=col?new Float32Array(v.length*3):null;
-    let sx=0,sz=0;
-    for(let i=0;i<v.length;i++){
-      const j=v[i];
-      P[i*3]=pos.getX(j); P[i*3+1]=pos.getY(j); P[i*3+2]=pos.getZ(j);
-      if(N){ N[i*3]=nor.getX(j); N[i*3+1]=nor.getY(j); N[i*3+2]=nor.getZ(j); }
-      if(C){ C[i*3]=col.getX(j); C[i*3+1]=col.getY(j); C[i*3+2]=col.getZ(j); }
-      sx+=P[i*3]; sz+=P[i*3+2];
+    for(const vardas of ['position','normal','color','uv']){
+      const kop=kopija(geo.attributes[vardas],v);
+      if(kop) g.setAttribute(vardas,kop);
     }
-    g.setAttribute('position',new THREE.BufferAttribute(P,3));
-    if(N) g.setAttribute('normal',new THREE.BufferAttribute(N,3));
-    if(C) g.setAttribute('color',new THREE.BufferAttribute(C,3));
+    let sx=0,sz=0;
+    for(let i=0;i<v.length;i++){ sx+=pos.getX(v[i]); sz+=pos.getZ(v[i]); }
     const nv=v.length||1;
-    dalys.push({geo:g,px:sx/nv,py:riba,pz:sz/nv,n:v.length});
+    dalys.push({geo:g,px:sx/nv,py:k>4?kelis:riba,pz:sz/nv,n:v.length});
   }
-  return {dalys,riba,kojosIlgis:riba-ymin};
+  return {dalys,riba,kelis,kojosIlgis:riba-ymin};
 }
 function faunaInit(){
   for(const d of FAUNA_DEF){
@@ -11340,14 +11370,14 @@ function faunaInit(){
       const v={x,z,yaw:rnd(0,TAU),tx:x,tz:z,cd:rnd(0,5),pos:{x,z},gait:Math.random(),sv:0};
       grupe.vnt.push(v); wanderers.push(v); made++;
     }
-    meshes.forEach((im,k)=>{ im.count=(k===0||sk.dalys[k].n)?grupe.vnt.length:0; });
+    meshes.forEach((im,k)=>{ im.count=sk.dalys[k].n?grupe.vnt.length:0; });
     if(grupe.vnt.length) FAUNA.push(grupe);
   }
 }
 const fnM=new THREE.Matrix4(), fnQ=new THREE.Quaternion(),
       fnV=new THREE.Vector3(), fnS=new THREE.Vector3(), fnUp=new THREE.Vector3(0,1,0),
       fnL=new THREE.Matrix4(), fnT=new THREE.Matrix4(), fnR=new THREE.Matrix4(),
-      fnE=new THREE.Euler();
+      fnK=new THREE.Matrix4(), fnL2=new THREE.Matrix4(), fnE=new THREE.Euler();
 /* Kojos kampas per vieną ciklą: atramoje tolygiai atgal, moste — glotniai
    pirmyn. Teigiamas kampas = koja atgal (sukimas apie +X pėdą veda į −Z). */
 function legAngle(p,A,duty){
@@ -11355,6 +11385,18 @@ function legAngle(p,A,duty){
   if(p<duty) return A-2*A*(p/duty);
   const q=(p-duty)/(1-duty);
   return -A+2*A*(q*q*(3-2*q));
+}
+/* v199: KELIO LENKIMAS. Vartotojas: „kojos juda, bet nesilanksto". Tikri
+   keturkojai atramoje laiko koją beveik tiesią (ji neša svorį), o moste
+   stipriai sulenkia — priekinė per riešą (carpus) parlenkia pėdą ATGAL po
+   krūtine, užpakalinė per kulną (tarsus) pakelia ją PIRMYN po pilvu. Todėl
+   lenkimas yra nulis atramoje, didžiausias mosto viduryje, o priekinėms ir
+   užpakalinėms kojoms — priešingo ženklo. */
+function legBend(p,B,duty){
+  p-=Math.floor(p);
+  if(p<duty) return 0;
+  const q=(p-duty)/(1-duty);
+  return B*Math.sin(Math.PI*q);
 }
 function updateFauna(dt){
   if(!FAUNA.length) return;
@@ -11408,16 +11450,25 @@ function updateFauna(dt){
       }
       g.meshes[0].setMatrixAt(i,fnM);
       for(let k=0;k<4;k++){
-        const dl=g.dalys[k+1];
-        if(!dl.n) continue;                       // tuščia dalis — nieko nepiešia
+        const vir=g.dalys[1+k], apa=g.dalys[5+k];
         const kampas=jud*legAngle(faze+eis.fazes[k],eis.A,eis.duty);
-        fnR.makeRotationX(kampas);
-        fnT.makeTranslation(dl.px,dl.py,dl.pz);
-        fnL.multiplyMatrices(fnT,fnR);
-        fnT.makeTranslation(-dl.px,-dl.py,-dl.pz);
-        fnL.multiply(fnT);
-        fnL.premultiply(fnM);
-        g.meshes[k+1].setMatrixAt(i,fnL);
+        fnR.makeRotationX(kampas);                   // klubas/petys
+        fnT.makeTranslation(vir.px,vir.py,vir.pz);
+        fnK.multiplyMatrices(fnT,fnR);
+        fnT.makeTranslation(-vir.px,-vir.py,-vir.pz);
+        fnK.multiply(fnT);
+        if(vir.n){ fnL.copy(fnK); fnL.premultiply(fnM); g.meshes[1+k].setMatrixAt(i,fnL); }
+        if(apa.n){
+          const lenk=jud*legBend(faze+eis.fazes[k],eis.B,eis.duty)*(k<2?1:-1);
+          fnR.makeRotationX(lenk);                   // kelias/kulnas
+          fnT.makeTranslation(apa.px,apa.py,apa.pz);
+          fnL2.multiplyMatrices(fnT,fnR);
+          fnT.makeTranslation(-apa.px,-apa.py,-apa.pz);
+          fnL2.multiply(fnT);
+          fnL2.premultiply(fnK);                     // blauzda kabo ant šlaunies
+          fnL2.premultiply(fnM);
+          g.meshes[5+k].setMatrixAt(i,fnL2);
+        }
       }
     }
     for(const im of g.meshes) im.instanceMatrix.needsUpdate=true;
@@ -11730,13 +11781,17 @@ const DUN_C=6;                 // langelio kraštinė (m)
 const DUN_G=55;                // tinklelio matmuo (nelyginis!)
 const DUN_H=5.2;               // lubų aukštis
 const DUN_DEFS=[
+  /* v199: įėjimai perkelti prie laužo — tarp jo ir manekenų aikštės (z 42…72),
+     vartotojo prašymu. Todėl rmin/rmax maži, o bio:null reiškia „bet koks
+     biomas": ties centru visada laukai, ir su senuoju bio patikrinimu
+     dunFindSpot nebūtų radęs nė vienos vietos. */
   {key:'olos', name:{lt:'Vilkų olos',en:'Wolf caves'}, seed:13370,
-   bio:BIO_MISKAS, rmin:96, rmax:140, ang:2.15, ox:30000, oz:0,
+   bio:null, rmin:24, rmax:32, ang:1.30, ox:30000, oz:0,
    floor:0x2a2721, wall:0x38332c, roof:0x14120f, torch:0xffa348,
    ore:['akmuo','akmuo','gelezis','gelezis','sidabras'],
    mobs:['kipsas','kaukas','kipsas','lauma','vilkas'], mobN:12, oreN:26},
   {key:'kasyklos', name:{lt:'Gintaro kasyklos',en:'Amber mines'}, seed:90210,
-   bio:BIO_TAMSUS, rmin:168, rmax:206, ang:-1.05, ox:60000, oz:0,
+   bio:null, rmin:24, rmax:32, ang:1.88, ox:60000, oz:0,
    floor:0x2e281e, wall:0x413528, roof:0x18130d, torch:0xffc85a,
    ore:['gelezis','sidabras','sidabras','gintaras2','gintaras2'],
    mobs:['slogutis','kipsas','vilkas','slogutis','lauma'], mobN:14, oreN:28}
@@ -11987,7 +12042,7 @@ function dunFindSpot(def){
     const r=def.rmin+((k*13)%100)/100*(def.rmax-def.rmin);
     const x=Math.cos(a)*r, z=Math.sin(a)*r;
     if(!walkable(x,z)) continue;
-    if(biomeAt(x,z)!==def.bio) continue;
+    if(def.bio!==null&&biomeAt(x,z)!==def.bio) continue;   // v199: null = bet koks
     const y=heightAt(x,z);
     if(y>17) continue;
     if(!treeClear(x,z,3.4)) continue;

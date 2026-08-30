@@ -707,7 +707,7 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
 const GAME_VERSION='v195';
-const GAME_CHANGES='C lange daiktą pagaliau galima nuimti (aprašymas prisegamas paspaudus); pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
+const GAME_CHANGES='C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -8370,8 +8370,41 @@ function bindSkills(box){
     renderSkillBar(); redrawSkillsUI();
   });
 }
+/* v195: tas pats greitas judesys kaip krepšyje (bindQuickEquip), tik
+   atvirkščias — nuima užsidėtą daiktą:
+     kompiuteris: 2× kairiu arba 1× dešiniu ant aprangos langelio
+     telefonas:   2× bakstelėjimas (pirmas, kaip anksčiau, parodo aprašymą)
+   Aprašymo popup'o mygtukas „Nusiimti" lieka — tai tik greitesnis kelias. */
+let lastGearTap={k:null,t:0};
+function bindQuickUnequip(box){
+  if(!box.querySelectorAll) return;
+  box.querySelectorAll('.gearSlot').forEach(el=>{
+    const slot=el.dataset.g;
+    if(!slot||!gear[slot]) return;              // tuščio langelio nėra ko nuimti
+    const doOff=e=>{
+      if(e&&e.preventDefault) e.preventDefault();   // dešiniam — be naršyklės meniu
+      if(e&&e.stopPropagation) e.stopPropagation();
+      if(!gear[slot]) return;                   // jau nuimtas (pasikartojantis įvykis)
+      unequipItem(slot);
+      hideAttrPopup(); drawCharPanel(); drawGearBag();
+      return false;
+    };
+    el.ondblclick=doOff;
+    el.oncontextmenu=doOff;
+    if(isTouch){
+      const showPopup=el.onclick;               // bindPopups jau prijungė aprašymą
+      el.onclick=e=>{
+        const now=Date.now();
+        if(lastGearTap.k===slot&&now-lastGearTap.t<400){ lastGearTap={k:null,t:0}; doOff(e); return; }
+        lastGearTap={k:slot,t:now};
+        if(showPopup) showPopup(e);
+      };
+    }
+  });
+}
 function bindGear(box){
   bindPopups(box,'.gearSlot','g');
+  bindQuickUnequip(box);                        // v195
   if(!box.querySelectorAll) return;
   box.querySelectorAll('.itemRow').forEach(el=>el.onclick=()=>{
     equipItem(el.dataset.eq); redrawSkillsUI();

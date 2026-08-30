@@ -706,8 +706,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v199';
-const GAME_CHANGES='v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
+const GAME_VERSION='v200';
+const GAME_CHANGES='v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -843,6 +843,7 @@ const I18N={
     lvlPrimary:'Lygis ', lvlPrimaryEnd:' — +1 PAGRINDINĖS savybės taškas!',
     lvlSecondary:'Lygis ', lvlSecondaryEnd:' — +1 kovos ir +1 rinkimo taškas.',
     tooFarWater:'Prieik arčiau vandens.', bagFull:'Krepšys pilnas (', bagFullEnd:').',
+    butcherLbl:'išdarinėti', butchered:' išdarinėtas.', tooFarCorpse:'Prieik prie lavono.',
     fullOfEnergy:'Ir taip pilnas jėgų.', startMeditating:'Pradedi medituoti…',
     nothingNearby:'Nieko nėra netoliese.', flameHitNothing:'Liepsna nieko nepasiekė.',
     spellNeedsTarget:'Burtui reikia taikinio.', spellEcho:'Burtų aidas!',
@@ -971,6 +972,7 @@ const I18N={
     lvlPrimary:'Level ', lvlPrimaryEnd:' — +1 PRIMARY attribute point!',
     lvlSecondary:'Level ', lvlSecondaryEnd:' — +1 combat and +1 gathering point.',
     tooFarWater:'Get closer to the water.', bagFull:'Bag full (', bagFullEnd:').',
+    butcherLbl:'butcher', butchered:' butchered.', tooFarCorpse:'Get closer to the carcass.',
     castStopsMeditation:'The spell breaks your meditation.', fullOfEnergy:'Already full of energy.', startMeditating:'You start meditating…',
     nothingNearby:'Nothing nearby.', flameHitNothing:'The flame hit nothing.',
     spellNeedsTarget:'This spell needs a target.', spellEcho:'Spell echo!',
@@ -5309,7 +5311,17 @@ const ITEMS={
   oda:{n:{lt:'Oda',en:'Leather'},i:'🟫'}, medziaga:{n:{lt:'Medžiaga',en:'Cloth'},i:'🧵'},
   gelezis:{n:{lt:'Geležis',en:'Iron'},i:'⚙️'}, bronza:{n:{lt:'Bronza',en:'Bronze'},i:'🟠'},
   sidabras:{n:{lt:'Sidabras',en:'Silver'},i:'🪙'}, plienas:{n:{lt:'Plienas',en:'Steel'},i:'⬜'},
-  muse:{n:{lt:'Dirbtinė musė',en:'Fly lure'},i:'🪰'}, blizge:{n:{lt:'Blizgė',en:'Spinner lure'},i:'🥄'}, mailius:{n:{lt:'Mailius',en:'Minnow'},i:'🐠'}
+  muse:{n:{lt:'Dirbtinė musė',en:'Fly lure'},i:'🪰'}, blizge:{n:{lt:'Blizgė',en:'Spinner lure'},i:'🥄'}, mailius:{n:{lt:'Mailius',en:'Minnow'},i:'🐠'},
+  /* v200: medžioklės grobis. Kailis ir mėsa bendri, o nagai/kanopos — kiekvienai
+     rūšiai savi (vartotojo prašymu: „vilko nagai", ne šiaip nagai). Šernams ir
+     žvėrims su kanopomis nagų nebūna, tad ten kanopos. */
+  kailis:{n:{lt:'Kailis',en:'Hide'},i:'🟫'}, mesa:{n:{lt:'Žalia mėsa',en:'Raw meat'},i:'🥩'},
+  nagai_vilko:{n:{lt:'Vilko nagai',en:'Wolf claws'},i:'🐾'},
+  nagai_lapes:{n:{lt:'Lapės nagai',en:'Fox claws'},i:'🐾'},
+  kanopos_elnio:{n:{lt:'Elnio kanopos',en:'Deer hooves'},i:'🦌'},
+  kanopos_briedzio:{n:{lt:'Briedžio kanopos',en:'Elk hooves'},i:'🦌'},
+  kanopos_karves:{n:{lt:'Karvės kanopos',en:'Cow hooves'},i:'🐄'},
+  kanopos_arklio:{n:{lt:'Arklio kanopos',en:'Horse hooves'},i:'🐴'}
 };
 
 /* ===================== ŽVEJYBA =====================
@@ -6005,6 +6017,16 @@ function worldClick(sx,sy){
       log(T('targetLbl')+Lx(e.def.name),'lg-s');
     }
     return;
+  }
+  /* v200: lavonas — bakstelėjus iš arti išdarinėjamas */
+  if(LAVONAI.length){
+    const l=nearestByScreen(LAVONAI,x=>new THREE.Vector3(x.pos.x,x.pos.y+.5,x.pos.z),sx,sy,TAP_RADIUS_PX);
+    if(l){
+      if(Math.hypot(l.pos.x-player.pos.x,l.pos.z-player.pos.z)<3.4) butcher(l);
+      else { player.moveTo=new THREE.Vector3(l.pos.x,l.pos.y,l.pos.z);
+             player.targetId=null; player.gatherId=null; log(T('tooFarCorpse'),'lg-s'); }
+      return;
+    }
   }
   const readyNodes=nodes.filter(n=>n.ready);
   const nObjs=readyNodes.map(n=>n.obj);
@@ -6743,6 +6765,15 @@ function killEnemy(e){
     drops.push({obj:g,kind,n:Math.max(1,Math.round(base*D.lobiuNuojauta)),t:0});
   };
   makeDrop(e.def.loot[rndI(0,e.def.loot.length-1)],0);
+  /* v200: žvėris. Ginklų ir metalų iš jo nebūna — tik medžioklės gėrybė, o
+     20 % atvejų lieka lavonas, kurį galima išdarinėti (dingsta po 30 s). */
+  if(e.zveris){
+    if(e.fv) e.fv.dead=true;
+    if(Math.random()<.55) makeDrop(e.def.loot[rndI(0,e.def.loot.length-1)],.5);
+    if(Math.random()<.20) makeLavonas(e);
+    e.respawn=26;
+    refreshUI(); return;
+  }
   if(Math.random()<.18){
     const tier=Math.min(7,Math.floor(rnd(0,2+e.def.lvl*.55)));
     giveItem(MATERIALS[tier].k+'_'+ITEM_TYPES[rndI(0,ITEM_TYPES.length-1)].k);
@@ -10278,6 +10309,30 @@ function updateEnemies(dt){
       if(!e.__hid){ e.__hid=1; if(e.tag) e.tag.hide(); }
       continue;
     }
+    /* v200: ŽVĖRIS. Jokio AI — jį veda updateFauna (bėga nuo žaidėjo), o čia
+       tik nusirašom vietą, laikom žymę ir tvarkom mirtį bei atgimimą. */
+    if(e.zveris){
+      const v=e.fv;
+      if(e.dead){
+        e.respawn-=dt;
+        if(e.respawn<=0){
+          e.dead=false; e.hp=e.maxHp; v.dead=false;
+          v.x=e.home.x; v.z=e.home.y; v.tx=v.x; v.tz=v.z; v.sv=0; v.cd=rnd(1,4);
+        }
+        continue;
+      }
+      if(e.stun>0) e.stun-=dt;
+      if(e.slow>0) e.slow-=dt;
+      if(e.burn>0){
+        e.burn-=dt; e.hp-=e.burnDps*dt;
+        if(e.hp<=0){ killEnemy(e); continue; }
+      }
+      e.pos.x=v.x; e.pos.z=v.z; e.pos.y=heightAt(v.x,v.z);
+      e.yaw=v.yaw; e.obj.position.copy(e.pos);
+      placeTag(e.tag,e.pos.x,e.pos.y+2.45*e.def.scale,e.pos.z,46);
+      e.tag.setHp(clamp(e.hp/e.maxHp,0,1));
+      continue;
+    }
     if(e.__hid){
       e.__hid=0; e.obj.visible=true;
       if(e.glb&&e.glb.model) e.glb.model.visible=true;
@@ -10527,6 +10582,49 @@ function dropGear(id){
   drawGearBag(); drawCharPanel();
   return true;
 }
+/* ===================== v200: LAVONAI =====================
+   Kas penktas nukautas žvėris palieka lavoną (vartotojo prašymu — 20 %).
+   Jį galima išdarinėti bakstelėjus iš arti: duoda mėsos, kailį, kaulų ir tos
+   rūšies nagus arba kanopas. Po 30 s lavonas dingsta pats, kad girioje
+   nesikauptų. Piešiamas ta pačia žvėries liemens geometrija, paguldyta ant
+   šono — jokių naujų modelių nereikia. */
+const LAVONAI=[], LAVONO_LAIKAS=30;
+function makeLavonas(e){
+  const g=e.fg; if(!g||!g.dalys||!g.dalys[0].n) return;
+  const m=new THREE.Mesh(g.dalys[0].geo,TURTAS_MAT);
+  m.scale.setScalar(g.def.s);
+  const y=heightAt(e.pos.x,e.pos.z);
+  m.position.set(e.pos.x,y+g.kojosIlgis*.45,e.pos.z);
+  m.rotation.set(Math.PI*.46,e.yaw||0,0);          // guli ant šono
+  m.castShadow=true; m.userData.shad=true; scene.add(m);
+  LAVONAI.push({obj:m,pos:m.position.clone(),def:e.def,t:LAVONO_LAIKAS,
+    tag:makeTag(Lx(e.def.name)+' — '+T('butcherLbl'),'#d9a26a',false,true)});
+}
+function pasalintLavona(l){
+  scene.remove(l.obj); if(l.tag) l.tag.hide();
+  const i=LAVONAI.indexOf(l); if(i>=0) LAVONAI.splice(i,1);
+}
+function updateLavonai(dt){
+  for(let i=LAVONAI.length-1;i>=0;i--){
+    const l=LAVONAI[i];
+    l.t-=dt;
+    if(l.t<=0||ZONE){ pasalintLavona(l); continue; }
+    l.obj.visible=true;
+    placeTag(l.tag,l.pos.x,l.pos.y+1.1,l.pos.z,22);
+  }
+}
+function butcher(l){
+  const d=l.def;
+  give('mesa',rndI(1,3));
+  give('kailis',1);
+  if(Math.random()<.75) give('kaulas',rndI(1,2));
+  if(Math.random()<.65&&d.nagai) give(d.nagai,1);
+  addXp('medziokle',Math.round(d.xp*.5));
+  burst(l.pos.x,l.pos.y+.4,l.pos.z,16,0x8c3a2e,2.2);
+  log(Lx(d.name)+T('butchered'),'lg-g');
+  sfx('gather');
+  pasalintLavona(l);
+}
 function updateGearDrops(dt){
   const px=player.pos.x, pz=player.pos.z;
   for(let i=gearDrops.length-1;i>=0;i--){
@@ -10735,6 +10833,7 @@ function frame(now){
   for(const ct of CATALOG_TAGS) placeTag(ct.tag,ct.x,ct.y,ct.z,60);
   updateFx(dt);
   updateGearDrops(dt);          // v189: ant žemės gulintys daiktai
+  updateLavonai(dt);            // v200: žvėrių lavonai (30 s)
   updateActs(dt);
   updateSkillBar(); updateCastBar(); updateStatBars();   // v189: juostos kas kadrą
   document.getElementById('bCast').classList.toggle('on',!!player.meditating);
@@ -11248,14 +11347,33 @@ function dressBoats(){
 
 /* --- ŽVĖRYS --- */
 const FAUNA=[];
+/* v200: ŽVĖRYS. Iki šiol jie buvo tik dekoracija — vaikščiojo, bet jų nebuvo
+   galima nei pažymėti, nei pulti (vartotojas: „kai kurių žvėrių negalima
+   atakuoti"). Dabar kiekvienas gyvūnas registruojamas ir kaip priešas
+   (zveris:true): jį galima pažymėti, kirsti ir nukauti, o iš jo gaunama
+   medžioklės gėrybė. Jie NEPUOLA — aggro 0, mato žaidėją ir bėga.
+   Kūno jiems nestatom: piešiami tie patys instancuoti tinkleliai kaip anksčiau
+   (žr. updateFauna), tad kaina nepasikeitė. */
 const FAUNA_DEF=[
-  {m:'Deer', n:7, bio:BIO_MISKAS, s:0.37, spd:2.4},
-  {m:'Stag', n:3, bio:BIO_MISKAS, s:0.37, spd:2.6},
-  {m:'Fox',  n:6, bio:BIO_LAUKAI, s:0.19, spd:3.0},
-  {m:'Wolf', n:5, bio:BIO_TAMSUS, s:0.31, spd:3.2},
-  {m:'Cow',  n:5, bio:BIO_LAUKAI, s:0.33, spd:1.2},
-  {m:'Horse',n:4, bio:BIO_LAUKAI, s:0.35, spd:2.8}
+  {m:'Deer', n:7, bio:BIO_MISKAS, s:0.37, spd:2.4,
+   key:'elnias', name:{lt:'Elnias',en:'Deer'},        lvl:3, hp:34, xp:38, nagai:'kanopos_elnio'},
+  {m:'Stag', n:3, bio:BIO_MISKAS, s:0.37, spd:2.6,
+   key:'briedis', name:{lt:'Briedis',en:'Elk'},       lvl:5, hp:58, xp:64, nagai:'kanopos_briedzio'},
+  {m:'Fox',  n:6, bio:BIO_LAUKAI, s:0.19, spd:3.0,
+   key:'lape', name:{lt:'Lapė',en:'Fox'},             lvl:2, hp:18, xp:22, nagai:'nagai_lapes'},
+  {m:'Wolf', n:5, bio:BIO_TAMSUS, s:0.31, spd:3.2,
+   key:'pilkasis', name:{lt:'Pilkasis vilkas',en:'Grey wolf'}, lvl:6, hp:70, xp:86, nagai:'nagai_vilko'},
+  {m:'Cow',  n:5, bio:BIO_LAUKAI, s:0.33, spd:1.2,
+   key:'karve', name:{lt:'Karvė',en:'Cow'},           lvl:1, hp:26, xp:14, nagai:'kanopos_karves'},
+  {m:'Horse',n:4, bio:BIO_LAUKAI, s:0.35, spd:2.8,
+   key:'arklys', name:{lt:'Laukinis arklys',en:'Wild horse'},  lvl:4, hp:48, xp:52, nagai:'kanopos_arklio'}
 ];
+/* Žvėries „priešo aprašas": tas pats laukų rinkinys, kurio tikisi kova. */
+function beastDef(d){
+  return {key:d.key, name:d.name, lvl:d.lvl, hp:d.hp, dmg:0, xp:d.xp, spd:d.spd,
+          scale:d.s*2.6, aggro:0, type:'beast', armor:0, magic:false, zveris:true,
+          nagai:d.nagai, loot:['mesa','kailis','kaulas',d.nagai]};
+}
 /* ===================== v198: ŽVĖRIŲ EISENA =====================
    Vartotojas: „arkliai be judėjimo animacijų". Taip ir buvo — .glb faile
    žvėrys yra VIENAS standus tinklelis: patikrinta, GIRIA_TURTAS.glb turi
@@ -11291,10 +11409,17 @@ const FAUNA_LEG_TOP=0.27;
    kojos gale. Imama 0,45 kojos aukščio nuo žemės: blauzda — apatiniai 45 %,
    šlaunis — viršutiniai 55 %. B — kiek koja sulenkiama moste. */
 const FAUNA_KNEE=0.45;
+/* v200: „ilgis" (žingsnio ilgis kojos ilgiais) PAŠALINTAS — jis buvo parinktas
+   ranka ir dėl to pėda atramoje slydo: kūnas per atramą nueidavo 1,9 kojos
+   ilgio, o pėda atsilikdavo tik 2·sin(A) ≈ 0,6. Dabar žingsnis IŠVEDAMAS:
+   per atramą kūnas nueina stride·duty, o pėda po juo atsitraukia
+   2·kojosIlgis·sin(A) — sulyginus gaunam stride = 2·kojosIlgis·sin(A)/duty.
+   Tada pėda stovi ant žemės tikrai, kad ir koks būtų greitis. Kampai (A)
+   dėl to padidinti — su senaisiais žingsniai būtų buvę per smulkūs. */
 const GAIT={
-  zingsnis:{fazes:[.25,.75,0,.5], A:.30, duty:.62, kilst:.010, linges:.012, ilgis:1.9, B:.38},
-  riscia:  {fazes:[0,.5,.5,0],    A:.42, duty:.45, kilst:.045, linges:.020, ilgis:2.6, B:.62},
-  suolis:  {fazes:[.45,.55,0,.1], A:.62, duty:.35, kilst:.085, linges:.055, ilgis:3.6, B:.92}
+  zingsnis:{fazes:[.25,.75,0,.5], A:.42, duty:.62, kilst:.010, linges:.012, B:.38},
+  riscia:  {fazes:[0,.5,.5,0],    A:.58, duty:.45, kilst:.045, linges:.020, B:.62},
+  suolis:  {fazes:[.45,.55,0,.1], A:.80, duty:.35, kilst:.085, linges:.055, B:.92}
 };
 /* Kojos masyve: 0 kairė priekinė, 1 dešinė priekinė, 2 kairė užpakalinė,
    3 dešinė užpakalinė (pagal centro x ir z ženklus). */
@@ -11367,8 +11492,20 @@ function faunaInit(){
       const x=Math.cos(a)*r, z=Math.sin(a)*r;
       if(!walkable(x,z)) continue;
       if(biomeAt(x,z)!==d.bio) continue;
-      const v={x,z,yaw:rnd(0,TAU),tx:x,tz:z,cd:rnd(0,5),pos:{x,z},gait:Math.random(),sv:0};
+      const v={x,z,yaw:rnd(0,TAU),tx:x,tz:z,cd:rnd(0,5),pos:{x,z},gait:Math.random(),sv:0,dead:false};
       grupe.vnt.push(v); wanderers.push(v); made++;
+      /* v200: tas pats gyvūnas — ir priešų sąraše, kad jį būtų galima pažymėti
+         ir nukauti. Kūno čia nestatom: piešia instancuoti tinkleliai, o obj yra
+         tuščias laikiklis (į sceną neįdedamas — jis reikalingas tik tam, kad
+         kovos kodas turėtų kur rašyti userData). */
+      const bd=beastDef(d);
+      const ze={def:bd, obj:new THREE.Group(), proc:null, glb:null, zveris:true,
+        fv:v, fg:grupe, pos:new THREE.Vector3(x,0,z), home:new THREE.Vector2(x,z),
+        hp:bd.hp, maxHp:bd.hp, state:'idle', yaw:v.yaw, atkCd:0, wanderCd:0,
+        wx:x, wz:z, dead:false, respawn:0, id:enemies.length, flash:0, stun:0,
+        sink:0, burn:0, burnDps:0, slow:0, zone:null,
+        tag:makeTag(Lx(bd.name)+' <span style="color:#9fb39c">'+bd.lvl+'</span>','#cbb98a',true)};
+      v.e=ze; enemies.push(ze);
     }
     meshes.forEach((im,k)=>{ im.count=sk.dalys[k].n?grupe.vnt.length:0; });
     if(grupe.vnt.length) FAUNA.push(grupe);
@@ -11382,9 +11519,12 @@ const fnM=new THREE.Matrix4(), fnQ=new THREE.Quaternion(),
    pirmyn. Teigiamas kampas = koja atgal (sukimas apie +X pėdą veda į −Z). */
 function legAngle(p,A,duty){
   p-=Math.floor(p);
-  if(p<duty) return A-2*A*(p/duty);
+  /* atrama: pėda prilipusi prie žemės, tad koja tolygiai atsilieka —
+     kampas auga nuo −A (pėda priekyje) iki +A (pėda gale) */
+  if(p<duty) return -A+2*A*(p/duty);
+  /* mostas: koja greitai grąžinama pirmyn */
   const q=(p-duty)/(1-duty);
-  return -A+2*A*(q*q*(3-2*q));
+  return A-2*A*(q*q*(3-2*q));
 }
 /* v199: KELIO LENKIMAS. Vartotojas: „kojos juda, bet nesilanksto". Tikri
    keturkojai atramoje laiko koją beveik tiesią (ji neša svorį), o moste
@@ -11407,6 +11547,12 @@ function updateFauna(dt){
     const d=g.def;
     for(let i=0;i<g.vnt.length;i++){
       const v=g.vnt[i];
+      if(v.dead){                            // v200: nukautas — tiesiog nepiešiam
+        fnV.set(0,-999,0); fnQ.setFromAxisAngle(fnUp,0); fnS.set(0,0,0);
+        fnM.compose(fnV,fnQ,fnS);
+        for(const im of g.meshes) im.setMatrixAt(i,fnM);
+        continue;
+      }
       v.pos0x=v.x; v.pos0z=v.z;              // v198: iš kur pajudėjo šį kadrą
       const dx=v.x-px, dz=v.z-pz, dist=Math.hypot(dx,dz);
       let spd=d.spd*.35;
@@ -11433,9 +11579,11 @@ function updateFauna(dt){
       const nuejo=Math.hypot(v.x-v.pos0x,v.z-v.pos0z);
       v.sv=v.sv*.8+(dt>0?nuejo/dt:0)*.2;
       const eis=v.sv>d.spd*.72?GAIT.suolis:(v.sv>d.spd*.5?GAIT.riscia:GAIT.zingsnis);
-      const zings=Math.max(.15,g.kojosIlgis*eis.ilgis);
-      v.gait+=nuejo/zings;
       const jud=clamp(v.sv/(d.spd*.3),0,1);          // stovint kojos nurimsta
+      /* v200: žingsnio ilgis skaičiuojamas iš TIKRO mosto kampo (jud*A), tad
+         ir lėčiau einant, ir įsibėgėjus pėda lieka priklijuota prie žemės. */
+      const zings=Math.max(.05,2*g.kojosIlgis*Math.sin(jud*eis.A)/eis.duty);
+      v.gait+=nuejo/zings;
       const faze=v.gait;
 
       fnQ.setFromAxisAngle(fnUp,v.yaw);
@@ -11787,12 +11935,12 @@ const DUN_DEFS=[
      dunFindSpot nebūtų radęs nė vienos vietos. */
   {key:'olos', name:{lt:'Vilkų olos',en:'Wolf caves'}, seed:13370,
    bio:null, rmin:24, rmax:32, ang:1.30, ox:30000, oz:0,
-   floor:0x2a2721, wall:0x38332c, roof:0x14120f, torch:0xffa348,
+   floor:0x4a443a, wall:0x5d5548, roof:0x241f19, torch:0xffa348,
    ore:['akmuo','akmuo','gelezis','gelezis','sidabras'],
    mobs:['kipsas','kaukas','kipsas','lauma','vilkas'], mobN:12, oreN:26},
   {key:'kasyklos', name:{lt:'Gintaro kasyklos',en:'Amber mines'}, seed:90210,
    bio:null, rmin:24, rmax:32, ang:1.88, ox:60000, oz:0,
-   floor:0x2e281e, wall:0x413528, roof:0x18130d, torch:0xffc85a,
+   floor:0x50462f, wall:0x6a5842, roof:0x2a2216, torch:0xffc85a,
    ore:['gelezis','sidabras','sidabras','gintaras2','gintaras2'],
    mobs:['slogutis','kipsas','vilkas','slogutis','lauma'], mobN:14, oreN:28}
 ];
@@ -11870,6 +12018,75 @@ function dunMapBmp(D0){
 }
 
 /* --- geometrija --- */
+/* ===================== v200: POŽEMIŲ PAVIRŠIAI =====================
+   Vartotojas paklausė, ar tikrai nėra tekstūrų požemiams. Paketuose uolų
+   tekstūrų YRA (Stylized Nature: Rocks_Diffuse 2048², PathRocks_Diffuse
+   1024²), bet jos yra ATLASAI konkretiems akmenų modeliams: akmenys sudėlioti
+   ant ŽALIO samanų fono ir kraštai nesujungiami. Ant sienos ar grindų tokia
+   tekstūra duotų žalias dėmes ir aiškias siūles, o dar 0,8–2,5 MB siuntimo.
+   Todėl paviršiai piešiami patys — 256×256 sujungiamos (wrap) tekstūros:
+   grindys su žemės dėmėmis ir akmenukais, sienos su uolos briaunomis ir
+   plyšiais, lubos tamsesnės ir stambesnės. Spalvą duoda pati medžiaga
+   (def.floor/wall/roof), tekstūra tik šviesumo raštas, tad abu požemiai
+   išlieka skirtingi. Nieko papildomo įkelti nereikia. */
+function dunTexture(kind){
+  const S=256, c=document.createElement('canvas'); c.width=c.height=S;
+  const x=c.getContext('2d');
+  let sd=kind.length*7919+1337;
+  const R=()=>((sd=(sd*1103515245+12345)&0x7fffffff)/0x7fffffff);
+  /* viską piešiam 9 kartus (±S), kad kraštai sutaptų */
+  const wrap=fn=>{ for(let dx=-S;dx<=S;dx+=S) for(let dy=-S;dy<=S;dy+=S){
+    x.save(); x.translate(dx,dy); fn(); x.restore(); } };
+  x.fillStyle='#f4f1ea'; x.fillRect(0,0,S,S);
+  const deme=(px,py,r,ry,kampas,sp)=>{ x.fillStyle=sp;
+    wrap(()=>{ x.beginPath(); x.ellipse(px,py,r,ry,kampas,0,6.3); x.fill(); }); };
+
+  if(kind==='grindys'){
+    for(let i=0;i<70;i++){                       // suplūkta žemė
+      const t=.55+R()*.35;
+      deme(R()*S,R()*S,14+R()*40,10+R()*34,R()*3,'rgba('+(190+R()*40|0)+','+(178+R()*38|0)+','+(160+R()*36|0)+','+t.toFixed(2)+')');
+    }
+    for(let i=0;i<26;i++){                        // duobutės
+      deme(R()*S,R()*S,5+R()*12,4+R()*9,R()*3,'rgba(120,110,96,.30)');
+    }
+    for(let i=0;i<48;i++){                        // akmenukai su šviesia briauna
+      const px=R()*S, py=R()*S, r=3+R()*7, ry=r*(.6+R()*.5), a=R()*3;
+      deme(px,py+1.4,r*1.05,ry*1.05,a,'rgba(90,84,72,.45)');
+      deme(px,py,r,ry,a,'rgba(232,228,218,.95)');
+      deme(px-r*.25,py-ry*.25,r*.5,ry*.45,a,'rgba(255,255,255,.75)');
+    }
+  }else if(kind==='siena'){
+    for(let i=0;i<34;i++){                        // stambios uolos briaunos
+      const px=R()*S, py=R()*S, n=4+(R()*3|0), sp=R()>.5?'rgba(255,255,255,.55)':'rgba(120,112,98,.34)';
+      const tsk=[]; for(let k=0;k<n;k++){ const a=k/n*6.283+R()*.5, r=16+R()*36;
+        tsk.push([px+Math.cos(a)*r, py+Math.sin(a)*r*.8]); }
+      x.fillStyle=sp;
+      wrap(()=>{ x.beginPath(); x.moveTo(tsk[0][0],tsk[0][1]);
+        for(const p of tsk) x.lineTo(p[0],p[1]); x.closePath(); x.fill(); });
+    }
+    for(let i=0;i<40;i++){                        // plyšiai
+      const px=R()*S, py=R()*S, len=18+R()*46, kr=R()*6.283;
+      x.strokeStyle='rgba(70,64,54,.42)'; x.lineWidth=1+R()*2;
+      wrap(()=>{ x.beginPath(); x.moveTo(px,py);
+        x.lineTo(px+Math.cos(kr)*len, py+Math.sin(kr)*len); x.stroke(); });
+    }
+    for(let i=0;i<220;i++) deme(R()*S,R()*S,1+R()*2.2,1+R()*2.2,0,'rgba(255,255,255,.30)');
+  }else{                                          // lubos
+    for(let i=0;i<26;i++)
+      deme(R()*S,R()*S,26+R()*54,20+R()*44,R()*3,R()>.5?'rgba(255,255,255,.40)':'rgba(96,88,76,.40)');
+    for(let i=0;i<120;i++) deme(R()*S,R()*S,1.5+R()*3,1.5+R()*3,0,'rgba(80,74,64,.28)');
+  }
+  const t=new THREE.Texture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.needsUpdate=true;
+  return t;
+}
+const DUN_TEX={grindys:null,siena:null,lubos:null};
+function dunTex(kind){
+  if(!DUN_TEX[kind]&&typeof document!=='undefined'&&document.createElement)
+    DUN_TEX[kind]=dunTexture(kind);
+  return DUN_TEX[kind];
+}
 function dunBuild(def){
   const rng=dunRng(def.seed);
   const G=DUN_G, m=dunMaze(G,rng);
@@ -11902,7 +12119,7 @@ function dunBuild(def){
 
   /* grindys (padalintos 3×3, kad taškinė šviesa nesikapotų) */
   const fg=new THREE.PlaneGeometry(DUN_C,DUN_C,3,3); fg.rotateX(-Math.PI/2);
-  const fMesh=new THREE.InstancedMesh(fg,new THREE.MeshLambertMaterial({color:def.floor}),atviri.length);
+  const fMesh=new THREE.InstancedMesh(fg,new THREE.MeshLambertMaterial({color:def.floor,map:dunTex('grindys')}),atviri.length);
   fMesh.raycast=()=>{};
   atviri.forEach((c,k)=>{
     v.set(wx(c.i),0,wz(c.j)); mm.compose(v,q,sc); fMesh.setMatrixAt(k,mm);
@@ -11915,7 +12132,7 @@ function dunBuild(def){
 
   /* lubos */
   const cg=new THREE.PlaneGeometry(DUN_C,DUN_C); cg.rotateX(Math.PI/2);
-  const cMesh=new THREE.InstancedMesh(cg,new THREE.MeshLambertMaterial({color:def.roof}),atviri.length);
+  const cMesh=new THREE.InstancedMesh(cg,new THREE.MeshLambertMaterial({color:def.roof,map:dunTex('lubos')}),atviri.length);
   cMesh.raycast=()=>{};
   atviri.forEach((c,k)=>{ v.set(wx(c.i),DUN_H,wz(c.j)); mm.compose(v,q,sc); cMesh.setMatrixAt(k,mm); });
   cMesh.instanceMatrix.needsUpdate=true;
@@ -11923,7 +12140,7 @@ function dunBuild(def){
 
   /* uolos */
   const wg=new THREE.BoxGeometry(DUN_C,DUN_H,DUN_C);
-  const wMesh=new THREE.InstancedMesh(wg,new THREE.MeshLambertMaterial({color:def.wall}),sienos.length);
+  const wMesh=new THREE.InstancedMesh(wg,new THREE.MeshLambertMaterial({color:def.wall,map:dunTex('siena')}),sienos.length);
   wMesh.raycast=()=>{};
   sienos.forEach((c,k)=>{
     const sy=.94+h2(c.i*5.1,c.j*4.3)*.12;

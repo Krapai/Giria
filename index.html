@@ -706,8 +706,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v197';
-const GAME_CHANGES='v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
+const GAME_VERSION='v198';
+const GAME_CHANGES='v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -4771,7 +4771,8 @@ function enemyGlbSurink(e,scenaSrc,anims){
     if(A.chain){ const nx=A.chain; A.chain=null; glbOnce(A,nx,1); }   // 18 → iškart 19
   });
   e.glb=A; ENEMY_GLB.push(A);
-  e.obj.traverse(o=>{ if(o.isMesh) o.visible=false; });   // procedūrinis kūnas — nematomas
+  if(e.proc) e.proc.visible=(CFG.quality!=='high');   // v198: piešinys po modeliu — tik žemoje kokybėje
+  e.obj.traverse(o=>{ if(o.isMesh) o.visible=(CFG.quality!=='high'); });
   applyModelQuality();                                    // v191: žemoje kokybėje atvirkščiai
   glbLoop(A, (e.def.dummy?A.acts.dummyIdle:null)||A.acts.idle);
 }
@@ -4779,8 +4780,12 @@ function attachEnemyGlb(e){
   if(typeof THREE==='undefined'||!THREE.GLTFLoader) return;   // testų aplinka — praleidžiam
   if(e.def.glb){
     loadGlbAny(glbUrls(e.def.glb),g=>{
+      /* v198: anksčiau čia buvo tik console.warn — jei UAL paketas neatsakė,
+         priešas likdavo BE JOKIO kūno (vardas ore, o pamatyti nėra ko).
+         Dabar bent modelis pastatomas, tik be animacijų. */
       loadGlbAny(glbUrls(GLB_URL),ual=>enemyGlbSurink(e,g.scene,ual.animations),
-                  undefined,err=>console.warn('animacijos neįkeltos',err));
+                  undefined,err=>{ console.warn('animacijos neįkeltos',err);
+                                   enemyGlbSurink(e,g.scene,[]); });
     },()=>{                                     // savo failo nėra — lieka UAL kūnas
       loadGlbAny(glbUrls(GLB_URL),g=>enemyGlbSurink(e,g.scene,g.animations),
                   undefined,err=>console.warn('priešo GLB neįkeltas',err));
@@ -5464,8 +5469,20 @@ function enemyProcBuild(e){
   const g=humanoid(e.procCfg);
   e.proc=g; e.obj.add(g); e.obj.userData=g.userData;
 }
-function enemyProcNeeded(){
-  return CFG.quality!=='high'||typeof THREE==='undefined'||!THREE.GLTFLoader;
+/* v198: ar šiam priešui reikia PIEŠTO (procedūrinio) kūno.
+   Iki v198 klausimas buvo tik apie kokybę: aukštoje kokybėje piešto kūno
+   niekam nereikia, nes visi turi GLB modelį. Bet modelis gali ir NEATEITI —
+   naujiems priešams (Kipšas, Slogutis) attachEnemyGlb daro DVIGUBĄ krovimą
+   (pirma savas .glb, tada UAL animacijos), ir jei nepavyksta bent vienas,
+   priešas lieka VISIŠKAI be kūno: gyvas, puola, turi vardą ir gyvybių juostą
+   ore, o pamatyti nėra ko (vartotojo pranešimas: „jų obj tiesiog nematomas").
+   Todėl klausimas dabar apie KONKRETŲ priešą: jei modelio nėra — pieštas kūnas
+   reikalingas nepriklausomai nuo kokybės. Atėjus modeliui, enemyGlbSurink()
+   piešinį paslepia, tad dvigubo kūno nebūna. */
+function enemyProcNeeded(e){
+  if(typeof THREE==='undefined'||!THREE.GLTFLoader) return true;
+  if(CFG.quality!=='high') return true;
+  return !(e&&e.glb&&e.glb.model);
 }
 /* v194: ar priešas pakankamai arti, kad jo procedūrinį kūną apskritai vertėtų
    statyti. Toliau nei 120 m jį ir taip paslepia rūkas, o kiekvienas kūnas —
@@ -5483,7 +5500,7 @@ function spawnEnemy(def,x,z){
     tag:makeTag(Lx(def.name)+' <span style="color:#9fb39c">'+def.lvl+'</span>','#e59a86',true)};
   /* v193: piešinys tik jei reikia. v194: ir tik SAVOJE zonoje — požemių
      priešų kūnai statomi tada, kai į požemį įeinama (žr. updateEnemies). */
-  if(enemyProcNeeded()&&SPAWN_ZONE===ZONE&&procArti(e)) enemyProcBuild(e);
+  if(enemyProcNeeded(e)&&SPAWN_ZONE===ZONE&&procArti(e)) enemyProcBuild(e);
   addBody(e.pos,.45*(def.scale||1),()=>!e.dead); // v154: kūnas juda kartu su e.pos
   enemies.push(e); attachEnemyGlb(e); return e;
 }
@@ -10264,10 +10281,15 @@ function updateEnemies(dt){
     if(e.__hid){
       e.__hid=0; e.obj.visible=true;
       if(e.glb&&e.glb.model) e.glb.model.visible=true;
-      if(!e.proc&&enemyProcNeeded()) enemyProcBuild(e);   // v194: kūnas — tik įėjus
+      if(!e.proc&&enemyProcNeeded(e)) enemyProcBuild(e);   // v194: kūnas — tik įėjus
       applyModelQuality();
     }
-    if(!e.proc&&!e.dead&&enemyProcNeeded()&&procArti(e)) enemyProcBuild(e);
+    if(!e.proc&&!e.dead&&enemyProcNeeded(e)&&procArti(e)) enemyProcBuild(e);
+    /* v198: jei modelio vis dar nėra, piešinys turi būti MATOMAS — aukštoje
+       kokybėje applyModelQuality() jį buvo paslėpęs dar prieš paaiškėjant, kad
+       modelis neateis. */
+    if(e.proc&&!e.dead&&!(e.glb&&e.glb.model))
+      e.proc.traverse(o=>{ if(o.isMesh&&!o.visible) o.visible=true; });
     if(e.def.dummy){                       // v96: taikinio manekenas — jokio AI
       e.hp=e.maxHp; e.dead=false; e.state='idle';
       if(e.home){ e.pos.x=e.home.x; e.pos.z=e.home.z; }   // v104: atatranka jo nepajudina
@@ -11218,40 +11240,132 @@ const FAUNA_DEF=[
   {m:'Cow',  n:5, bio:BIO_LAUKAI, s:0.33, spd:1.2},
   {m:'Horse',n:4, bio:BIO_LAUKAI, s:0.35, spd:2.8}
 ];
+/* ===================== v198: ŽVĖRIŲ EISENA =====================
+   Vartotojas: „arkliai be judėjimo animacijų". Taip ir buvo — .glb faile
+   žvėrys yra VIENAS standus tinklelis: patikrinta, GIRIA_TURTAS.glb turi
+   0 animacijų ir 0 skins, tad kaulų, kuriuos būtų galima sukioti, tiesiog
+   nėra. Todėl kojos padaromos kode: geometrija vieną kartą PERSKELIAMA į
+   penkias dalis (liemuo + keturios kojos), kiekviena dalis piešiama savo
+   InstancedMesh, o kadre kiekvienai kojai duodama sava matrica.
+   Kaina: 5 piešimo iškvietimai rūšiai vietoj vieno (šešios rūšys — 30 vietoj
+   6), instancijų kiekis nesikeičia.
+
+   KUR SKELTI. Išmatuota visoms šešioms rūšims (žr. scratchpad/zveris.js):
+   iki ~30 % ūgio tinklelis dalijasi į keturias atskiras sankaupas (kojos),
+   aukščiau prasideda pilvas ir uodega. Imama 27 % — su atsarga.
+   Priekis yra +Z (arklio galva ties z=+3,47, uodega −2,22), tad koja su
+   z>=0 yra priekinė.
+
+   EISENOS (kaip iš tikrųjų vaikšto keturkojai):
+     ŽINGSNIS — 4 taktų, šoninė seka: kairė užpakalinė, kairė priekinė,
+       dešinė užpakalinė, dešinė priekinė; fazės 0, ¼, ½, ¾. Trys kojos
+       beveik visada ant žemės, tad atramos dalis (duty) didelė — 0,62.
+     RISČIA — 2 taktų, įstrižos poros (KP+DU ir DP+KU) juda kartu; duty 0,45,
+       tarp taktų būna trumpas skrydis, tad liemuo pastebimai kilnojasi.
+     ŠUOLIS (šuoliais bėga tik gainiojamas žvėris) — 4 taktų transversalus:
+       KU, DU, KP, DP su skrydžio faze; fazės 0, 0,1, 0,45, 0,55, duty 0,35.
+   Fazė varoma NUEITU ATSTUMU (ne laiku), kitaip sulėtėjęs gyvūnas mina orą.
+   Žingsnio ilgis imamas iš kojos ilgio: žingsnis 1,9, risčia 2,6, šuolis 3,6
+   kojos ilgio.
+   Koja atramoje sukasi TOLYGIAI atgal (pėda stovi vietoje), o moste greitai
+   grąžinama pirmyn (glotni kreivė) — dėl to eisena atrodo kaip ėjimas, o ne
+   kaip švytuoklė. */
+const FAUNA_LEG_TOP=0.27;
+const GAIT={
+  zingsnis:{fazes:[.25,.75,0,.5], A:.30, duty:.62, kilst:.010, linges:.012, ilgis:1.9},
+  riscia:  {fazes:[0,.5,.5,0],    A:.42, duty:.45, kilst:.045, linges:.020, ilgis:2.6},
+  suolis:  {fazes:[.45,.55,0,.1], A:.62, duty:.35, kilst:.085, linges:.055, ilgis:3.6}
+};
+/* Kojos masyve: 0 kairė priekinė, 1 dešinė priekinė, 2 kairė užpakalinė,
+   3 dešinė užpakalinė (pagal centro x ir z ženklus). */
+function faunaSplit(geo){
+  const pos=geo.attributes.position, nor=geo.attributes.normal, col=geo.attributes.color;
+  const idx=geo.index, kiek=idx?idx.count:pos.count;
+  /* ribas skaičiuojam patys — computeBoundingBox() nėra testų aplinkoje, o
+     mums tereikia Y rėžio */
+  let ymin=1e9,ymax=-1e9;
+  for(let i=0;i<pos.count;i++){ const y=pos.getY(i); if(y<ymin)ymin=y; if(y>ymax)ymax=y; }
+  const H=ymax-ymin, riba=ymin+H*FAUNA_LEG_TOP;
+  const dal=[[],[],[],[],[]];
+  const gi=i=>idx?idx.getX(i):i;
+  for(let t=0;t+2<kiek;t+=3){
+    const a=gi(t),b=gi(t+1),c=gi(t+2);
+    const cy=(pos.getY(a)+pos.getY(b)+pos.getY(c))/3;
+    let k=0;
+    if(cy<riba){
+      const cx=(pos.getX(a)+pos.getX(b)+pos.getX(c))/3;
+      const cz=(pos.getZ(a)+pos.getZ(b)+pos.getZ(c))/3;
+      k=1+(cx>=0?0:1)+(cz>=0?0:2);
+    }
+    dal[k].push(a,b,c);
+  }
+  const dalys=[];
+  for(let k=0;k<5;k++){
+    const v=dal[k], g=new THREE.BufferGeometry();
+    const P=new Float32Array(v.length*3), N=nor?new Float32Array(v.length*3):null,
+          C=col?new Float32Array(v.length*3):null;
+    let sx=0,sz=0;
+    for(let i=0;i<v.length;i++){
+      const j=v[i];
+      P[i*3]=pos.getX(j); P[i*3+1]=pos.getY(j); P[i*3+2]=pos.getZ(j);
+      if(N){ N[i*3]=nor.getX(j); N[i*3+1]=nor.getY(j); N[i*3+2]=nor.getZ(j); }
+      if(C){ C[i*3]=col.getX(j); C[i*3+1]=col.getY(j); C[i*3+2]=col.getZ(j); }
+      sx+=P[i*3]; sz+=P[i*3+2];
+    }
+    g.setAttribute('position',new THREE.BufferAttribute(P,3));
+    if(N) g.setAttribute('normal',new THREE.BufferAttribute(N,3));
+    if(C) g.setAttribute('color',new THREE.BufferAttribute(C,3));
+    const nv=v.length||1;
+    dalys.push({geo:g,px:sx/nv,py:riba,pz:sz/nv,n:v.length});
+  }
+  return {dalys,riba,kojosIlgis:riba-ymin};
+}
 function faunaInit(){
-  const m4=new THREE.Matrix4();
   for(const d of FAUNA_DEF){
     const geo=TURTAS[d.m]; if(!geo) continue;
     const kiek=CFG.quality==='high'?d.n:Math.max(2,Math.round(d.n*.5));
-    const im=new THREE.InstancedMesh(geo,TURTAS_MAT,kiek);
-    im.raycast=()=>{}; im.castShadow=true; im.userData.shad=true;
-    im.frustumCulled=false;
-    scene.add(im);
-    const grupe={mesh:im,def:d,vnt:[]};
+    const sk=faunaSplit(geo);
+    const meshes=sk.dalys.map(dl=>{
+      const im=new THREE.InstancedMesh(dl.geo,TURTAS_MAT,kiek);
+      im.raycast=()=>{}; im.castShadow=true; im.userData.shad=true;
+      im.frustumCulled=false; scene.add(im); return im;
+    });
+    const grupe={mesh:meshes[0],meshes,dalys:sk.dalys,kojosIlgis:sk.kojosIlgis*d.s,def:d,vnt:[]};
     let made=0,guard=0;
     while(made<kiek&&guard++<3000){
       const a=Math.random()*TAU, r=Math.sqrt(Math.random())*(WORLD-30)+18;
       const x=Math.cos(a)*r, z=Math.sin(a)*r;
       if(!walkable(x,z)) continue;
       if(biomeAt(x,z)!==d.bio) continue;
-      const v={x,z,yaw:rnd(0,TAU),tx:x,tz:z,cd:rnd(0,5),pos:{x,z}};
+      const v={x,z,yaw:rnd(0,TAU),tx:x,tz:z,cd:rnd(0,5),pos:{x,z},gait:Math.random(),sv:0};
       grupe.vnt.push(v); wanderers.push(v); made++;
     }
-    im.count=grupe.vnt.length;
+    meshes.forEach((im,k)=>{ im.count=(k===0||sk.dalys[k].n)?grupe.vnt.length:0; });
     if(grupe.vnt.length) FAUNA.push(grupe);
   }
 }
 const fnM=new THREE.Matrix4(), fnQ=new THREE.Quaternion(),
-      fnV=new THREE.Vector3(), fnS=new THREE.Vector3(), fnUp=new THREE.Vector3(0,1,0);
+      fnV=new THREE.Vector3(), fnS=new THREE.Vector3(), fnUp=new THREE.Vector3(0,1,0),
+      fnL=new THREE.Matrix4(), fnT=new THREE.Matrix4(), fnR=new THREE.Matrix4(),
+      fnE=new THREE.Euler();
+/* Kojos kampas per vieną ciklą: atramoje tolygiai atgal, moste — glotniai
+   pirmyn. Teigiamas kampas = koja atgal (sukimas apie +X pėdą veda į −Z). */
+function legAngle(p,A,duty){
+  p-=Math.floor(p);
+  if(p<duty) return A-2*A*(p/duty);
+  const q=(p-duty)/(1-duty);
+  return -A+2*A*(q*q*(3-2*q));
+}
 function updateFauna(dt){
   if(!FAUNA.length) return;
   const px=player.pos.x, pz=player.pos.z, matyt=!ZONE;
   for(const g of FAUNA){
-    g.mesh.visible=matyt;
+    for(const im of g.meshes) im.visible=matyt;
     if(!matyt) continue;
     const d=g.def;
     for(let i=0;i<g.vnt.length;i++){
       const v=g.vnt[i];
+      v.pos0x=v.x; v.pos0z=v.z;              // v198: iš kur pajudėjo šį kadrą
       const dx=v.x-px, dz=v.z-pz, dist=Math.hypot(dx,dz);
       let spd=d.spd*.35;
       if(dist<13){                       // pabėga
@@ -11271,13 +11385,42 @@ function updateFauna(dt){
         else v.cd=0;
       }
       v.pos.x=v.x; v.pos.z=v.z;
+
+      /* v198: eisena. Faktinis greitis imamas iš to, kiek per kadrą nueita —
+         taip sustojus kojos savaime sustoja. */
+      const nuejo=Math.hypot(v.x-v.pos0x,v.z-v.pos0z);
+      v.sv=v.sv*.8+(dt>0?nuejo/dt:0)*.2;
+      const eis=v.sv>d.spd*.72?GAIT.suolis:(v.sv>d.spd*.5?GAIT.riscia:GAIT.zingsnis);
+      const zings=Math.max(.15,g.kojosIlgis*eis.ilgis);
+      v.gait+=nuejo/zings;
+      const jud=clamp(v.sv/(d.spd*.3),0,1);          // stovint kojos nurimsta
+      const faze=v.gait;
+
       fnQ.setFromAxisAngle(fnUp,v.yaw);
       fnS.set(d.s,d.s,d.s);
-      fnV.set(v.x,heightAt(v.x,v.z),v.z);
+      const kilst=jud*eis.kilst*g.kojosIlgis*Math.abs(Math.sin(faze*TAU));
+      fnV.set(v.x,heightAt(v.x,v.z)+kilst,v.z);
       fnM.compose(fnV,fnQ,fnS);
-      g.mesh.setMatrixAt(i,fnM);
+      if(jud>.02){                                   // liemens linga (pitch)
+        fnE.set(jud*eis.linges*Math.sin(faze*TAU+1.1),v.yaw,0,'YXZ');
+        fnQ.setFromEuler(fnE);
+        fnM.compose(fnV,fnQ,fnS);
+      }
+      g.meshes[0].setMatrixAt(i,fnM);
+      for(let k=0;k<4;k++){
+        const dl=g.dalys[k+1];
+        if(!dl.n) continue;                       // tuščia dalis — nieko nepiešia
+        const kampas=jud*legAngle(faze+eis.fazes[k],eis.A,eis.duty);
+        fnR.makeRotationX(kampas);
+        fnT.makeTranslation(dl.px,dl.py,dl.pz);
+        fnL.multiplyMatrices(fnT,fnR);
+        fnT.makeTranslation(-dl.px,-dl.py,-dl.pz);
+        fnL.multiply(fnT);
+        fnL.premultiply(fnM);
+        g.meshes[k+1].setMatrixAt(i,fnL);
+      }
     }
-    g.mesh.instanceMatrix.needsUpdate=true;
+    for(const im of g.meshes) im.instanceMatrix.needsUpdate=true;
   }
 }
 
@@ -11438,15 +11581,9 @@ function dressDungeon(D0){
     if(d.kunas) addBody({x,z},d.kunas);
     pad++;
   }
-  /* sieniniai deglai — atsukti į koridorių */
-  const degl=[];
-  for(const c of (D0.degl||[])){
-    const kryptys=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>D0.sol[(c.j+d[1])*D0.G+(c.i+d[0])]);
-    if(!kryptys.length) continue;
-    const k=kryptys[0];
-    degl.push({x:c.x+k[0]*(C/2-0.22), y:2.35, z:c.z+k[1]*(C/2-0.22),
-               rot:Math.atan2(-k[0],-k[1])});
-  }
+  /* sieniniai deglai — vieta ir posūkis jau suskaičiuoti dunBuild() (v198),
+     kad liepsna ir deglas visada sutaptų. Čia belieka paduoti. */
+  const degl=(D0.degl||[]).map(c=>({x:c.x,y:c.y,z:c.z,rot:c.rot}));
   for(const v in grupes) daiktInst(v,grupes[v],D0.grp,false);
   daiktInst('Torch_Metal',degl,D0.grp,false);
   SPAWN_ZONE=null;
@@ -11745,21 +11882,41 @@ function dunBuild(def){
   if(wMesh.instanceColor) wMesh.instanceColor.needsUpdate=true;
   D0.grp.add(wMesh);
 
-  /* deglai — vienas Points debesis visam požemiui */
+  /* deglai — vienas Points debesis visam požemiui.
+     v198 TAISYMAS: iki šiol švytėjimo taškas buvo dedamas langelio VIDURYJE
+     (wx(i), 2.9, wz(j)), o pats deglo modelis dressDungeon() prispaudžiamas
+     prie sienos ties y=2,35 — tad liepsna kabėjo kambario viduryje, atskirai
+     nuo deglo (vartotojo pranešimas). Dabar prie sienos priglaudžiama VIENĄ
+     kartą, čia, ir tą pačią vietą naudoja abu: ir modelis, ir švytėjimas.
+     Deglas išmatuotas iš GIRIA_DAIKTAI.glb (Torch_Metal): aukštis nuo −0,28
+     iki +0,37, o galva nutolusi nuo sienos iki 0,39 — tad liepsna yra
+     0,37 aukščiau modelio taško ir apie 0,28 nuo sienos į koridorių.
+     Langeliai, kurie neturi nė vienos gretimos sienos, praleidžiami visai —
+     anksčiau jie gaudavo švytėjimą be deglo. */
+  const DEGL_Y=2.35, LIEP_AUKST=0.37, LIEP_NUO_SIENOS=0.28;
   const degl=[];
-  for(let k=0;k<atviri.length;k++) if(rng()<0.055) degl.push(atviri[k]);
+  for(let k=0;k<atviri.length;k++){
+    const c=atviri[k];
+    if(rng()>=0.055) continue;
+    const kryptys=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>{const ni=c.i+d[0],nj=c.j+d[1];return ni>=0&&nj>=0&&ni<G&&nj<G&&m.sol[nj*G+ni];});
+    if(!kryptys.length) continue;                    // nėra sienos — nėra kur kabinti
+    const k2=kryptys[0];
+    const bx=wx(c.i)+k2[0]*(DUN_C/2-0.22), bz=wz(c.j)+k2[1]*(DUN_C/2-0.22);
+    degl.push({i:c.i,j:c.j,x:bx,y:DEGL_Y,z:bz,rot:Math.atan2(-k2[0],-k2[1]),
+               lx:bx-k2[0]*LIEP_NUO_SIENOS, ly:DEGL_Y+LIEP_AUKST, lz:bz-k2[1]*LIEP_NUO_SIENOS});
+  }
   if(degl.length){
     const pos=new Float32Array(degl.length*3);
-    degl.forEach((c,k)=>{ pos[k*3]=wx(c.i); pos[k*3+1]=2.9; pos[k*3+2]=wz(c.j); });
+    degl.forEach((c,k)=>{ pos[k*3]=c.lx; pos[k*3+1]=c.ly; pos[k*3+2]=c.lz; });
     const pg=new THREE.BufferGeometry();
     pg.setAttribute('position',new THREE.BufferAttribute(pos,3));
-    const pmat=new THREE.PointsMaterial({size:2.9,map:glowTex,color:def.torch,
+    const pmat=new THREE.PointsMaterial({size:1.5,map:glowTex,color:def.torch,
       transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,sizeAttenuation:true});
     const pts=new THREE.Points(pg,pmat);
     pts.frustumCulled=false; pts.raycast=()=>{};
     D0.torchPts=pts; D0.grp.add(pts);
   }
-  D0.degl=degl.map(c=>({i:c.i,j:c.j,x:wx(c.i),z:wz(c.j)}));   // v194: sieniniams deglams
+  D0.degl=degl;                                // v198: jau su siena, aukščiu ir posūkiu
 
   /* pradžios langelis — arčiausias tinklelio kampui, kad kelias būtų ilgas */
   let best=atviri[0], bd=1e9;

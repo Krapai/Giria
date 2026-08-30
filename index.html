@@ -92,8 +92,29 @@ canvas{display:block;touch-action:none}
 #map{position:absolute;inset:5px;border-radius:50%;width:calc(100% - 10px);height:calc(100% - 10px)}
 .tick{position:absolute;left:50%;top:2px;width:1px;height:5px;background:rgba(217,152,47,.65);
   transform-origin:50% 41px}
-#compass{position:absolute;left:50%;top:-8px;transform:translateX(-50%);font-size:9px;
-  letter-spacing:.2em;color:var(--amber)}
+/* v202: kompasas nebe prilipęs prie viršaus. Žemėlapis piešiamas SUKTAS pagal
+   kamerą (mapC.rotate(cam.yaw)), tad šiaurė ekrane beveik niekada nėra viršuje
+   — o raidė „Š" ten kabėjo visada ir melavo. Dabar ji vaikšto ratu: JS kas
+   kadrą nustato transform su cam.yaw, o pati raidė atsukama atgal, kad liktų
+   stačia. Padėtis: apskritimo kraštas, 52 px nuo vidurio. */
+/* v202: redaktoriaus katalogas */
+#pEdit{width:320px}
+#editBody .ekat{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+#editBody .ekat button{font-size:11px;padding:3px 7px}
+#editBody .elist{max-height:230px;overflow:auto;display:flex;flex-wrap:wrap;gap:3px}
+#editBody .elist button{font-size:11px;padding:2px 6px}
+#editBody button.on{outline:1px solid var(--amber)}
+#editBody .ehint{font-size:11px;opacity:.75;margin:6px 0}
+#editBody textarea{width:100%;height:90px;font-size:10px;background:#0d1512;color:#cfd6c0;
+  border:1px solid rgba(217,152,47,.4);border-radius:4px}
+#editBar{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);display:none;gap:6px;
+  background:rgba(12,20,16,.86);border:1px solid rgba(217,152,47,.45);border-radius:8px;
+  padding:6px 8px;z-index:60}
+#editBar.on{display:flex}
+#editBar button{font-size:13px;padding:3px 9px}
+#compass{position:absolute;left:50%;top:50%;font-size:9px;
+  letter-spacing:.2em;color:var(--amber);pointer-events:none;
+  transform:translate(-50%,-50%) translateY(-52px)}
 
 /* laikrodis — po pokalbių langu apačioje kairėje, ne viršuje centre */
 /* v189: langai ir skydeliai NĖRA tekstas — laikant pirštą ant daikto jis
@@ -539,6 +560,14 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 
   <div id="target" class="card"><div id="tName"></div><div id="tBar"><div id="tFill"></div></div></div>
 
+  <div id="editBar">
+    <button id="eRotL" title="Sukti kairėn">⟲</button>
+    <button id="eRotR" title="Sukti dešinėn">⟳</button>
+    <button id="eBig" title="Didinti">＋</button>
+    <button id="eSml" title="Mažinti">－</button>
+    <button id="eDel" title="Ištrinti">🗑</button>
+    <button id="eOff" title="Baigti redagavimą">✓</button>
+  </div>
   <div id="mapWrap"><div id="mapRing"></div><canvas id="map" width="216" height="216"></canvas><div id="compass">Š</div>
     <div id="timeBadge" class="card">
       <span id="tIcon">☀️</span>
@@ -571,6 +600,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
         <button class="tbtn mItem" id="mActive" title="Aktyvūs įgūdžiai">⚔️</button>
         <button class="tbtn mItem" id="mCraft" title="Dirbtuvė">⚒️</button>
         <button class="tbtn mItem" id="mBag" title="Krepšys">🎒</button>
+        <button class="tbtn mItem" id="mEdit" title="Redagavimas (objektų stumdymas)">✎</button>
+        <button class="tbtn mItem" id="mKat" title="Objektų katalogas">🧱</button>
       </div>
       <button class="tbtn" id="bMenu" title="Meniu">☰</button>
     </div>
@@ -591,6 +622,10 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
     </div>
   </div>
   <!-- v181: dirbtuvė — ginklų ir šarvų receptai pagal amatą -->
+  <div class="panel card" id="pEdit"><button class="pClose" title="Uždaryti">✕</button>
+    <h3 id="editTitle">Objektų katalogas</h3>
+    <div id="editBody"></div>
+  </div>
   <div class="panel card" id="pCraft"><button class="pClose" title="Uždaryti">✕</button>
     <h3 id="craftTitle">Dirbtuvė</h3>
     <div id="craftBody"></div>
@@ -706,8 +741,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v201';
-const GAME_CHANGES='v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
+const GAME_VERSION='v202';
+const GAME_CHANGES='v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -6045,6 +6080,7 @@ function worldClick(sx,sy){
   if(hookFish()) return;                       // pakirtimas turi pirmenybę
   ndc.x=(sx/innerWidth)*2-1; ndc.y=-(sy/innerHeight)*2+1;
   ray.setFromCamera(ndc,camera);
+  if(typeof editClick==='function'&&editClick()) return;   // v202: redagavimo režimas
 
   for(const d of dummies){
     if(!d.cfg.vendor) continue;
@@ -9175,6 +9211,7 @@ function drawTarget(){
 
 /* minimap */
 const mapC=document.getElementById('map').getContext('2d');
+const compassEl=document.getElementById('compass');   // v202: sukamas kompasas
 const ring=document.getElementById('mapRing');
 for(let i=0;i<12;i++){
   const t=document.createElement('div'); t.className='tick';
@@ -9223,6 +9260,15 @@ function buildWorldMap(){
   return {bmp:c,cx:0,cz:0,half:WORLD};
 }
 function drawMap(dt){
+  /* v202: kompaso raidė sukasi kartu su žemėlapiu. Žemėlapis suktas cam.yaw,
+     tad pasaulio šiaurė (−Z) ekrane atsiduria kampu cam.yaw nuo viršaus
+     (pagal laikrodį). Raidė pastatoma ant apskritimo krašto ir atsukama
+     atgal, kad neapsiverstų. */
+  if(compassEl){
+    const kampas=(cam.yaw*180/Math.PI).toFixed(1);
+    compassEl.style.transform='translate(-50%,-50%) rotate('+kampas+'deg) '+
+      'translateY(-52px) rotate('+(-kampas)+'deg)';
+  }
   mapT-=dt; if(mapT>0) return; mapT=.1;
   const S=216, R=S/2, SC=R/Math.max(12,(D.izvalga+D.giriosAkis)*2.6);
   mapC.clearRect(0,0,S,S);
@@ -10969,6 +11015,179 @@ addEventListener('resize',()=>{
 if(typeof document!=='undefined'&&document.fonts&&document.fonts.ready&&document.fonts.ready.then)
   document.fonts.ready.then(()=>{ for(const t of TAGS) t.bmp=null; });
 
+/* ═══════════════════════════════════════════════════════════════════════
+   REDAKTORIUS (v202) — objektų stumdymas pačiame žaidime
+
+   KODĖL ČIA, O NE BLENDERYJE. Pasaulis nėra sudėtas ranka: reljefas — iš
+   triukšmo, medžiai ir šaltiniai sėjami pagal biomus, požemiai — iš labirinto.
+   Perkėlus viską į modeliavimo programą gautųsi vienkartinė nuotrauka, kuri
+   nebesusieta su žaidimu. Todėl redaguojama TAME PAČIAME žaidime, o rezultatas
+   išsaugomas kaip trumpas sąrašas.
+
+   KAIP DIRBTI
+     ✎  meniu mygtukas — įjungia/išjungia redagavimą (apačioje atsiranda juosta)
+     🧱 meniu mygtukas — katalogas: kategorijos ir visi modeliai
+     · katalogo modelis parenkamas paspaudus, tada bakstelėjus ŽEMĘ jis
+       pastatomas ten;
+     · bakstelėjus JAU PASTATYTĄ objektą jis pažymimas (šviečia), ir apatine
+       juosta jį galima sukti, didinti, mažinti arba ištrinti;
+     · pažymėtą objektą galima pernešti bakstelėjus naują vietą ant žemės.
+
+   KAIP TAI PATENKA Į ŽAIDIMĄ
+     Katalogo apačioje mygtukas „💾 Išsaugoti" į langelį išveda JSON eilutę su
+     visais pastatytais objektais. Ją nukopijuoji ir atsiunti — aš ją įrašau į
+     patį index.html vietoj tuščio EDIT_DATA, ir nuo tada objektai stovi visiems
+     (jie atkuriami įsikrovus modeliams, žr. editApplySaved).
+     Naršyklė papildomai įsimena juos localStorage, tad TAVO naršyklėje jie
+     lieka ir perkrovus — bet kitiems žaidėjams jie atsiranda tik tada, kai
+     JSON įrašomas į failą.
+
+   KO KOL KAS NĖRA: sugeneruotų medžių ir akmenų trinti negalima — jie piešiami
+   instancuotais tinkleliais ir neturi atskirų objektų. Galima tik pridėti savo
+   ir juos trinti. */
+const EDIT_DATA=[];          // v202: čia įrašomas išsaugotas sąrašas
+const EDIT={on:false,sel:null,model:null,kat:null,objs:[]};
+const GAMTOS_VARDAI=/fern|grass|clover|mushroom|bush|rock|pebble|flower|plant|stone|log|branch/i;
+function editKategorijos(){
+  const k={};
+  if(typeof DAIKTAI!=='undefined'&&Object.keys(DAIKTAI).length){
+    const visi=Object.keys(DAIKTAI).sort();
+    const augalai=visi.filter(v=>GAMTOS_VARDAI.test(v));
+    const daiktai=visi.filter(v=>!GAMTOS_VARDAI.test(v));
+    if(daiktai.length) k.daiktai={v:'Daiktai',s:daiktai};
+    if(augalai.length) k.augalai={v:'Augalai ir akmenys',s:augalai};
+  }
+  if(typeof TURTAS!=='undefined'&&Object.keys(TURTAS).length) k.turtai={v:'Medžiai ir žvėrys',s:Object.keys(TURTAS).sort()};
+  k.saltiniai={v:'Šaltiniai',s:NODE_KINDS.map(x=>x.key)};
+  return k;
+}
+/* pastato vieną objektą; grąžina įrašą arba null */
+function editPastatyti(tipas,vardas,x,z,rot,s){
+  const y=heightAt(x,z);
+  let obj=null;
+  if(tipas==='daiktai'&&typeof DAIKTAI!=='undefined'&&DAIKTAI[vardas]){
+    obj=new THREE.Group();
+    for(const d of DAIKTAI[vardas]){ const m=new THREE.Mesh(d.geo,d.mat); m.castShadow=true; obj.add(m); }
+  }else if(tipas==='augalai'&&typeof DAIKTAI!=='undefined'&&DAIKTAI[vardas]){
+    obj=new THREE.Group();
+    for(const d of DAIKTAI[vardas]){ const m=new THREE.Mesh(d.geo,d.mat); m.castShadow=true; obj.add(m); }
+  }else if(tipas==='turtai'&&typeof TURTAS!=='undefined'&&TURTAS[vardas]){
+    obj=new THREE.Mesh(TURTAS[vardas],TURTAS_MAT); obj.castShadow=true;
+  }else if(tipas==='saltiniai'){
+    const k=NODE_KINDS.find(kk=>kk.key===vardas); if(!k) return null;
+    const m=new THREE.Mesh(k.geo(),new THREE.MeshLambertMaterial({color:k.color}));
+    m.position.set(x,y+k.h,z); m.castShadow=true; m.userData.shad=true; scene.add(m);
+    const nd={obj:m,kind:k,pos:m.position,ready:true,cd:0,rankinis:true,
+      tag:makeTag(k.label,'#8fbf7a',false)};
+    nodes.push(nd);
+    const ir={t:tipas,v:vardas,x,z,rot:rot||0,s:s||1,obj:m,nd};
+    EDIT.objs.push(ir); return ir;
+  }
+  if(!obj) return null;
+  obj.position.set(x,y,z); obj.rotation.y=rot||0; obj.scale.setScalar(s||1);
+  obj.userData.shad=true; scene.add(obj);
+  const ir={t:tipas,v:vardas,x,z,rot:rot||0,s:s||1,obj};
+  EDIT.objs.push(ir); return ir;
+}
+function editIstrinti(ir){
+  if(!ir) return;
+  scene.remove(ir.obj);
+  if(ir.nd){ const i=nodes.indexOf(ir.nd); if(i>=0) nodes.splice(i,1); if(ir.nd.tag) ir.nd.tag.hide(); }
+  const i=EDIT.objs.indexOf(ir); if(i>=0) EDIT.objs.splice(i,1);
+  if(EDIT.sel===ir) EDIT.sel=null;
+  editSaugoti(true);
+}
+function editAtnaujintiObj(ir){
+  ir.obj.position.set(ir.x,heightAt(ir.x,ir.z)+(ir.nd?ir.nd.kind.h:0),ir.z);
+  ir.obj.rotation.y=ir.rot; ir.obj.scale.setScalar(ir.s);
+  if(ir.nd) ir.nd.pos=ir.obj.position;
+  editSaugoti(true);
+}
+function editZymeti(ir){
+  for(const o of EDIT.objs) o.obj.traverse&&o.obj.traverse(m=>{ if(m.isMesh&&m.material&&m.material.emissive) m.material.emissive.setHex(0x000000); });
+  EDIT.sel=ir;
+  log(ir?('Pažymėta: '+ir.v):'Nieko nepažymėta','lg-s');
+}
+/* JSON — ir į langelį, ir į naršyklės atmintį */
+function editSaugoti(tyliai){
+  const sar=EDIT.objs.map(o=>({t:o.t,v:o.v,x:+o.x.toFixed(2),z:+o.z.toFixed(2),
+    rot:+o.rot.toFixed(3),s:+o.s.toFixed(2)}));
+  const js=JSON.stringify(sar);
+  try{ localStorage.setItem('giriaEdit',js); }catch(e){}
+  const el=document.getElementById('editJson');
+  if(el) el.value=js;
+  if(!tyliai) log('Išsaugota objektų: '+sar.length+' (nukopijuok langelio turinį)','lg-g');
+  return js;
+}
+function editApplySaved(){
+  let sar=EDIT_DATA;
+  try{ const js=localStorage.getItem('giriaEdit'); if(js) sar=JSON.parse(js); }catch(e){}
+  if(!sar||!sar.length) return;
+  const liko=[];
+  for(const o of sar){
+    if(EDIT.objs.some(x=>x.t===o.t&&x.v===o.v&&Math.abs(x.x-o.x)<.01&&Math.abs(x.z-o.z)<.01)) continue;
+    if(!editPastatyti(o.t,o.v,o.x,o.z,o.rot,o.s)) liko.push(o);
+  }
+  return liko.length;
+}
+function editRodyti(){
+  const b=document.getElementById('editBody'); if(!b) return;
+  const kat=editKategorijos();
+  if(!EDIT.kat||!kat[EDIT.kat]) EDIT.kat=Object.keys(kat)[0];
+  let h='<div class="ekat">';
+  for(const k in kat) h+='<button class="tbtn ekt'+(k===EDIT.kat?' on':'')+'" data-k="'+k+'">'+kat[k].v+'</button>';
+  h+='</div><div class="elist">';
+  for(const v of (kat[EDIT.kat]?kat[EDIT.kat].s:[]))
+    h+='<button class="tbtn emd'+(EDIT.model===v?' on':'')+'" data-v="'+v+'">'+v+'</button>';
+  h+='</div>';
+  h+='<div class="ehint">Pasirink modelį, tada bakstelėk žemę — ten jis atsiras. '+
+     'Bakstelėjus pastatytą objektą jį galima sukti, didinti ar ištrinti (juosta apačioje). '+
+     'Pastatyta: '+EDIT.objs.length+'</div>';
+  h+='<button class="tbtn" id="eSave">💾 Išsaugoti</button>';
+  h+='<div class="ehint">Nukopijuok šitą eilutę ir atsiųsk — ji įrašoma į žaidimą:</div>';
+  h+='<textarea id="editJson" readonly></textarea>';
+  b.innerHTML=h;
+  b.querySelectorAll('.ekt').forEach(el=>el.onclick=()=>{ EDIT.kat=el.dataset.k; editRodyti(); });
+  b.querySelectorAll('.emd').forEach(el=>el.onclick=()=>{ EDIT.model=el.dataset.v; editRodyti(); });
+  const sv=document.getElementById('eSave'); if(sv) sv.onclick=()=>editSaugoti(false);
+  editSaugoti(true);
+}
+function editRezimas(on){
+  EDIT.on=on;
+  const bar=document.getElementById('editBar');
+  if(bar) bar.classList.toggle('on',on);
+  log(on?'Redagavimas ĮJUNGTAS — bakstelėk žemę arba objektą.':'Redagavimas išjungtas.','lg-a');
+  if(!on) EDIT.sel=null;
+}
+/* redaktoriaus paspaudimas; grąžina true, jei paspaudimą suvartojo */
+function editClick(){
+  if(!EDIT.on) return false;
+  for(const o of EDIT.objs){
+    const h=ray.intersectObject(o.obj,true)[0];
+    if(h){ editZymeti(o); return true; }
+  }
+  const hitG=ray.intersectObject(ground,false)[0];
+  if(!hitG) return false;
+  const p=hitG.point;
+  if(EDIT.sel){                       // pažymėtą perkeliam
+    EDIT.sel.x=p.x; EDIT.sel.z=p.z; editAtnaujintiObj(EDIT.sel);
+    return true;
+  }
+  if(!EDIT.model){ log('Pirma pasirink modelį kataloge (🧱).','lg-s'); return true; }
+  const ir=editPastatyti(EDIT.kat,EDIT.model,p.x,p.z,Math.random()*TAU,1);
+  if(ir){ editZymeti(ir); editSaugoti(true); editRodyti(); }
+  else log('Šio modelio dar nėra (paketas neįsikėlė).','lg-h');
+  return true;
+}
+document.getElementById('mEdit').onclick=()=>{ toggleToolMenu(false); editRezimas(!EDIT.on); };
+document.getElementById('mKat').onclick=()=>{ toggleToolMenu(false); togglePanel('pEdit',null); editRodyti(); };
+document.getElementById('eRotL').onclick=()=>{ if(EDIT.sel){ EDIT.sel.rot-=Math.PI/12; editAtnaujintiObj(EDIT.sel);} };
+document.getElementById('eRotR').onclick=()=>{ if(EDIT.sel){ EDIT.sel.rot+=Math.PI/12; editAtnaujintiObj(EDIT.sel);} };
+document.getElementById('eBig').onclick =()=>{ if(EDIT.sel){ EDIT.sel.s=Math.min(6,EDIT.sel.s*1.12); editAtnaujintiObj(EDIT.sel);} };
+document.getElementById('eSml').onclick =()=>{ if(EDIT.sel){ EDIT.sel.s=Math.max(.15,EDIT.sel.s/1.12); editAtnaujintiObj(EDIT.sel);} };
+document.getElementById('eDel').onclick =()=>{ if(EDIT.sel) editIstrinti(EDIT.sel); editRodyti(); };
+document.getElementById('eOff').onclick =()=>editRezimas(false);
+
 /* ---------- 15. Startas ---------- */
 player.pos.y=heightAt(player.pos.x,player.pos.z);
 buildMerchant();
@@ -11330,6 +11549,45 @@ const TURTAS={};
 let TURTAS_MAT=null, turtasOn=false;
 const TURTAS_URLS=glbUrls('gamta/GIRIA_TURTAS.glb');
 
+/* v202: MEDŽIŲ RAŠTAS. Vartotojas: „medžiai tiesiog žali blynai". Taip ir yra:
+   GIRIA_TURTAS.glb tinkleliuose nėra NEI UV, NEI tekstūrų — tik POSITION,
+   NORMAL ir COLOR_0, viena medžiaga visiems (patikrinta faile). Tikrų žievės
+   ir lapų tekstūrų paketuose yra (Bark_NormalTree, Leaves, Leaf_Pine…), bet
+   be UV koordinačių jų nėra kur uždėti — reikėtų iš naujo eksportuoti patį
+   .glb iš originalių modelių.
+   Todėl detalė įrašoma ten, kur ji telpa — į VIRŠŪNIŲ SPALVAS:
+     · triukšmas pagal viršūnės vietą (lapija margėja šviesesniais ir
+       tamsesniais lopais, žievė gauna dryžius),
+     · vertikalus gradientas: apačia tamsesnė, viršus šviesesnis — laja
+       nustoja atrodyti kaip vienspalvis blynas ir įgauna gylio,
+     · žalioms viršūnėms raštas stipresnis nei rudoms (lapija margesnė už
+       kamieną).
+   Nieko papildomo siųsti nereikia, o vaizdas nebe plokščias. */
+function turtasMargink(geo){
+  const c=geo.attributes&&geo.attributes.color, p=geo.attributes&&geo.attributes.position;
+  if(!c||!p||geo.userData&&geo.userData.margintas) return;
+  const it=c.itemSize||3, baitai=c.array instanceof Uint8Array, N=c.count;
+  let ymin=1e9,ymax=-1e9;
+  for(let i=0;i<p.count;i++){ const y=p.getY(i); if(y<ymin)ymin=y; if(y>ymax)ymax=y; }
+  const H2=Math.max(.001,ymax-ymin);
+  for(let i=0;i<N;i++){
+    const x=p.getX(i), y=p.getY(i), z=p.getZ(i);
+    const r=c.array[i*it], gg=c.array[i*it+1], b=c.array[i*it+2];
+    const zalia=gg>r&&gg>b;                       // lapija ar žolė
+    const n=(h2(x*1.9+z*.7, y*1.3+x*.3)+h2(z*3.7-x*1.1, y*2.9)*.6)/1.6;
+    const stipr=zalia?.30:.18;
+    const aukst=(y-ymin)/H2;
+    let k=1+(n-.5)*stipr+(aukst-.5)*(zalia?.22:.12);
+    if(k<.55) k=.55; if(k>1.35) k=1.35;
+    const mx=baitai?255:1;
+    c.array[i*it]  =Math.min(mx,r*k);
+    c.array[i*it+1]=Math.min(mx,gg*k);
+    c.array[i*it+2]=Math.min(mx,b*k);
+  }
+  c.needsUpdate=true;
+  if(!geo.userData) geo.userData={};
+  geo.userData.margintas=true;
+}
 function turtasInst(vardas,sarasas,sesely){
   const geo=TURTAS[vardas];
   if(!geo||!sarasas.length) return null;
@@ -11484,6 +11742,16 @@ const FAUNA_LEG_TOP=0.27;
    kojos gale. Imama 0,45 kojos aukščio nuo žemės: blauzda — apatiniai 45 %,
    šlaunis — viršutiniai 55 %. B — kiek koja sulenkiama moste. */
 const FAUNA_KNEE=0.45;
+/* v202: PETIES IR KLUBO AUKŠTIS. Vartotojas: „priekinė koja keliasi į viršų, o
+   kelio sąnarys praktiškai lenkiasi atgal". Priežastis buvo ne lenkimo ženklas,
+   o SUKIMO TAŠKAS: matoma koja atsiskiria tik ties 27 % ūgio (žemiau prasideda
+   pilvas), ir aš ją sukau apie tą patį tašką. Tai anatomiškai tas pats, kas
+   sukioti dilbį apie alkūnę — koja kilnojasi, o ne mojuoja, ir lenkimas
+   atrodo kaip lūžis. Tikras petys ir klubas yra kūno VIDUJE, apie pusę ūgio.
+   Todėl sukama apie 0,42 ūgio tašką: kojos viršus lieka paslėptas liemenyje,
+   o mostas eina iš peties, kaip gyvo žvėries. Ilgesnė svirtis reiškia ir
+   ilgesnį žingsnį — žingsnio formulė ima būtent šį ilgį. */
+const FAUNA_HIP=0.42;
 /* v200: „ilgis" (žingsnio ilgis kojos ilgiais) PAŠALINTAS — jis buvo parinktas
    ranka ir dėl to pėda atramoje slydo: kūnas per atramą nueidavo 1,9 kojos
    ilgio, o pėda atsilikdavo tik 2·sin(A) ≈ 0,6. Dabar žingsnis IŠVEDAMAS:
@@ -11503,9 +11771,9 @@ const FAUNA_KNEE=0.45;
    eisenose retrakcija prasideda dar ore, tad pėda nusileidžia beveik nustojusi
    judėti pirmyn. Be to žingsnis atrodydavo dūriais. */
 const GAIT={
-  zingsnis:{fazes:[.25,.75,0,.5], prA:.52, uzA:.46, duty:.65, over:.14, linges:.012, B:.75},
-  riscia:  {fazes:[0,.5,.5,0],    prA:.66, uzA:.60, duty:.45, over:.10, linges:.020, B:1.00},
-  suolis:  {fazes:[.45,.55,0,.1], prA:.86, uzA:.80, duty:.35, over:.06, linges:.055, B:1.25}
+  zingsnis:{fazes:[.25,.75,0,.5], prA:.52, uzA:.46, duty:.65, over:.14, linges:.012, B:.45},
+  riscia:  {fazes:[0,.5,.5,0],    prA:.58, uzA:.52, duty:.45, over:.10, linges:.020, B:.70},
+  suolis:  {fazes:[.45,.55,0,.1], prA:.76, uzA:.70, duty:.35, over:.06, linges:.055, B:1.00}
 };
 /* Kojos masyve: 0 kairė priekinė, 1 dešinė priekinė, 2 kairė užpakalinė,
    3 dešinė užpakalinė (pagal centro x ir z ženklus). */
@@ -11518,6 +11786,7 @@ function faunaSplit(geo){
   for(let i=0;i<pos.count;i++){ const y=pos.getY(i); if(y<ymin)ymin=y; if(y>ymax)ymax=y; }
   const H=ymax-ymin, riba=ymin+H*FAUNA_LEG_TOP;
   const kelis=ymin+(riba-ymin)*FAUNA_KNEE;          // v199: kelio/kulno aukštis
+  const klubas=ymin+H*FAUNA_HIP;                    // v202: petys/klubas kūno viduje
   /* 0 liemuo · 1–4 šlaunys · 5–8 blauzdos (ta pati ketvirčių tvarka) */
   const dal=[[],[],[],[],[],[],[],[],[]];
   const gi=i=>idx?idx.getX(i):i;
@@ -11557,9 +11826,9 @@ function faunaSplit(geo){
     let sx=0,sz=0;
     for(let i=0;i<v.length;i++){ sx+=pos.getX(v[i]); sz+=pos.getZ(v[i]); }
     const nv=v.length||1;
-    dalys.push({geo:g,px:sx/nv,py:k>4?kelis:riba,pz:sz/nv,n:v.length});
+    dalys.push({geo:g,px:sx/nv,py:k>4?kelis:klubas,pz:sz/nv,n:v.length});
   }
-  return {dalys,riba,kelis,kojosIlgis:riba-ymin};
+  return {dalys,riba,kelis,klubas,kojosIlgis:riba-ymin,svirtis:klubas-ymin};
 }
 function faunaInit(){
   for(const d of FAUNA_DEF){
@@ -11571,7 +11840,8 @@ function faunaInit(){
       im.raycast=()=>{}; im.castShadow=true; im.userData.shad=true;
       im.frustumCulled=false; scene.add(im); return im;
     });
-    const grupe={mesh:meshes[0],meshes,dalys:sk.dalys,kojosIlgis:sk.kojosIlgis*d.s,def:d,vnt:[]};
+    const grupe={mesh:meshes[0],meshes,dalys:sk.dalys,kojosIlgis:sk.kojosIlgis*d.s,
+      svirtis:sk.svirtis*d.s,def:d,vnt:[]};
     let made=0,guard=0;
     while(made<kiek&&guard++<3000){
       const a=Math.random()*TAU, r=Math.sqrt(Math.random())*(WORLD-30)+18;
@@ -11628,7 +11898,12 @@ function legBend(p,B,duty){
   p-=Math.floor(p);
   if(p<duty) return 0;
   const q=(p-duty)/(1-duty);
-  return B*Math.sin(Math.PI*q);
+  /* v202: didžiausias lenkimas ne mosto VIDURYJE, o pradžioje (apie 35 %):
+     tikras žvėris pirma pakelia pėdą po savimi, tada ties pabaiga koją
+     IŠTIESIA ir tik po to pastato. Simetriškas sinusas darė atvirkščiai —
+     koja likdavo sulenkta iki pat žemės. */
+  const t=q<0.35 ? q/0.35 : 1-(q-0.35)/0.65;
+  return B*t*t*(3-2*t);
 }
 function updateFauna(dt){
   if(!FAUNA.length) return;
@@ -11674,8 +11949,10 @@ function updateFauna(dt){
       const jud=clamp(v.sv/(d.spd*.3),0,1);          // stovint kojos nurimsta
       /* v200: žingsnio ilgis skaičiuojamas iš TIKRO mosto kampo (jud*A), tad
          ir lėčiau einant, ir įsibėgėjus pėda lieka priklijuota prie žemės.
-         v201: matas imamas iš priekinės kojos — ji ilgesnio mosto. */
-      const zings=Math.max(.05,2*g.kojosIlgis*Math.sin(jud*eis.prA)/eis.duty);
+         v201: matas imamas iš priekinės kojos — ji ilgesnio mosto.
+         v202: svirtis skaičiuojama nuo PETIES, ne nuo kojos viršaus — todėl
+         žingsnis natūraliai pailgėjo ir kojos nebekapoja smulkiai. */
+      const zings=Math.max(.05,2*g.svirtis*Math.sin(jud*eis.prA)/eis.duty);
       v.gait+=nuejo/zings;
       const faze=v.gait;
 
@@ -11692,7 +11969,7 @@ function updateFauna(dt){
       }
       let kilst=0, buvo=false;
       for(let k=0;k<4;k++) if(fnAtr[k]){
-        const h=g.kojosIlgis*(1-Math.cos(fnKamp[k]));
+        const h=g.svirtis*(1-Math.cos(fnKamp[k]));
         if(!buvo||h<kilst){ kilst=h; buvo=true; }
       }
       fnQ.setFromAxisAngle(fnUp,v.yaw);
@@ -11736,9 +12013,11 @@ function turtasInit(){
   loadGlbAny(TURTAS_URLS,g=>{
     g.scene.traverse(o=>{ if(o.isMesh&&o.geometry) TURTAS[o.name||(o.parent&&o.parent.name)]=o.geometry; });
     if(!Object.keys(TURTAS).length) return;
+    for(const v in TURTAS) turtasMargink(TURTAS[v]);      // v202: kad nebūtų blynai
     TURTAS_MAT=new THREE.MeshLambertMaterial({vertexColors:true});
     turtasOn=true;
     dressForest(); dressBoats(); faunaInit();
+    if(typeof editApplySaved==='function') editApplySaved();   // v202
     applyQuality();
     log(T('assetsLoaded')+Object.keys(TURTAS).length,'lg-s');
   },()=>console.warn('GIRIA_TURTAS.glb neįkeltas — lieka paprasti medžiai'));
@@ -11904,6 +12183,7 @@ function daiktaiInit(){
     daiktaiOn=true;
     dressVillage();
     for(const k in DUNS) dressDungeon(DUNS[k]);
+    if(typeof editApplySaved==='function') editApplySaved();   // v202
     applyQuality();
     log(T('propsLoaded')+Object.keys(DAIKTAI).length,'lg-s');
   },()=>console.warn('GIRIA_DAIKTAI.glb neįkeltas — kaimavietė ir požemiai lieka tušti'));

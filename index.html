@@ -706,8 +706,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v196';
-const GAME_CHANGES='v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
+const GAME_VERSION='v197';
+const GAME_CHANGES='v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -1163,8 +1163,26 @@ function fordDepth(z){                       // 1 = gili upė, 0 = sekli brasta
      · kalnų vainikas aplink kraštą — natūrali pasaulio siena
      · upės vaga, upeliai ir TRYS ežerų dubenys
    Požemyje reljefo nėra — grindys lygios (žr. ZONE). */
+/* v197 KEŠAS. Išmatuota naršyklėje: heightAt kviečiamas ~370 kartų per kadrą
+   (collide, priešai, fauna, daiktai, žymės), ir apie 48 % kvietimų — TIE PATYS
+   taškai. Vienas kvietimas — du fbm (po 4 oktavas, t. y. ~32 sin) plius ežerų,
+   upės ir intakų kilpos, tad pusę to darbo galima tiesiog nedaryti.
+   Kešas galioja VIENĄ kadrą (_hTick didinamas frame() pradžioje) — taip
+   niekada neatsilieka nuo pasaulio būsenos. Požemyje (ZONE) grąžinama 0 dar
+   PRIEŠ kešą, tad zonos perjungimas jo neužteršia. */
+const HC_N=2048;                    // dvejeto laipsnis — indeksas per &(HC_N-1)
+const _hcX=new Float64Array(HC_N), _hcZ=new Float64Array(HC_N), _hcH=new Float64Array(HC_N);
+const _hcT=new Int32Array(HC_N);    // kada įrašas įdėtas (kadro numeris)
+let _hTick=1;
 function heightAt(x,z){
   if(ZONE) return 0;
+  const i=((Math.imul(x*128|0,73856093)^Math.imul(z*128|0,19349663))>>>0)&(HC_N-1);
+  if(_hcT[i]===_hTick&&_hcX[i]===x&&_hcZ[i]===z) return _hcH[i];
+  const h=heightCalc(x,z);
+  _hcT[i]=_hTick; _hcX[i]=x; _hcZ[i]=z; _hcH[i]=h;
+  return h;
+}
+function heightCalc(x,z){
   const d=Math.hypot(x,z);
   let h=(fbm(x*.009+40,z*.009+40)-.45)*19;
   h+=(fbm(x*.038,z*.038)-.5)*2.6;
@@ -4339,6 +4357,26 @@ function loadGlbOnce(url,cb,errCb){
     for(const x of eile) if(x.errCb) x.errCb(err);
   });
 }
+/* v197 NAŠUMAS. Vartotojo Performance profilis parodė, kad updateMatrixWorld
+   suėda 32,2 % viso laiko (4,97 s savo laiko per 24,5 s). Priežastis IŠMATUOTA
+   naršyklėje: scenoje 11 079 Object3D, iš jų 9 860 — KAULAI (po ~65 kiekvienam
+   GLB personažui, o jų ~152: 86 katalogo manekenai, priešai, žaidėjas).
+   three.js kas kadrą perskaičiuoja VISŲ jų matricas, net kai objektas
+   nematomas: visible=false praleidžia tik PIEŠIMĄ, ne matricas.
+   Vien katalogo manekenai stovint kaimavietėje davė 5 590 kaulų, kurių niekas
+   nemato (jie toliau nei FAR_DIST ir rodomi siluetų debesimi).
+   r128 neturi matrixWorldAutoUpdate (atsirado r141), tad užšaldom patys:
+   nematomo šaknies updateMatrixWorld() nieko nedaro. Kai vėl tampa matomas,
+   bazinis metodas iškviečiamas ir visos matricos perskaičiuojamos iš
+   position/quaternion, kuriuos mikseris rašė ir toliau — poza nepasensta. */
+function freezeWhenHidden(root){
+  if(!root||root.__frzOn) return; root.__frzOn=true;
+  const bazinis=root.updateMatrixWorld;
+  root.updateMatrixWorld=function(force){
+    if(!this.visible) return;                 // nematomas — matricų neliečiam
+    bazinis.call(this,force);
+  };
+}
 function cloneGlbScene(src){
   const klonas=src.clone(true);
   const seni=[], nauji=[];
@@ -4541,6 +4579,7 @@ function cloneGlbScene(src){
         m.position.set(x,y,z);
         scene.add(m);
         CATALOG_MODELS.push(m);                     // v191
+        freezeWhenHidden(m);                        // v197: nematomo kaulų nesukam
         if(CFG.quality!=='high') m.visible=false;
         const clip=g2.animations.find(c=>c.name===name);
         if(clip){
@@ -4590,6 +4629,7 @@ function cloneGlbScene(src){
         m.position.set(x,y,z);
         scene.add(m);
         CATALOG_MODELS.push(m);                     // v191
+        freezeWhenHidden(m);                        // v197: nematomo kaulų nesukam
         if(CFG.quality!=='high') m.visible=false;
         const clip=g2.animations.find(c=>c.name===name);
         if(clip){
@@ -4723,6 +4763,7 @@ function glbOnce(A,act,speed,next){
    kaulų vardus. Todėl: modelis iš def.glb, klipai — iš UAL2. */
 function enemyGlbSurink(e,scenaSrc,anims){
   const m=cloneGlbScene(scenaSrc); m.scale.setScalar(e.def.scale); scene.add(m);
+  freezeWhenHidden(m);                       // v197: toli/kitoje zonoje — kaulų nesukam
   const mixer=new THREE.AnimationMixer(m);
   stripRootMotionXZ(anims);                        // v98
   const A={e,model:m,mixer,acts:glbActionsFor(mixer,anims,e.def),current:null,chain:null};
@@ -5678,9 +5719,9 @@ function updateDay(dt){
     clockT=.25;
     const mins=Math.floor(dayT*1440);
     const hh=String(Math.floor(mins/60)).padStart(2,'0'), mm=String(mins%60).padStart(2,'0');
-    tClock.textContent=hh+':'+mm;
-    tIcon.textContent=a.i;
-    tPhase.textContent=Lx(a.n);
+    txtIf(tClock,hh+':'+mm);
+    txtIf(tIcon,a.i);
+    txtIf(tPhase,Lx(a.n));
     tArc.style.width=(dayT*100)+'%';
     const c=skyMat.uniforms.cBot.value;
     tBadge.style.borderColor='rgba('+Math.round(c.r*255)+','+Math.round(c.g*255)+','+Math.round(c.b*255)+',.75)';
@@ -7406,6 +7447,10 @@ function slotAtPoint(x,y,pad){
 }
 renderSkillBar();          // dabar visos reikalingos konstantos jau paskelbtos
 addEventListener('resize',positionSkillBar);
+/* v197: textContent priskyrimas net su ta pačia reikšme verčia naršyklę
+   perskaičiuoti tekstą (profilyje „set textContent" — 6,3 %). Rašom tik kai
+   reikšmė TIKRAI pasikeitė. */
+function txtIf(el,v){ if(el&&el.__txt!==v){ el.__txt=v; el.textContent=v; } }
 function updateCastBar(){
   const bar=document.getElementById('castBar');
   const A=player.act;
@@ -7413,7 +7458,7 @@ function updateCastBar(){
     const pc=clamp(A.t/A.castT,0,1)*100;
     bar.classList.add('on');
     document.getElementById('castFill').style.width=pc+'%';
-    document.getElementById('castTxt').textContent=A.d.n+' · '+(A.castT-A.t).toFixed(1)+'s';
+    txtIf(document.getElementById('castTxt'),A.d.n+' · '+(A.castT-A.t).toFixed(1)+'s');
   } else bar.classList.remove('on');
 }
 function updateSkillBar(){
@@ -7423,7 +7468,7 @@ function updateSkillBar(){
     const cd=player.cds[a.k]||0;
     const cdEl=b.querySelector('.cd'), nEl=b.querySelector('.cdn');
     if(cdEl) cdEl.style.height=(a.cd?clamp(cd/a.cd,0,1)*100:0)+'%';
-    if(nEl) nEl.textContent=cd>.15?Math.ceil(cd):'';
+    txtIf(nEl,cd>.15?String(Math.ceil(cd)):'');
     b.classList.toggle('off',!actReady(a));
   });
 }
@@ -10574,6 +10619,7 @@ let frameNo=0, lastFps=60;
 let last=performance.now(), fpsAcc=0, fpsN=0, autoChecked=false;
 function frame(now){
   requestAnimationFrame(frame);
+  _hTick++;                 // v197: reljefo kešas galioja vieną kadrą
   const dt=Math.min(.05,(now-last)/1000); last=now;
   const t=now/1000;
 

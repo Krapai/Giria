@@ -702,8 +702,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v193';
-const GAME_CHANGES='pataisytas krovimas; žymės ant drobės, vienas kūnas priešui, siluetai, mikserių biudžetas, laikini daiktai';
+const GAME_VERSION='v194';
+const GAME_CHANGES='pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, krūmai, akmenys, žvėrys; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -772,6 +772,8 @@ const I18N={
     logPanelReset:'Skydelio dydis atstatytas.', logWinReset:'Langų vietos ir dydžiai atstatyti.',
     logAutoStart:'Auto riba: pridedama po 10 personažų kas 4 s, kol fps nukris žemiau 45.',
     logStressOn:'Apkrovos testas: ', logStressOnEnd:' personažų', logStressOff:'Apkrovos testas išjungtas',
+    assetsLoaded:'Girios modeliai įkelti: ', dunEnter:'Nusileidai: ', dunLeave:'Grįžai į girią.', dunExit:'Išėjimas',
+    bioLaukai:'Laukai — atvira pieva.', bioMiskas:'Giria.', bioTamsus:'Tamsus miškas. Būk atsargus.',
     logGraphicsReduced:'Grafika sumažinta dėl našumo.', logMerchant:'Pirklys: ', logMerchantEnd:' piešimo iškvietimai.',
     material:'Žaliava', empty:'tuščia', slotLabel:'Vieta', unequip:'Nusiimti', equip:'Užsidėti',
     equipFail:'Nepavyko užsidėti.', equipped:'Užsidėjai: ', unequipped:'Nusiėmei: ', found:'Radai: ',
@@ -898,6 +900,8 @@ const I18N={
     logPanelReset:'Panel size reset.', logWinReset:'Window positions and sizes reset.',
     logAutoStart:'Auto limit: adds 10 characters every 4s until fps drops below 45.',
     logStressOn:'Load test: ', logStressOnEnd:' characters', logStressOff:'Load test disabled',
+    assetsLoaded:'Forest models loaded: ', dunEnter:'You descend into: ', dunLeave:'Back in the forest.', dunExit:'Exit',
+    bioLaukai:'Fields — open meadow.', bioMiskas:'Forest.', bioTamsus:'Dark forest. Be careful.',
     logGraphicsReduced:'Graphics reduced due to performance.', logMerchant:'Merchant: ', logMerchantEnd:' draw calls.',
     material:'Material', empty:'empty', slotLabel:'Slot', unequip:'Unequip', equip:'Equip',
     equipFail:'Could not equip.', equipped:'Equipped: ', unequipped:'Unequipped: ', found:'Found: ',
@@ -1076,22 +1080,63 @@ function setDevice(phone){
 }
 
 /* ---------- 1. Pasaulio parametrai ---------- */
-const WORLD=118;            // pusė krašto
+/* v194: pasaulis padidintas 4 kartus pagal plotą (118 → 236 pusė krašto,
+   t. y. 236×236 m → 472×472 m). Kartu grąžintas v133 nuimtas reljefas ir
+   pridėti TRYS biomai (laukai · miškas · tamsus miškas) bei vandenys
+   (upė, upeliai, trys ežerai). Žr. biomeAt() ir heightAt() žemiau. */
+const WORLD=236;            // pusė krašto
 const WATER=-1.15;
+/* Kurioje vietoje esam: null = giria (paviršius), kitaip — požemio raktas.
+   Skelbiama ČIA, nes heightAt/walkable/waterTypeAt jau turi apie tai žinoti,
+   o „const" nepakyla (v192 pamoka — TDZ nužudo visą scenarijų). */
+let ZONE=null;
 const CFG={ quality: isTouch?'low':'high', sound:true };
 /* v160: mLod mygtukas — perjungia VISŲ renderinimo/animacijos optimizacijų
    (katalogo LOD + STRESS.lod) būseną tarp „kaip buvo anksčiau“ (be jokio
    LOD, viskas animuojama kas kadrą) ir „kaip dabar“ (LOD pagal atstumą). */
 let LOD_ON=true;
 
-/* --- upė, intakai, brastos --- */
-const RIVER=z=>26+38*Math.sin(z*0.021)+12*Math.sin(z*0.055+1.3);
-const RIVER_W=11;
-const FORDS=[6,-64,76];                     // brastos: čia upę galima perbristi
+/* ---------- 1a. BIOMAI (v194) ----------
+   Trys sritys, be jokių apskritimų akiai: skaičiuojama „biomo reikšmė" =
+   atstumas nuo centro + triukšmas + tamsaus miško liežuvis iš šiaurės.
+   Dėl triukšmo riba banguoja ±34 m, tad pereiti iš vieno į kitą galima
+   labai skirtinguose atstumuose — kaip tikroje girioje.
+     0 LAUKAI  — atviros pievos aplink kaimavietę, reti pavieniai medžiai
+     1 MIŠKAS  — įprasta giria
+     2 TAMSUS  — tankus, tamsus, rūstus; ten stipriausi priešai ir gintaras */
+const BIO_LAUKAI=0, BIO_MISKAS=1, BIO_TAMSUS=2;
+const BIO_R1=124, BIO_R2=196;
+function biomeVal(x,z){
+  const r=Math.hypot(x,z);
+  const n=(fbm(x*0.0072+11.3,z*0.0072+7.1)-0.5)*68;       // banguota riba
+  /* liežuvis iš šiaurės (z<0): tamsus miškas įsiterpia gerokai arčiau centro,
+     kad jį būtų galima rasti neapėjus viso pasaulio */
+  const lobe=Math.max(0,(-z-40))*0.55*Math.max(0,1-Math.abs(x+18)/86);
+  return r+n+lobe;
+}
+function biomeAt(x,z){
+  const v=biomeVal(x,z);
+  return v<BIO_R1?BIO_LAUKAI:v<BIO_R2?BIO_MISKAS:BIO_TAMSUS;
+}
+/* tolygus 0..1 „tamsumas" — naudojamas rūkui, šviesai ir medžių spalvai */
+const darkness=(x,z)=>clamp((biomeVal(x,z)-BIO_R2+30)/60,0,1);
+
+/* --- upė, intakai, brastos, ežerai --- */
+const RIVER=z=>34+58*Math.sin(z*0.0115)+18*Math.sin(z*0.031+1.3);
+const RIVER_W=13;
+const FORDS=[12,-110,140];                  // brastos: čia upę galima perbristi
+/* ežerai: c — centras, r — vandens spindulys (krantas dar 25 % platesnis) */
+const LAKES=[
+  {x:-118,z: 96,r:36},
+  {x: 132,z:-58,r:29},
+  {x: -56,z:-152,r:26}
+];
 const STREAMS=[
-  {ax:-94,az:-72,bx:RIVER(-42),bz:-42},
-  {ax: 96,az: 26,bx:RIVER( 58),bz: 58},
-  {ax:-58,az: 92,bx:RIVER( 72),bz: 72}
+  {ax:-118,az: 96,bx:RIVER( 118),bz: 118},   // iš pirmo ežero į upę
+  {ax: 132,az:-58,bx:RIVER( -20),bz: -20},   // iš antro ežero į upę
+  {ax: -56,az:-152,bx:RIVER(-176),bz:-176},  // iš trečio ežero į upę
+  {ax:-188,az:-46,bx:RIVER( -78),bz: -78},
+  {ax: 176,az: 138,bx:RIVER( 168),bz: 168}
 ];
 function segDist(px,pz,s){
   const dx=s.bx-s.ax, dz=s.bz-s.az;
@@ -1106,44 +1151,61 @@ function fordDepth(z){                       // 1 = gili upė, 0 = sekli brasta
   return m;
 }
 
+/* v194: RELJEFAS GRĄŽINTAS (v133 buvo laikinai „return 0"), tik perrašytas
+   naujam, keturis kartus didesniam pasauliui:
+     · stambios kalvos (0,009 dažnis — platesnės nei senos 0,018)
+     · smulkus nelygumas
+     · kaimavietė ties centru lieka lygi (kad nesugriūtų laužas/pirklys/katalogas)
+     · kalnų vainikas aplink kraštą — natūrali pasaulio siena
+     · upės vaga, upeliai ir TRYS ežerų dubenys
+   Požemyje reljefo nėra — grindys lygios (žr. ZONE). */
 function heightAt(x,z){
-  /* v133: vartotojo prašymu VISAS pasaulis LAIKINAI padarytas vienoda lygi
-     plokštuma (be kalvelių, duobelių, upės vagos ar krašto kalvų) — testavimo
-     patogumui. GRĄŽINTI SENĄ RELJEFĄ: ištrinti šią „return 0;" eilutę —
-     likusi funkcijos dalis (žemiau, dabar nepasiekiama) paliekama nepaliesta
-     tam. Šalutinis poveikis: vandens plokštuma (WATER=-1.15) dabar visur
-     lieka ŽEMIAU lygaus žemės paviršiaus (y=0) — nematoma; jei prireiks
-     vandens atgal, reikės arba grąžinti reljefą, arba pakelti WATER. */
-  return 0;
+  if(ZONE) return 0;
   const d=Math.hypot(x,z);
-  let h=(fbm(x*.018+40,z*.018+40)-.45)*13;
-  h+=(fbm(x*.06,z*.06)-.5)*1.5;
-  const flat=clamp((d-9)/13,0,1);           // kaimavietė ties centru — lygi
-  h*=lerp(.06,1,flat);
-  const edge=clamp((d-WORLD*.78)/(WORLD*.22),0,1);
-  h+=edge*edge*17;                          // kalvos aplink kraštus
+  let h=(fbm(x*.009+40,z*.009+40)-.45)*19;
+  h+=(fbm(x*.038,z*.038)-.5)*2.6;
+  const flat=clamp((d-11)/17,0,1);          // kaimavietė ties centru — lygi
+  h*=lerp(.05,1,flat);
+  const edge=clamp((d-WORLD*.80)/(WORLD*.20),0,1);
+  h+=edge*edge*30;                          // kalnai aplink kraštus
 
+  for(const L of LAKES){                    // ežerų dubenys
+    const R=L.r*1.25;
+    const ld=Math.hypot(x-L.x,z-L.z);
+    if(ld<R){
+      const t=Math.pow(clamp(1-ld/R,0,1),.8);
+      h=lerp(h,WATER-2.8,t);
+    }
+  }
   const rd=Math.abs(x-RIVER(z));            // upės vaga
   if(rd<RIVER_W){
     const t=Math.pow(clamp(1-rd/RIVER_W,0,1),.75);
-    const bottom=lerp(WATER+1.0,WATER-1.7,fordDepth(z));
+    const bottom=lerp(WATER+1.0,WATER-1.9,fordDepth(z));
     h=lerp(h,bottom,t);
   }
   for(const st of STREAMS){                 // intakai
     const sd=segDist(x,z,st);
-    if(sd<3.4){
-      const t=Math.pow(clamp(1-sd/3.4,0,1),.9);
+    if(sd<3.6){
+      const t=Math.pow(clamp(1-sd/3.6,0,1),.9);
       h=lerp(h,WATER-.5,t);
     }
   }
   return h;
 }
-const walkable=(x,z)=>heightAt(x,z)>WATER+.35 && Math.hypot(x,z)<WORLD-4;
+const walkable=(x,z)=>{
+  if(ZONE) return typeof dunSolidAt==='function' ? !dunSolidAt(x,z) : true;
+  return heightAt(x,z)>WATER+.35 && Math.hypot(x,z)<WORLD-4;
+};
 /* kuriame vandenyje stovim: 'upe' | 'upelis' | 'ezeras' | null */
 function waterTypeAt(x,z){
+  if(ZONE) return null;                     // požemyje vandens nėra
   if(heightAt(x,z)>=WATER) return null;
   if(Math.abs(x-RIVER(z))<RIVER_W) return 'upe';
-  for(const st of STREAMS) if(segDist(x,z,st)<3.4) return 'upelis';
+  /* v194: ežerai tikrinami PRIEŠ upelius — intakai prasideda ties ežero
+     viduriu, tad kitaip visas ežeras skaitytųsi „upeliu" ir jame kibtų ne tos
+     žuvys (patikrinta naršyklėje: waterTypeAt(-118,96) rodė 'upelis'). */
+  for(const L of LAKES) if(Math.hypot(x-L.x,z-L.z)<L.r*1.25) return 'ezeras';
+  for(const st of STREAMS) if(segDist(x,z,st)<3.6) return 'upelis';
   return 'ezeras';
 }
 
@@ -1174,11 +1236,15 @@ function applyModelQuality(){
   if(typeof ENEMY_GLB!=='undefined') for(const A of ENEMY_GLB){
     if(A.model) A.model.visible=hi;
     if(A.e&&A.e.obj&&!A.e.dead){
-      if(!hi&&typeof enemyProcBuild==='function') enemyProcBuild(A.e);  // v193
+      /* v193; v194: tolimų nestatom — juos pastatys updateEnemies priartėjus */
+      if(!hi&&typeof enemyProcBuild==='function'&&procArti(A.e)) enemyProcBuild(A.e);
       A.e.obj.traverse(o=>{ if(o.isMesh) o.visible=!hi; });
     }
   }
-  if(typeof CATALOG_MODELS!=='undefined') for(const m of CATALOG_MODELS) m.visible=hi;
+  /* v194: požemyje katalogo manekenų nėra. Be šios sąlygos applyModelQuality()
+     (kviečiamas iš updateEnemies, kai priešas grįžta į savo zoną) juos vėl
+     įjungdavo — pirmas tikrinimas Chrome rodė 361 tūkst. trikampių po žeme. */
+  if(typeof CATALOG_MODELS!=='undefined') for(const m of CATALOG_MODELS) m.visible=hi&&!ZONE;
 }
 function applyQuality(){
   const hi=CFG.quality==='high';
@@ -1235,21 +1301,36 @@ sun.shadow.bias=-0.0012;
 scene.add(sun); scene.add(sun.target);
 
 /* ---------- 3. Reljefas ---------- */
-const SEG=150;
+/* v194: pasaulis 4x didesnis, tad ir tinklelis tankesnis — kitaip upė (13 m)
+   ir upeliai (3,6 m) tarp viršūnių tiesiog dingtų. Langelio dydis paliktas
+   maždaug toks pat kaip anksčiau (~1,6 m): 472 m / 290 ≈ 1,63 m.
+   Telefone retesnis (2,5 m) — ten upeliai lieka vos matomi, bet kadrų dažnis
+   svarbiau. Tinklelis STATINIS: skaičiuojamas vieną kartą krovimosi metu. */
+const SEG=isTouch?190:290;
 const tGeo=new THREE.PlaneGeometry(WORLD*2,WORLD*2,SEG,SEG);
 tGeo.rotateX(-Math.PI/2);
 {
   const p=tGeo.attributes.position, col=new Float32Array(p.count*3);
-  const cGrass=new THREE.Color(0x496b40), cMoss=new THREE.Color(0x2f4a33),
-        cRock=new THREE.Color(0x5c5a52), cSand=new THREE.Color(0x7d6f4d);
-  const c=new THREE.Color();
+  const cGrass=new THREE.Color(0x5c7a45),   // laukų pieva — šviesesnė
+        cWood =new THREE.Color(0x496b40),   // miško paklotė
+        cDark =new THREE.Color(0x27381f),   // tamsaus miško samanos
+        cMoss =new THREE.Color(0x2f4a33),
+        cRock =new THREE.Color(0x5c5a52), cSand=new THREE.Color(0x7d6f4d),
+        cSnow =new THREE.Color(0x9aa39a);   // kalnų viršūnės
+  const c=new THREE.Color(), cb=new THREE.Color();
   for(let i=0;i<p.count;i++){
     const x=p.getX(i), z=p.getZ(i), y=heightAt(x,z);
     p.setY(i,y);
-    const slope=Math.abs(heightAt(x+1.4,z)-y)+Math.abs(heightAt(x,z+1.4)-y);
-    c.copy(cGrass).lerp(cMoss,clamp(fbm(x*.09,z*.09)*1.4-.25,0,1));
+    const slope=Math.abs(heightAt(x+1.6,z)-y)+Math.abs(heightAt(x,z+1.6)-y);
+    /* pagrindo spalva pagal biomą (tolygiai, be aštrios ribos) */
+    const bv=biomeVal(x,z);
+    const tMisk=clamp((bv-BIO_R1+18)/36,0,1);        // laukai -> miškas
+    const tTams=clamp((bv-BIO_R2+18)/36,0,1);        // miškas -> tamsus miškas
+    cb.copy(cGrass).lerp(cWood,tMisk).lerp(cDark,tTams);
+    c.copy(cb).lerp(cMoss,clamp(fbm(x*.07,z*.07)*1.4-.25,0,1)*(.35+.65*tMisk));
     if(y<WATER+1.1) c.lerp(cSand,clamp((WATER+1.1-y)/1.5,0,1));
-    if(slope>1.5)   c.lerp(cRock,clamp((slope-1.5)/2.2,0,1));
+    if(slope>1.6)   c.lerp(cRock,clamp((slope-1.6)/2.4,0,1));
+    if(y>21)        c.lerp(cSnow,clamp((y-21)/9,0,1));
     c.multiplyScalar(.9+h2(x*3.1,z*3.1)*.2);
     col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b;
   }
@@ -1322,9 +1403,45 @@ const trees=[];
 const bodies=[];
 const BODY_R=.45;                 // vidutinio personažo spindulys
 const MOVER_R=.35;                // to, kas juda, spindulys (žaidėjas/priešas)
-function addBody(p,r,live){ bodies.push({p,r:(r===undefined?BODY_R:r),live:live||null}); return p; }
+/* v194: kūnas priklauso zonai (null = giria, kitaip požemio raktas). Zonos
+   raktas imamas iš SPAWN_ZONE — jį trumpam nustato požemio generatorius, kad
+   nereikėtų keisti visų addBody() kvietimų. */
+let SPAWN_ZONE=null;
+function addBody(p,r,live){ bodies.push({p,r:(r===undefined?BODY_R:r),live:live||null,zone:SPAWN_ZONE}); return p; }
+/* v194: MEDŽIŲ TINKLELIS. Iki šiol trees[] buvo tuščias, tad collide() jį
+   apeidavo per akimirką. Su ~1500 medžių tiesinė peržiūra kiekvienam
+   judančiam kūnui kas kadrą jau brangi, todėl medžiai suskirstyti į 18 m
+   langelius, o tikrinami tik 3x3 aplink tašką. Naudoja ir collide(), ir
+   visos „ar vieta laisva" patikros. */
+const TREE_CELL=18;
+const treeGrid=new Map();
+const treeKey=(x,z)=>(Math.floor(x/TREE_CELL))+'|'+(Math.floor(z/TREE_CELL));
+function treeAdd(t){
+  const k=treeKey(t.x,t.z);
+  let a=treeGrid.get(k); if(!a){ a=[]; treeGrid.set(k,a); }
+  a.push(t); trees.push(t);
+}
+function treesNear(x,z){
+  const cx=Math.floor(x/TREE_CELL), cz=Math.floor(z/TREE_CELL), out=[];
+  for(let i=-1;i<=1;i++) for(let j=-1;j<=1;j++){
+    const a=treeGrid.get((cx+i)+'|'+(cz+j));
+    if(a) for(const t of a) out.push(t);
+  }
+  return out;
+}
+const treeClear=(x,z,pad)=>{
+  for(const t of treesNear(x,z)) if(Math.hypot(x-t.x,z-t.z)<t.r+pad) return false;
+  return true;
+};
+/* v194: miškas grąžintas (nuo v91 buvo išjungtas dėl animacijų katalogo) ir
+   sodinamas PAGAL BIOMĄ:
+     laukai — tik reti pavieniai medžiai (tikimybė ~8 %)
+     miškas — įprastas tankumas
+     tamsus miškas — tankiausias, aukštesni ir tamsesni medžiai
+   Vienas medis = 3 instancijos (kamienas + dvi vainiko dalys) -> 3 piešimo
+   iškvietimai visam pasauliui. */
 function plantForest(){
-  const n=CFG.quality==='high'?300:170;
+  const n=CFG.quality==='high'?1100:450;
   const trunkG=new THREE.CylinderGeometry(.19,.3,3.1,5);
   const crownG=new THREE.ConeGeometry(1.55,4.4,6);
   const trunkM=new THREE.MeshLambertMaterial({color:0x4a3524});
@@ -1339,44 +1456,60 @@ function plantForest(){
   const tint=new THREE.Color();
   const m=new THREE.Matrix4(),q=new THREE.Quaternion(),s=new THREE.Vector3(),v=new THREE.Vector3();
   let i=0,guard=0;
-  while(i<n && guard++<n*14){
-    const a=Math.random()*TAU, r=rnd(13,WORLD-8);
+  while(i<n && guard++<n*16){
+    const a=Math.random()*TAU, r=Math.sqrt(rnd(0,1))*(WORLD-23)+15;
     const x=Math.cos(a)*r, z=Math.sin(a)*r, y=heightAt(x,z);
-    if(y<WATER+.7||y>13) continue;
-    const sc=rnd(.72,1.45);
+    if(y<WATER+.7||y>22) continue;
+    const bio=biomeAt(x,z);
+    if(bio===BIO_LAUKAI&&Math.random()>.08) continue;   // pievoje tik pavieniai
+    if(bio===BIO_MISKAS&&Math.random()>.72) continue;
+    const dk=darkness(x,z);
+    const sc=rnd(.72,1.45)*(1+dk*.35);
     q.setFromAxisAngle(new THREE.Vector3(0,1,0),Math.random()*TAU);
     s.set(sc,sc*rnd(.85,1.25),sc);
+    const rot=Math.random()*TAU;
+    q.setFromAxisAngle(new THREE.Vector3(0,1,0),rot);
     v.set(x,y+1.55*s.y,z); m.compose(v,q,s); t.setMatrixAt(i,m);
     v.set(x,y+3.9*s.y,z);  m.compose(v,q,s); c.setMatrixAt(i,m);
     v.set(x,y+5.6*s.y,z);  m.compose(v,q,s); c2.setMatrixAt(i,m);
-    const hue=.9+h2(x*7.3,z*7.3)*.32;
+    const hue=(.9+h2(x*7.3,z*7.3)*.32)*(1-dk*.42);      // tamsiam miške tamsesni
     tint.setRGB(hue*.86,hue,hue*.78);
     if(c.setColorAt){ c.setColorAt(i,tint); c2.setColorAt(i,tint); }
-    trees.push({x,z,r:.75*sc}); i++;
+    /* v194: sc/rot/bio įsimenami — kai užsikrauna GIRIA_TURTAS.glb, tose
+       pačiose vietose kūginiai medžiai pakeičiami tikrais modeliais
+       (žr. dressForest). Iki tol arba jei failo nėra — lieka kūgiai. */
+    treeAdd({x,z,r:.75*sc,sc,rot,bio,y}); i++;
   }
   t.count=c.count=c2.count=i;
   t.instanceMatrix.needsUpdate=c.instanceMatrix.needsUpdate=c2.instanceMatrix.needsUpdate=true;
   if(c.instanceColor) c.instanceColor.needsUpdate=true;
   if(c2.instanceColor) c2.instanceColor.needsUpdate=true;
   scene.add(t); scene.add(c); scene.add(c2);
+  CONE_TREES.push(t,c,c2);
 }
-/* v91: medžiai IŠJUNGTI vartotojo prašymu — GLB animacijų katalogo testui,
-   kad nesipainiotų po kojomis. Grąžinti: atkomentuoti plantForest(); */
-// plantForest();
+const CONE_TREES=[];
+/* v91 medžiai buvo išjungti animacijų katalogo testui; v194 grąžinti —
+   be jų nebūtų nei miško, nei tamsaus miško. */
+plantForest();
 
+const ROCK_SPOTS=[], CONE_ROCKS=[];
 function scatterRocks(){
-  const n=CFG.quality==='high'?70:40;
+  const n=CFG.quality==='high'?260:120;
   const g=new THREE.DodecahedronGeometry(.7,0);
   const mesh=new THREE.InstancedMesh(g,new THREE.MeshLambertMaterial({color:0x5d5b52}),n);
   mesh.castShadow=mesh.receiveShadow=true; mesh.userData.shad=true; mesh.raycast=()=>{};
   const m=new THREE.Matrix4(),q=new THREE.Quaternion(),s=new THREE.Vector3(),v=new THREE.Vector3();
   for(let i=0;i<n;i++){
-    const a=Math.random()*TAU,r=rnd(11,WORLD-9);
+    const a=Math.random()*TAU,r=Math.sqrt(rnd(0,1))*(WORLD-20)+11;
     const x=Math.cos(a)*r,z=Math.sin(a)*r,y=heightAt(x,z),sc=rnd(.5,1.6);
+    /* v194: po vandeniu akmens nerodom — instancija suspaudžiama į nulį */
+    if(y<WATER+.4){ s.set(0,0,0); v.set(x,y,z); m.compose(v,q,s); mesh.setMatrixAt(i,m); continue; }
+    ROCK_SPOTS.push({x,z,y,sc});
     q.setFromEuler(new THREE.Euler(Math.random(),Math.random()*TAU,Math.random()));
     s.set(sc,sc*.75,sc); v.set(x,y+.25*sc,z); m.compose(v,q,s); mesh.setMatrixAt(i,m);
   }
   mesh.instanceMatrix.needsUpdate=true; scene.add(mesh);
+  CONE_ROCKS.push(mesh);
 }
 scatterRocks();
 
@@ -1398,11 +1531,11 @@ function mistTexture(){
 }
 function buildMist(){
   if(mist){ scene.remove(mist); mist=null; }
-  const target=CFG.quality==='high'?90:45;
+  const target=CFG.quality==='high'?150:60;
   const spots=[];
   let guard=0;
-  while(spots.length<target&&guard++<target*40){
-    const a=Math.random()*TAU, r=Math.random()*(WORLD-10);
+  while(spots.length<target&&guard++<target*60){
+    const a=Math.random()*TAU, r=Math.sqrt(Math.random())*(WORLD-10);
     const x=Math.cos(a)*r, z=Math.sin(a)*r;
     if(!waterTypeAt(x,z)) continue;
     spots.push({x,z,s:rnd(9,20),y:WATER+rnd(.25,1.5),rot:Math.random()*TAU});
@@ -1456,7 +1589,7 @@ function crossQuad(w,h){
 let grassMesh=null;
 function plantGrass(){
   if(grassMesh){ scene.remove(grassMesh); grassMesh=null; }
-  const n=CFG.quality==='high'?1400:500;
+  const n=CFG.quality==='high'?2600:800;
   const mat=new THREE.MeshLambertMaterial({color:0x6f9257,map:grassTexture(),
     alphaTest:.5,side:THREE.DoubleSide});
   const g=new THREE.InstancedMesh(crossQuad(.85,.75),mat,n);
@@ -1465,9 +1598,12 @@ function plantGrass(){
   const tint=new THREE.Color();
   let i=0,guard=0;
   while(i<n&&guard++<n*10){
-    const a=Math.random()*TAU, r=rnd(4,88);
+    /* v194: sqrt paskirsto tolygiai pagal PLOTĄ, o ne pagal spindulį — kitaip
+       visa žolė susigrūstų ties centru. Tamsiam miške žolės maža. */
+    const a=Math.random()*TAU, r=Math.sqrt(Math.random())*(WORLD-12)+4;
     const x=Math.cos(a)*r, z=Math.sin(a)*r, y=heightAt(x,z);
-    if(y<WATER+.5||y>11) continue;
+    if(y<WATER+.5||y>19) continue;
+    if(biomeAt(x,z)===BIO_TAMSUS&&Math.random()<.7) continue;
     q.setFromAxisAngle(new THREE.Vector3(0,1,0),Math.random()*TAU);
     const k=rnd(.7,1.5); sc.set(k,rnd(.7,1.5),k);
     v.set(x,y-.05,z); m.compose(v,q,sc); g.setMatrixAt(i,m);
@@ -4163,6 +4299,19 @@ function triggerPlayerSwingClip(crit,interval){
    medžiaga reiškia, kad bet koks spalvos keitimas persimestų ant visų
    personažų vienu metu. */
 const GLB_CACHE={}, GLB_WAIT={};
+/* v194: nauji failai (GIRIA_TURTAS/GIRIA_IMP/GIRIA_PUGLIN) guli ŠALIA
+   index.html, tad pirmiausia bandom santykinį kelią, o jei nepavyksta —
+   ggaf.online, kaip senieji UAL paketai. Jei nė vienas neatsako, žaidimas
+   veikia toliau su tuo, kas yra (žr. turtasInit ir attachEnemyGlb). */
+function loadGlbAny(urls,cb,errCb){
+  let i=0;
+  const bandyk=()=>{
+    if(i>=urls.length){ if(errCb) errCb(new Error('nė vienas adresas neatsakė')); return; }
+    loadGlbOnce(urls[i++],cb,()=>bandyk());
+  };
+  bandyk();
+}
+const glbUrls=v=>[v,'https://ggaf.online/'+v];
 function loadGlbOnce(url,cb,errCb){
   if(GLB_CACHE[url]){ cb(GLB_CACHE[url]); return; }
   if(!GLB_WAIT[url]) GLB_WAIT[url]=[];
@@ -4554,21 +4703,38 @@ function glbOnce(A,act,speed,next){
   act.timeScale=speed||1; act.__once=true; act.fadeIn(.06).play();
   A.current=act; A.chain=next||null;
 }
+/* v194: priešo VAIZDAS ir jo ANIMACIJOS gali būti skirtinguose failuose.
+   Bestiary paketo Kipšas ir Slogutis animacijų neturi visai, bet jų skeletas —
+   tas pats „Standard" 55 kaulų rigas kaip UAL (patikrinta: visi 55 vardai yra
+   tarp UAL 65), tad mikseris tas pačias UAL animacijas uždeda tiesiog pagal
+   kaulų vardus. Todėl: modelis iš def.glb, klipai — iš UAL2. */
+function enemyGlbSurink(e,scenaSrc,anims){
+  const m=cloneGlbScene(scenaSrc); m.scale.setScalar(e.def.scale); scene.add(m);
+  const mixer=new THREE.AnimationMixer(m);
+  stripRootMotionXZ(anims);                        // v98
+  const A={e,model:m,mixer,acts:glbActionsFor(mixer,anims,e.def),current:null,chain:null};
+  mixer.addEventListener('finished',()=>{
+    if(A.chain){ const nx=A.chain; A.chain=null; glbOnce(A,nx,1); }   // 18 → iškart 19
+  });
+  e.glb=A; ENEMY_GLB.push(A);
+  e.obj.traverse(o=>{ if(o.isMesh) o.visible=false; });   // procedūrinis kūnas — nematomas
+  applyModelQuality();                                    // v191: žemoje kokybėje atvirkščiai
+  glbLoop(A, (e.def.dummy?A.acts.dummyIdle:null)||A.acts.idle);
+}
 function attachEnemyGlb(e){
   if(typeof THREE==='undefined'||!THREE.GLTFLoader) return;   // testų aplinka — praleidžiam
-  loadGlbOnce(GLB_URL, g=>{
-    const m=cloneGlbScene(g.scene); m.scale.setScalar(e.def.scale); scene.add(m);
-    const mixer=new THREE.AnimationMixer(m);
-    stripRootMotionXZ(g.animations);               // v98
-    const A={e,model:m,mixer,acts:glbActionsFor(mixer,g.animations,e.def),current:null,chain:null};
-    mixer.addEventListener('finished',()=>{
-      if(A.chain){ const nx=A.chain; A.chain=null; glbOnce(A,nx,1); }   // 18 → iškart 19
+  if(e.def.glb){
+    loadGlbAny(glbUrls(e.def.glb),g=>{
+      loadGlbOnce(GLB_URL,ual=>enemyGlbSurink(e,g.scene,ual.animations),
+                  undefined,err=>console.warn('animacijos neįkeltos',err));
+    },()=>{                                     // savo failo nėra — lieka UAL kūnas
+      loadGlbOnce(GLB_URL,g=>enemyGlbSurink(e,g.scene,g.animations),
+                  undefined,err=>console.warn('priešo GLB neįkeltas',err));
     });
-    e.glb=A; ENEMY_GLB.push(A);
-    e.obj.traverse(o=>{ if(o.isMesh) o.visible=false; });   // procedūrinis kūnas — nematomas
-    applyModelQuality();                                    // v191: žemoje kokybėje atvirkščiai
-    glbLoop(A, (e.def.dummy?A.acts.dummyIdle:null)||A.acts.idle);
-  }, undefined, err=>console.warn('priešo GLB neįkeltas',err));
+    return;
+  }
+  loadGlbOnce(GLB_URL, g=>enemyGlbSurink(e,g.scene,g.animations),
+    undefined, err=>console.warn('priešo GLB neįkeltas',err));
 }
 const bag={};
 
@@ -5047,7 +5213,21 @@ const MOBS=[
    skin:0xc3b6c9, cloth:0x5b3b62, horns:false, aggro:11, type:'spirit', hair:0xe8dcc8, eyes:0x9fe4ff, sleeves:true, weapon:{kind:'staff'}, armor:2, magic:true,  loot:['gintaras','zole','moneta','medziaga']},
   {key:'vilkas', name:{lt:'Vilkolakis',en:'Werewolf'},lvl:9, hp:108,dmg:18,xp:150,spd:4.6, scale:1.24,
    skin:0x6a5b4c, cloth:0x2f2620, horns:true,  aggro:13, type:'beast',  hair:0x3a2f26, eyes:0xff6a2a, armor:5, magic:false, loot:['iltis','gintaras','moneta','oda','kaulas'],
-   atk:[18,19]}   /* v96: puola 18, iškart po jos 19 */
+   atk:[18,19]},  /* v96: puola 18, iškart po jos 19 */
+  /* v194: du nauji iš Bestiary paketo. Modeliai savuose failuose (GIRIA_IMP.glb,
+     GIRIA_PUGLIN.glb — originalai po 9 ir 7,5 MB, nulupus Normal/ORM tekstūras
+     liko 2,3 ir 1,4 MB), animacijos — iš UAL. Jei failų nėra, priešas vis tiek
+     atsiranda, tik su įprastu UAL kūnu — žaidimas nesugriūva. */
+  {key:'kipsas', name:{lt:'Kipšas',en:'Imp'}, lvl:6, hp:62, dmg:11, xp:78, spd:4.1, scale:.86,
+   glb:'GIRIA_IMP.glb',
+   skin:0x8a5a3a, cloth:0x3a2a1e, horns:true, aggro:12, type:'imp', hair:0x2a1c12, eyes:0xffb02a,
+   weapon:{kind:'axe',color:0x7f858c}, armor:3, magic:false, loot:['gintaras','moneta','oda','kaulas'],
+   atk:[18,19]},
+  {key:'slogutis', name:{lt:'Slogutis',en:'Puglin'}, lvl:12, hp:150, dmg:22, xp:210, spd:3.6, scale:1.05,
+   glb:'GIRIA_PUGLIN.glb',
+   skin:0x6b7a5e, cloth:0x2b2a24, horns:false, aggro:14, type:'beast', hair:0x2d2a22, eyes:0xc8ff5a,
+   armor:7, magic:false, loot:['gintaras','moneta','iltis','kaulas','gelezis'],
+   atk:[18,19]}
 ];
 const ITEMS={
   gintaras:{n:{lt:'Gintaro gabalas',en:'Piece of amber'},i:'🟠'}, moneta:{n:{lt:'Moneta',en:'Coin'},i:'🪙'},
@@ -5223,6 +5403,10 @@ function enemyProcBuild(e){
 function enemyProcNeeded(){
   return CFG.quality!=='high'||typeof THREE==='undefined'||!THREE.GLTFLoader;
 }
+/* v194: ar priešas pakankamai arti, kad jo procedūrinį kūną apskritai vertėtų
+   statyti. Toliau nei 120 m jį ir taip paslepia rūkas, o kiekvienas kūnas —
+   apie 11 tinklelių scenoje. */
+const procArti=e=>e&&e.pos&&Math.abs(e.pos.x-player.pos.x)<120&&Math.abs(e.pos.z-player.pos.z)<120;
 function spawnEnemy(def,x,z){
   const holder=new THREE.Group();
   scene.add(holder);
@@ -5233,26 +5417,34 @@ function spawnEnemy(def,x,z){
     hp:def.hp,maxHp:def.hp,state:'idle',yaw:Math.random()*TAU,atkCd:0,wanderCd:0,
     wx:x,wz:z,dead:false,respawn:0,id:enemies.length,flash:0,stun:0,sink:0,burn:0,burnDps:0,slow:0,
     tag:makeTag(Lx(def.name)+' <span style="color:#9fb39c">'+def.lvl+'</span>','#e59a86',true)};
-  if(enemyProcNeeded()) enemyProcBuild(e);       // v193: piešinys tik jei reikia
+  /* v193: piešinys tik jei reikia. v194: ir tik SAVOJE zonoje — požemių
+     priešų kūnai statomi tada, kai į požemį įeinama (žr. updateEnemies). */
+  if(enemyProcNeeded()&&SPAWN_ZONE===ZONE&&procArti(e)) enemyProcBuild(e);
   addBody(e.pos,.45*(def.scale||1),()=>!e.dead); // v154: kūnas juda kartu su e.pos
   enemies.push(e); attachEnemyGlb(e); return e;
 }
 /* v96: laikinai pasaulyje paliktas TIK vilkolakis (kaukas/laumė išimti, kad
    nesimaišytų — grąžinama pridedant raktą į šį sąrašą). */
-const SPAWN_KEYS=['vilkas'];
+/* v194: priešai dėliojami pagal BIOMĄ, ne pagal atstumą nuo centro —
+   biomo riba banguoja, tad vilkolakis dabar gali pasitaikyti ir arčiau, jei
+   ten tamsaus miško liežuvis. Kiekiai saikingi: kiekvienas priešas — GLB
+   skeleto klonas, o jų kaina matoma kadrų dažnyje (žr. mixBudget).
+   POŽEMIŲ priešus sodina dunSpawnEnemies() — jie turi e.zone. */
+const SPAWN_BIO={kaukas:BIO_LAUKAI, lauma:BIO_MISKAS, kipsas:BIO_MISKAS,
+                 vilkas:BIO_TAMSUS, slogutis:BIO_TAMSUS};
+const SPAWN_CNT={kaukas:11, lauma:9, kipsas:9, vilkas:8, slogutis:5};
 function populate(){
   for(const def of MOBS){
-    if(!SPAWN_KEYS.includes(def.key)) continue;
-    const count=def.key==='kaukas'?5:def.key==='lauma'?3:2;
-    const band=def.key==='kaukas'?[16,42]:def.key==='lauma'?[42,72]:[70,WORLD-14];
+    const bio=SPAWN_BIO[def.key];
+    if(bio===undefined) continue;
+    const count=SPAWN_CNT[def.key]||2;
     let made=0,guard=0;
-    while(made<count&&guard++<400){
-      const a=Math.random()*TAU,r=rnd(band[0],band[1]);
+    while(made<count&&guard++<1200){
+      const a=Math.random()*TAU,r=Math.sqrt(Math.random())*(WORLD-30)+22;
       const x=Math.cos(a)*r,z=Math.sin(a)*r;
       if(!walkable(x,z)) continue;
-      let blocked=false;
-      for(const t of trees) if(Math.hypot(x-t.x,z-t.z)<t.r+1.2){blocked=true;break;}
-      if(blocked) continue;
+      if(biomeAt(x,z)!==bio) continue;
+      if(!treeClear(x,z,1.2)) continue;
       spawnEnemy(def,x,z); made++;
     }
   }
@@ -5285,28 +5477,90 @@ const NODE_KINDS=[
   {key:'gintaras',color:0xd9982f,geo:()=>new THREE.OctahedronGeometry(.4,0),h:.5,r:.40,label:'Gintaro sakai',xp:24},
   {key:'akmuo',  color:0x6e6b62,geo:()=>new THREE.DodecahedronGeometry(.52,0),h:.45,r:.52,label:'Titnago luitas',xp:20},
   {key:'uogos',  color:0x4a5fa0,geo:()=>new THREE.SphereGeometry(.42,8,6),h:.4,label:'Uogienojai',xp:13},
-  {key:'zole',   color:0x6f9257,geo:()=>new THREE.ConeGeometry(.36,.7,5),h:.4,label:'Vaistažolės',xp:14}
+  {key:'zole',   color:0x6f9257,geo:()=>new THREE.ConeGeometry(.36,.7,5),h:.4,label:'Vaistažolės',xp:14},
+  /* v194: POŽEMIŲ RŪDOS. mine:true — kasama kirtikliu (ta pati poza kaip
+     titnago luito, žr. gather()). Paviršiuje jų nėra: spawnNodes jas
+     praleidžia, o į požemius sodina dunSpawnNodes(). */
+  {key:'gelezis',  color:0x8a7a68,geo:()=>new THREE.DodecahedronGeometry(.58,0),h:.5,r:.58,label:'Geležies rūda',xp:30,mine:true,dun:true},
+  {key:'sidabras', color:0xb6c0cb,geo:()=>new THREE.OctahedronGeometry(.55,0),h:.5,r:.55,label:'Sidabro gysla',xp:44,mine:true,dun:true},
+  {key:'gintaras2',color:0xd9982f,geo:()=>new THREE.OctahedronGeometry(.46,0),h:.5,r:.46,label:'Gintaro gysla',xp:38,mine:true,dun:true,gives:'gintaras'}
 ];
+/* akmuo irgi kasamas — pažymim po sąrašo, kad senas įrašas liktų nepaliestas */
+NODE_KINDS.find(k=>k.key==='akmuo').mine=true;
+/* v194: šaltiniai dabar dėliojami PAGAL BIOMĄ ir tolygiai pagal plotą.
+     laukai — uogos, žolė, akmuo (atviroje pievoje)
+     miškas — mediena, grybai, uogos, žolė
+     tamsus miškas — gintaras, mediena, akmuo (ten brangiausia)
+   Kiekis paaugintas su pasauliu: 42 -> 150 (žemoje kokybėje 90). */
+const NODE_BIO={
+  0:['uogos','zole','akmuo','zole','uogos'],
+  1:['mediena','grybas','uogos','zole','mediena','akmuo'],
+  2:['gintaras','mediena','akmuo','grybas','gintaras']
+};
+/* v194: ŠALTINIŲ TINKLELIAI.
+   Pasauliui paaugus 4 kartus šaltinių iš 42 pasidarė 120, o požemiuose dar
+   54 rūdos — tai buvo 174 atskiri Mesh scenoje (warriortest tai pagavo:
+   164 -> 453 tinkleliai). Piešiama forma kiekvienoje rūšyje ta pati, tad
+   visi vienos rūšies šaltiniai suvaromi į VIENĄ InstancedMesh — devyni
+   piešimo iškvietimai vietoj 174.
+   Kad niekas kitas kode nesikeistų, kiekvienas šaltinis TEBETURI savo
+   n.obj (Mesh su position/rotation/scale/visible), tik jis nebepridedamas į
+   sceną: nodeBatchSync() kas kadrą nurašo jo padėtį į instanciją.
+   Nematomas (išsekęs ar kitos zonos) šaltinis suspaudžiamas į nulį. */
+const NODE_BATCH={}, NODE_BATCH_MAX=256;
+const nbM=new THREE.Matrix4(), nbQ=new THREE.Quaternion(),
+      nbV=new THREE.Vector3(), nbS=new THREE.Vector3(), nbUp=new THREE.Vector3(0,1,0);
+function nodeBatchAdd(k,obj){
+  let B=NODE_BATCH[k.key];
+  if(!B){
+    const mat=new THREE.MeshLambertMaterial({color:k.color,
+      emissive:(k.key==='gintaras'||k.key==='gintaras2')?0x4a2f06:0x000000});
+    const im=new THREE.InstancedMesh(k.geo(),mat,NODE_BATCH_MAX);
+    im.castShadow=true; im.userData.shad=true; im.raycast=()=>{};
+    im.frustumCulled=false; im.count=0;
+    B={mesh:im,list:[]}; NODE_BATCH[k.key]=B; scene.add(im);
+  }
+  if(B.list.length>=NODE_BATCH_MAX) return B;
+  B.list.push(obj); B.mesh.count=B.list.length;
+  return B;
+}
+function nodeBatchSync(){
+  for(const key in NODE_BATCH){
+    const B=NODE_BATCH[key];
+    for(let i=0;i<B.list.length;i++){
+      const o=B.list[i];
+      if(o.visible===false) nbS.set(0,0,0);
+      else nbS.set(o.scale.x,o.scale.y,o.scale.z);
+      nbQ.setFromAxisAngle(nbUp,o.rotation.y);
+      nbV.set(o.position.x,o.position.y,o.position.z);
+      nbM.compose(nbV,nbQ,nbS);
+      B.mesh.setMatrixAt(i,nbM);
+    }
+    if(B.mesh.instanceMatrix) B.mesh.instanceMatrix.needsUpdate=true;
+  }
+}
 function spawnNodes(){
   const kinds=NODE_KINDS;
-  const clearOfTrees=(x,z)=>{
-    for(const t of trees) if(Math.hypot(x-t.x,z-t.z)<t.r+1.9) return false;
-    return true;
-  };
-  for(let i=0;i<42;i++){
-    const k=kinds[i%kinds.length];
-    let x=0,z=0,guard=0,ok=false;
+  const clearOfTrees=(x,z)=>treeClear(x,z,1.9);
+  const N=CFG.quality==='high'?120:70;
+  for(let i=0;i<N;i++){
+    let x=0,z=0,guard=0,ok=false,k=null;
     while(guard++<300){
-      const a=Math.random()*TAU,r=rnd(12,WORLD-16);
+      const a=Math.random()*TAU,r=Math.sqrt(Math.random())*(WORLD-28)+12;
       x=Math.cos(a)*r; z=Math.sin(a)*r;
       if(walkable(x,z)&&clearOfTrees(x,z)){ok=true;break;}
     }
+    if(ok){
+      const sar=NODE_BIO[biomeAt(x,z)];
+      k=kinds.find(kk=>kk.key===sar[i%sar.length]);
+    }
+    if(!k) ok=false;
     if(!ok) continue;                       // geriau praleisti nei pastatyti nepasiekiamą
     const mat=new THREE.MeshLambertMaterial({color:k.color,
       emissive:k.key==='gintaras'?0x4a2f06:0x000000});
     const m=new THREE.Mesh(k.geo(),mat);
     m.position.set(x,heightAt(x,z)+k.h,z); m.castShadow=true; m.userData.shad=true;
-    scene.add(m);
+    nodeBatchAdd(k,m);                       // v194: į bendrą tinklelį, ne į sceną
     const nd={obj:m,kind:k,pos:m.position,ready:true,cd:0,
       tag:makeTag(k.label,'#8fbf7a',false)};
     nodes.push(nd);
@@ -5332,7 +5586,7 @@ function spawnFireDemoNodes(){
       emissive:k.key==='gintaras'?0x4a2f06:0x000000});
     const m=new THREE.Mesh(k.geo(),mat);
     m.position.set(sp.x,heightAt(sp.x,sp.z)+k.h,sp.z); m.castShadow=true; m.userData.shad=true;
-    scene.add(m);
+    nodeBatchAdd(k,m);                       // v194
     const nd={obj:m,kind:k,pos:m.position,ready:true,cd:0,infinite:true,
       tag:makeTag(k.label,'#ffd166',false)};
     nodes.push(nd);
@@ -5394,6 +5648,7 @@ function updateDay(dt){
   sunDir.set(hx*0.75,Math.max(0.12,h),0.45).normalize();
   sunSprite.material.color.copy(sun.color);
   sunSprite.material.opacity=clamp(h*1.4+0.15,0,1);
+  applyAtmosphere(dt);
 
   clockT-=dt;
   if(clockT<=0){
@@ -5408,6 +5663,53 @@ function updateDay(dt){
     tBadge.style.borderColor='rgba('+Math.round(c.r*255)+','+Math.round(c.g*255)+','+Math.round(c.b*255)+',.75)';
   }
 }
+/* v194: BIOMO IR POŽEMIO ATMOSFERA.
+   SVARBU: paros ciklas (DAY) jau nustatė rūką ir šviesą — čia jie tik
+   PAPILDOMI, niekada neperrašomi apatine riba. Pirmas variantas rūkui dėjo
+   Math.max(paros, biomo) ir tuo sugriovė patį paros ciklą: naktį, vakare ir
+   sutemose fogD sąmoningai lygus 0 (giedra), o riba padarė jį 0,0042 —
+   watertest ir misttest tai pagavo iškart. Todėl dabar:
+       rūkas = paros rūkas + biomo priedas
+   Laukuose priedas 0 (todėl giedra naktis lieka giedra), girioje mažas,
+   tamsiame miške didelis. Požemis atskirai: viskas tolygiai persijungia per
+   atmDun (0 = paviršius, 1 = po žeme), tad ir įeinant, ir išeinant nemirksi. */
+const ATM_FOG=new THREE.Color(0x101a13), ATM_DUN=new THREE.Color(0x07090b);
+const HEMI_SKY=0xa7c0a6, HEMI_GND=0x2b2016;         // pradinės pusrutulio spalvos
+const DUN_SKY =0x2b2620, DUN_GND =0x0a0908;
+const cAtmA=new THREE.Color(), cAtmB=new THREE.Color();
+let atmAdd=0, atmDark=0, atmDun=0;
+function applyAtmosphere(dt){
+  const k=1-Math.pow(0.02,Math.min(dt,.05));
+  atmDun=lerp(atmDun,ZONE?1:0,k);
+  let dk=0, priedas=0;
+  if(!ZONE){
+    dk=darkness(player.pos.x,player.pos.z);
+    priedas=biomeAt(player.pos.x,player.pos.z)===BIO_LAUKAI?0:lerp(0.0012,0.0078,dk);
+  }
+  atmAdd=lerp(atmAdd,priedas,k);
+  atmDark=lerp(atmDark,dk,k);
+  /* rūkas */
+  scene.fog.density=lerp(scene.fog.density+atmAdd,0.038,atmDun);
+  if(atmDark>0.01){
+    scene.fog.color.lerp(ATM_FOG,atmDark*0.75);
+    scene.background.lerp(ATM_FOG,atmDark*0.75);
+  }
+  if(atmDun>0.002){
+    scene.fog.color.lerp(ATM_DUN,atmDun);
+    scene.background.lerp(ATM_DUN,atmDun);
+  }
+  /* šviesa */
+  sun.intensity*=(1-atmDark*0.55)*(1-atmDun*0.94);
+  hemi.intensity=lerp(hemi.intensity*(1-atmDark*0.40),0.52,atmDun);
+  rim.intensity=lerp(rim.intensity,0.03,atmDun);
+  /* pusrutulio spalvos yra tik tikrame three.js — testų aplinkoje jų nėra */
+  if(hemi.color&&hemi.color.copy){
+    cAtmA.setHex(HEMI_SKY).lerp(cAtmB.setHex(DUN_SKY),atmDun); hemi.color.copy(cAtmA);
+  }
+  if(hemi.groundColor&&hemi.groundColor.copy){
+    cAtmA.setHex(HEMI_GND).lerp(cAtmB.setHex(DUN_GND),atmDun); hemi.groundColor.copy(cAtmA);
+  }
+}
 let clockT=0;
 const tBadge=document.getElementById('timeBadge'), tClock=document.getElementById('tClock'),
       tIcon=document.getElementById('tIcon'), tPhase=document.getElementById('tPhase'),
@@ -5416,12 +5718,44 @@ const sunDir=new THREE.Vector3(0.6,0.7,0.35).normalize();
 
 function updateCamera(dt){
   cam.dist=lerp(cam.dist,cam.tDist,1-Math.pow(.002,dt));
-  const cx=Math.sin(cam.yaw)*Math.cos(cam.pitch)*cam.dist;
-  const cy=Math.sin(cam.pitch)*cam.dist;
-  const cz=Math.cos(cam.yaw)*Math.cos(cam.pitch)*cam.dist;
+  /* v194: požemyje lubos 5,2 m — su įprastu 11 m atstumu ir 0,62 rad pakilimu
+     kamera atsidurtų VIRŠ lubų ir žaidėjas matytų tuščią juodumą. Todėl po žeme
+     atstumas ribojamas, aukštis prispaudžiamas po lubomis, o pati kamera
+     traukiama arčiau, jei tarp jos ir žaidėjo yra siena. */
+  const dist=ZONE?Math.min(cam.dist,7.6):cam.dist;
+  const pitch=ZONE?Math.min(cam.pitch,.42):cam.pitch;
+  const cx=Math.sin(cam.yaw)*Math.cos(pitch)*dist;
+  const cy=Math.sin(pitch)*dist;
+  const cz=Math.cos(cam.yaw)*Math.cos(pitch)*dist;
   const t=player.pos;
   let px=t.x+cx, pz=t.z+cz;
   let py=t.y+cy+1.2;
+  if(ZONE){
+    py=Math.min(py,DUN_H-.55);
+    /* nuo žaidėjo link kameros žingsniais — sustojam prie paskutinio laisvo */
+    let k=1;
+    for(let s=1;s<=8;s++){
+      const f=s/8;
+      if(dunSolidAt(t.x+cx*f,t.z+cz*f)){ k=Math.max(0,(s-1)/8-.06); break; }
+    }
+    px=t.x+cx*k; pz=t.z+cz*k;
+    if(k<1) py=t.y+cy*k+1.2;
+  }
+  else if(trees.length){
+    /* v194: girioje atsirado 1100 tikrų medžių — be šito kamera nuolat
+       atsidurdavo kamieno viduje ir ekranas užsidengdavo žieve. Einam nuo
+       žaidėjo link kameros aštuoniais žingsniais ir sustojam prieš kamieną.
+       Tikrinam tik 3x3 langelius (treesNear), tad kaina — kelios dešimtys
+       atstumų per kadrą. */
+    let k=1;
+    for(let s=1;s<=8;s++){
+      const f=s/8, sx=t.x+cx*f, sz=t.z+cz*f;
+      let kirt=false;
+      for(const tr of treesNear(sx,sz)) if(Math.hypot(sx-tr.x,sz-tr.z)<tr.r+.6){ kirt=true; break; }
+      if(kirt){ k=Math.max(.28,(s-1)/8-.05); break; }
+    }
+    if(k<1){ px=t.x+cx*k; pz=t.z+cz*k; py=t.y+cy*k+1.2; }
+  }
   const gh=heightAt(px,pz)+1.4; if(py<gh) py=gh;
   if(shake>0){
     shake=Math.max(0,shake-dt*1.9);
@@ -8615,6 +8949,47 @@ for(let i=0;i<12;i++){
   t.style.transform='rotate('+(i*30)+'deg)'; ring.appendChild(t);
 }
 let mapT=0;
+/* v194: MINIMAPO PAGRINDAS.
+   Pasaulis dabar 4x didesnis ir turi biomus bei vandenis — vien medžių taškų
+   nebeužtenka, kad būtų aišku, kur esi. Todėl vieną kartą (krovimosi metu)
+   nupiešiamas visas pasaulis į 300x300 paveikslėlį (1,6 m viename taške), o
+   minimapas tik iškerpa, pasuka ir padidina reikiamą gabalą — kadre tai vienas
+   drawImage, o ne tūkstančiai heightAt kvietimų.
+   MAPSRC keičiamas įeinant į požemį (žr. enterZone): ten pagrindas — požemio
+   koridorių planas, pieštas jį generuojant. */
+let MAPSRC=null;
+function buildWorldMap(){
+  const N=300, c=document.createElement('canvas'); c.width=c.height=N;
+  const g=c.getContext&&c.getContext('2d');
+  if(!g||!g.createImageData) return null;      // testų aplinka / labai sena naršyklė
+  const img=g.createImageData(N,N), d=img.data;
+  const step=WORLD*2/N;
+  for(let j=0;j<N;j++) for(let i=0;i<N;i++){
+    const x=-WORLD+(i+.5)*step, z=-WORLD+(j+.5)*step;
+    let r,gg,b;
+    const h=heightAt(x,z);
+    if(h<WATER){
+      const wt=waterTypeAt(x,z);
+      if(wt==='upelis'){ r=58; gg=104; b=118; }
+      else if(wt==='upe'){ r=40; gg=86; b=104; }
+      else { r=30; gg=68; b=92; }
+    } else {
+      const bv=biomeVal(x,z);
+      const tM=clamp((bv-BIO_R1+18)/36,0,1), tT=clamp((bv-BIO_R2+18)/36,0,1);
+      r=lerp(lerp(96,64,tM),30,tT);
+      gg=lerp(lerp(122,96,tM),50,tT);
+      b=lerp(lerp(70,58,tM),34,tT);
+      const sn=clamp((h-21)/9,0,1);
+      r=lerp(r,150,sn); gg=lerp(gg,158,sn); b=lerp(b,150,sn);
+      const sh=.86+h2(x*.9,z*.9)*.22;
+      r*=sh; gg*=sh; b*=sh;
+    }
+    const o=(j*N+i)*4;
+    d[o]=r; d[o+1]=gg; d[o+2]=b; d[o+3]=255;
+  }
+  g.putImageData(img,0,0);
+  return {bmp:c,cx:0,cz:0,half:WORLD};
+}
 function drawMap(dt){
   mapT-=dt; if(mapT>0) return; mapT=.1;
   const S=216, R=S/2, SC=R/Math.max(12,(D.izvalga+D.giriosAkis)*2.6);
@@ -8622,20 +8997,35 @@ function drawMap(dt){
   mapC.fillStyle='#111a15'; mapC.fillRect(0,0,S,S);
   mapC.save(); mapC.translate(R,R); mapC.rotate(cam.yaw);
   const px=player.pos.x, pz=player.pos.z;
-  mapC.fillStyle='#2c4a3a';
-  for(const t of trees){
-    const dx=(t.x-px)*SC, dz=(t.z-pz)*SC;
-    if(Math.abs(dx)<R&&Math.abs(dz)<R) mapC.fillRect(dx-1,dz-1,2,2);
+  if(MAPSRC){
+    const w=MAPSRC.half*2*SC;
+    mapC.imageSmoothingEnabled=true;
+    mapC.drawImage(MAPSRC.bmp,(MAPSRC.cx-MAPSRC.half-px)*SC,(MAPSRC.cz-MAPSRC.half-pz)*SC,w,w);
+  }
+  if(!ZONE){
+    mapC.fillStyle='#2c4a3a';
+    for(const t of treesNear(px,pz)){
+      const dx=(t.x-px)*SC, dz=(t.z-pz)*SC;
+      if(Math.abs(dx)<R&&Math.abs(dz)<R) mapC.fillRect(dx-1,dz-1,2,2);
+    }
   }
   mapC.fillStyle='#8fbf7a';
-  for(const n of nodes){ if(!n.ready) continue;
+  for(const n of nodes){ if(!n.ready||(n.zone||null)!==ZONE) continue;
     const dx=(n.pos.x-px)*SC, dz=(n.pos.z-pz)*SC;
     if(Math.hypot(dx,dz)<R) {mapC.beginPath();mapC.arc(dx,dz,2.4,0,TAU);mapC.fill();}
   }
   mapC.fillStyle='#c4462f';
-  for(const e of enemies){ if(e.dead) continue;
+  for(const e of enemies){ if(e.dead||(e.zone||null)!==ZONE) continue;
     const dx=(e.pos.x-px)*SC, dz=(e.pos.z-pz)*SC;
     if(Math.hypot(dx,dz)<R){mapC.beginPath();mapC.arc(dx,dz,3,0,TAU);mapC.fill();}
+  }
+  if(typeof DUN_GATES!=='undefined') for(const G0 of DUN_GATES){
+    if(G0.zone!==ZONE) continue;
+    const dx=(G0.g.x-px)*SC, dz=(G0.g.z-pz)*SC;
+    if(Math.hypot(dx,dz)>R) continue;
+    mapC.fillStyle='#1a1208'; mapC.fillRect(dx-4,dz-4,8,8);
+    mapC.fillStyle=G0.to?'#c9a0ff':'#8fe08a';   // į požemį / išėjimas
+    mapC.fillRect(dx-3,dz-3,6,6);
   }
   mapC.fillStyle='#cfe0c8';
   for(const w of wanderers){
@@ -8664,7 +9054,9 @@ function placeTag(tag,x,y,z,maxDist){
 
 /* ---------- 13. Judėjimo logika ---------- */
 function collide(p,prev,swimmer){
-  for(const t of trees){
+  /* v194: medžių pasaulyje dabar ~1500, tad tikrinam tik 3x3 langelius aplink
+     (treesNear), o ne visą sąrašą. Požemyje medžių nėra — praleidžiam. */
+  if(!ZONE) for(const t of treesNear(p.x,p.z)){
     const dx=p.x-t.x, dz=p.z-t.z, d=Math.hypot(dx,dz), r=t.r+.45;
     if(d<r&&d>0.0001){p.x=t.x+dx/d*r;p.z=t.z+dz/d*r;}
   }
@@ -8674,14 +9066,18 @@ function collide(p,prev,swimmer){
      jos liktų paskutinės ir galėtų atšaukti į vandenį įstumtą žingsnį. */
   for(const b of bodies){
     if(b.p===p) continue;                       // savęs nestumiam
+    if((b.zone||null)!==ZONE) continue;         // v194: kitos zonos kūnas nestabdo
     if(b.live&&!b.live()) continue;             // miręs/dingęs nestabdo
     const dx=p.x-b.p.x, dz=p.z-b.p.z, r=b.r+MOVER_R;
+    if(dx>r||dx<-r||dz>r||dz<-r) continue;      // v194: pigus atmetimas prieš hypot
     const d=Math.hypot(dx,dz);
     if(d>=r) continue;
     if(d>1e-4){ p.x=b.p.x+dx/d*r; p.z=b.p.z+dz/d*r; }
     else if(prev){ p.x=prev.x; p.z=prev.z; }    // tiksliai sutampa — atgal
     else p.x=b.p.x+r;
   }
+  /* v194: požemyje riba yra siena, ne pasaulio kraštas (žr. dunCollide) */
+  if(ZONE){ if(typeof dunCollide==='function') dunCollide(p,prev); return; }
   const d=Math.hypot(p.x,p.z);
   if(d>WORLD-5){p.x=p.x/d*(WORLD-5);p.z=p.z/d*(WORLD-5);}
   const wt=waterTypeAt(p.x,p.z);
@@ -9640,7 +10036,7 @@ let gatherCd=0;
 const WORK_STAM_COST=6;   // v123: bazinė darbo ištvermės kaina vienam rinkimo veiksmui
 /* v138: kiek kartų reikia kirsti/kasti, kad šaltinis išsektų. Vartotojo
    prašymu — medžiui ir titnagui po 5; visa kita nuimama iš karto. */
-const NODE_HITS={mediena:5, akmuo:5};
+const NODE_HITS={mediena:5, akmuo:5, gelezis:6, sidabras:7, gintaras2:6};
 const nodeHits=key=>NODE_HITS[key]||1;
 /* Matomas nusidėvėjimas: objektas mažėja, o žymėje rodoma, kiek dar liko. */
 function nodeLabel(n,left,total){
@@ -9677,7 +10073,9 @@ function gather(n){
      Kitiems darbams (medis, žolė) paliekama kaip buvo: jų klipai iš UAL2
      paketo, kurio šiame kompiuteryje NĖRA, tad smūgio momento išmatuoti
      negaliu ir spėti nenoriu (žr. ISTORIJA.md v172). */
-  const stone=n.kind.key==='akmuo';
+  /* v194: kasama ne tik titnago luitas — bet kuris šaltinis su mine:true
+     (požemių geležis, sidabras, gintaro gysla). Poza ta pati. */
+  const stone=!!n.kind.mine;
   if(!stone) burst(n.pos.x,n.pos.y+.3,n.pos.z,12,n.kind.color,2.2);
   /* v138: kiekvienas veiksmas turi savo animaciją ir kartojasi tol, kol
      šaltinis išsenka (žr. NODE_HITS). Medis — paketo klipas nr38; titnagas —
@@ -9701,16 +10099,25 @@ function gather(n){
   let qty=gatherMult(n.kind.key);
   if((n.kind.key==='mediena'||n.kind.key==='akmuo')&&Math.random()<(D.meistryste-1)) qty*=2;
   if(Math.random()<D.derlius) qty*=3;
-  give(n.kind.key, Math.max(1,Math.round(qty)));
+  /* v194: gintaro gysla (požemių šaltinis) duoda paprastą gintarą — kitiems
+     šaltiniams daiktas sutampa su rakto vardu. */
+  if(n.kind.gives) give(n.kind.gives, Math.max(1,Math.round(qty)));
+  else give(n.kind.key, Math.max(1,Math.round(qty)));
   /* v181: iš tų pačių šaltinių krenta ir gamybos žaliavos — kitaip receptai
      neturėtų iš ko. Akmuo duoda titnago ir (rečiau) balų geležies, žolė —
      pluošto medžiagai. */
   if(n.kind.key==='akmuo'){
     if(Math.random()<.40) give('titnagas',1);
     if(Math.random()<.14) give('gelezis',1);
+  } else if(n.kind.key==='gelezis'){
+    if(Math.random()<.30) give('akmuo',1);
+    if(Math.random()<.10) give('plienas',1);
+  } else if(n.kind.key==='sidabras'){
+    if(Math.random()<.35) give('gelezis',1);
+    if(Math.random()<.12) give('bronza',1);
   } else if(n.kind.key==='zole'&&Math.random()<.25) give('medziaga',1);
   /* v106: patirtis eina į tą meistrystę, kurią atitinka veiksmas */
-  const gSkill=n.kind.key==='mediena'?'kirtimas':(n.kind.key==='akmuo'?'skaldymas':'rinkimas');
+  const gSkill=n.kind.key==='mediena'?'kirtimas':(n.kind.mine?'skaldymas':'rinkimas');
   addXp(gSkill,Math.round(n.kind.xp*gatherXpMult()));
   /* v133: n.infinite (žr. spawnFireDemoNodes) — nedingsta, nesislepia, be
      atvėsimo, iškart vėl galima imti/kirsti/kasti.
@@ -9731,6 +10138,25 @@ function gather(n){
 
 function updateEnemies(dt){
   for(const e of enemies){
+    /* v194: priešas gyvena savo zonoje. Kitos zonos priešas nei atnaujinamas,
+       nei matomas, nei rodo žymę — bet ir neatgimsta iš naujo, tad grįžus jis
+       tebėra ten, kur buvo. */
+    if((e.zone||null)!==ZONE){
+      /* NE „tik pirmą kartą": priešo GLB modelis užsikrauna asinchroniškai ir
+         atsiranda jau matomas, tad tikrinti reikia kas kadrą (pigu — dvi
+         savybės). Žymė nuimama vieną kartą. */
+      if(e.obj.visible) e.obj.visible=false;
+      if(e.glb&&e.glb.model&&e.glb.model.visible) e.glb.model.visible=false;
+      if(!e.__hid){ e.__hid=1; if(e.tag) e.tag.hide(); }
+      continue;
+    }
+    if(e.__hid){
+      e.__hid=0; e.obj.visible=true;
+      if(e.glb&&e.glb.model) e.glb.model.visible=true;
+      if(!e.proc&&enemyProcNeeded()) enemyProcBuild(e);   // v194: kūnas — tik įėjus
+      applyModelQuality();
+    }
+    if(!e.proc&&!e.dead&&enemyProcNeeded()&&procArti(e)) enemyProcBuild(e);
     if(e.def.dummy){                       // v96: taikinio manekenas — jokio AI
       e.hp=e.maxHp; e.dead=false; e.state='idle';
       if(e.home){ e.pos.x=e.home.x; e.pos.z=e.home.z; }   // v104: atatranka jo nepajudina
@@ -9863,6 +10289,11 @@ function updateNodes(dt){
   if(gatherCd>0) gatherCd-=dt;
   if(player.workStam<player.maxWorkStam) player.workStam=Math.min(player.maxWorkStam,player.workStam+dt*1.5);
   for(const n of nodes){
+    if((n.zone||null)!==ZONE){                  // v194: kitos zonos šaltinis
+      if(n.obj.visible){ n.obj.visible=false; if(n.tag) n.tag.hide(); }
+      continue;
+    }
+    if(!n.obj.visible&&n.ready) n.obj.visible=true;
     if(!n.ready){
       n.cd-=dt;
       if(n.cd<=0){n.ready=true;n.obj.visible=true;resetNodeWear(n);}   // v138: vėl pilnas
@@ -9871,6 +10302,7 @@ function updateNodes(dt){
     n.obj.rotation.y+=dt*.6;
     placeTag(n.tag,n.pos.x,n.pos.y+1.1,n.pos.z,26);
   }
+  nodeBatchSync();          // v194: visos instancijos į vieną tinklelį
 }
 
 /* ===================== ANT ŽEMĖS GULINTYS DAIKTAI (v189) =====================
@@ -10082,6 +10514,8 @@ function frame(now){
   updatePlayer(dt);
   updateEnemies(dt);
   updateNodes(dt);
+  updateZones(dt);          // v194: požemių žibintai, vartai, perėjimai
+  updateFauna(dt);          // v194: elniai, lapės, vilkai, karvės, arkliai
   updateDrops(dt);
   updateProjectiles(dt);
   updateFishing(dt);
@@ -10109,7 +10543,7 @@ function frame(now){
   farReset();
   if(glbOn&&playerGltfMixer) playerGltfMixer.update(dt);
   /* priešai: arti — visada, toliau — ratu pagal biudžetą (v193) */
-  if(glbOn) mixBudget('priesai',ENEMY_GLB,dt,LOD_ON?24:1e9,
+  if(glbOn) mixBudget('priesai',zoneGlb(),dt,LOD_ON?24:1e9,
                       A=>A.mixer, A=>A.e.pos.x, A=>A.e.pos.z);
   updateMeditatePose(dt);        // v191: meditacijos Y poza
   updateSpellClips();            // v184: burtų klipai 33/35/36/34
@@ -10138,7 +10572,7 @@ function frame(now){
         m.visible=!toli;
         if(toli) farAdd(m.position.x,m.position.y+1.15,m.position.z);
       }
-      for(const A of ENEMY_GLB){
+      for(const A of zoneGlb()){
         const e=A.e; if(!e||e.dead||!A.model) continue;
         const d=Math.hypot(e.pos.x-camX,e.pos.z-camZ);
         const toli=d>FAR_DIST;
@@ -10547,6 +10981,635 @@ document.getElementById('chGo').onclick=async()=>{
   finally{ gbusy(false); }
 };
 
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TIKRI MODELIAI (v194) — GIRIA_TURTAS.glb
+
+   KAS VIDUJE. 40 modelių iš vartotojo atsiųstų OBJ paketų, suverstų į vieną
+   .glb (žr. scratchpad/p/turtas.js): pušys, lapuočiai, beržai, sausuoliai,
+   krūmai, žolės kuokštai, gėlės, penki akmenys, šeši žvėrys ir valtis.
+   Tekstūrų JOKIŲ — paketuose jų ir nebuvo, tik medžiagų spalvos. Todėl
+   spalva sudėta į viršūnes (COLOR_0), visi modeliai dalijasi VIENA medžiaga,
+   ir kiekvieną rūšį galima piešti per InstancedMesh — vienas iškvietimas
+   šimtui medžių. Visas failas — 1,6 MB.
+
+   KODĖL NE IŠ KARTO. Failas kraunamas fone. Kol jo nėra (arba jei jis
+   neįkeltas į svetainę), pasaulyje lieka senieji kūginiai medžiai ir
+   dvidešimtsienis akmuo — žaidimas veikia lygiai taip pat, tik atrodo
+   kukliau. Užsikrovus kūginiai paslepiami, o į TAS PAČIAS vietas
+   (trees[], ROCK_SPOTS) sustatomi tikri modeliai.
+
+   ŽVĖRYS. Ne priešai: elniai, lapės, vilkai, karvės ir arkliai vaikšto
+   savo keliais ir bėga nuo žaidėjo. Vienas InstancedMesh rūšiai, matricos
+   perrašomos kadre — jokių skeletų ir mikserių.
+   ═══════════════════════════════════════════════════════════════════════ */
+const TURTAS={};
+let TURTAS_MAT=null, turtasOn=false;
+const TURTAS_URLS=glbUrls('GIRIA_TURTAS.glb');
+
+function turtasInst(vardas,sarasas,sesely){
+  const geo=TURTAS[vardas];
+  if(!geo||!sarasas.length) return null;
+  const im=new THREE.InstancedMesh(geo,TURTAS_MAT,sarasas.length);
+  im.raycast=()=>{};
+  if(sesely){ im.castShadow=true; im.receiveShadow=true; im.userData.shad=true; }
+  const m=new THREE.Matrix4(),q=new THREE.Quaternion(),
+        s=new THREE.Vector3(),v=new THREE.Vector3(),up=new THREE.Vector3(0,1,0);
+  sarasas.forEach((o,i)=>{
+    q.setFromAxisAngle(up,o.rot||0);
+    s.set(o.s,o.sy||o.s,o.s);
+    v.set(o.x,o.y,o.z);
+    m.compose(v,q,s); im.setMatrixAt(i,m);
+  });
+  im.instanceMatrix.needsUpdate=true;
+  scene.add(im);
+  OVERWORLD_HIDE.push(im);        // v194: požemyje paslepiam (žr. komentarą)
+  return im;
+}
+
+/* kuris medžio modelis kuriam biomui */
+const MED_LAUKAI=['Tree_1','Tree_4','Tree_8','Birch_2','Birch_7'];
+const MED_MISKAS=['Pine_1','Pine_4','Tree_1','Tree_9','Birch_3','Tree_4','Pine_2'];
+const MED_TAMSUS=['Pine_2','Pine_5','DeadTree_3','DeadBirch_4','Pine_5','DeadBirch_7','DeadTree_6'];
+const MED_LENGVI=['Pine_4','Pine_2','Tree_1','DeadBirch_7'];
+function dressForest(){
+  const grupes={};
+  const lengvai=CFG.quality!=='high';
+  let k=0;
+  for(const t of trees){
+    if(t.sc===undefined) continue;
+    const sar=lengvai?MED_LENGVI:
+      (t.bio===BIO_LAUKAI?MED_LAUKAI:t.bio===BIO_MISKAS?MED_MISKAS:MED_TAMSUS);
+    const v=sar[(k++)%sar.length];
+    (grupes[v]=grupes[v]||[]).push({x:t.x,y:t.y,z:t.z,rot:t.rot,s:t.sc*0.8,sy:t.sc*rnd(.78,.95)});
+  }
+  let ok=false;
+  for(const v in grupes) if(turtasInst(v,grupes[v],true)) ok=true;
+  if(ok) for(const m of CONE_TREES) m.visible=false;
+}
+function dressRocks(){
+  const vardai=['Rock_1','Rock_2','Rock_3','Rock_4','Rock_5'], grupes={};
+  ROCK_SPOTS.forEach((r,i)=>{
+    const v=vardai[i%vardai.length];
+    (grupes[v]=grupes[v]||[]).push({x:r.x,y:r.y-.1,z:r.z,rot:Math.random()*TAU,s:r.sc*1.1});
+  });
+  let ok=false;
+  for(const v in grupes) if(turtasInst(v,grupes[v],true)) ok=true;
+  if(ok) for(const m of CONE_ROCKS) m.visible=false;
+}
+/* pomiškis: krūmai girioje, gėlės ir žolės kuokštai laukuose */
+function dressUndergrowth(){
+  const KRUMAI=['Bush','Bush_Large','Bush_Small_Flowers','Bush_Large_Flowers','Plant_1'];
+  const PIEVA =['Flower_1_Clump','Flower_3_Clump','Flower_5_Clump','Grass_Large','Grass_Small','Plant_Flowers'];
+  const gK={}, gP={};
+  const n=CFG.quality==='high'?900:320;
+  for(let i=0;i<n;i++){
+    const a=Math.random()*TAU, r=Math.sqrt(Math.random())*(WORLD-16)+5;
+    const x=Math.cos(a)*r, z=Math.sin(a)*r, y=heightAt(x,z);
+    if(y<WATER+.5||y>20) continue;
+    if(!treeClear(x,z,1.1)) continue;
+    const bio=biomeAt(x,z);
+    const o={x,y:y-.05,z,rot:Math.random()*TAU,s:rnd(.7,1.35)};
+    if(bio===BIO_LAUKAI){ const v=PIEVA[i%PIEVA.length]; (gP[v]=gP[v]||[]).push(o); }
+    else { const v=KRUMAI[i%KRUMAI.length]; o.s*=(bio===BIO_TAMSUS?.9:1.1); (gK[v]=gK[v]||[]).push(o); }
+  }
+  for(const v in gK) turtasInst(v,gK[v],false);
+  for(const v in gP) turtasInst(v,gP[v],false);
+}
+/* valtys prie ežerų ir upės */
+function dressBoats(){
+  const sar=[];
+  for(const L of LAKES){
+    for(let k=0;k<40;k++){
+      const a=Math.random()*TAU, r=L.r*rnd(.55,.85);
+      const x=L.x+Math.cos(a)*r, z=L.z+Math.sin(a)*r;
+      if(waterTypeAt(x,z)!=='ezeras') continue;
+      sar.push({x,y:WATER+.12,z,rot:Math.random()*TAU,s:.62});
+      break;
+    }
+  }
+  for(const z of [40,-90,150]){
+    const x=RIVER(z);
+    if(waterTypeAt(x,z)==='upe') sar.push({x,y:WATER+.12,z,rot:rnd(0,TAU),s:.62});
+  }
+  turtasInst('Boat',sar,false);
+}
+
+/* --- ŽVĖRYS --- */
+const FAUNA=[];
+const FAUNA_DEF=[
+  {m:'Deer', n:7, bio:BIO_MISKAS, s:0.37, spd:2.4},
+  {m:'Stag', n:3, bio:BIO_MISKAS, s:0.37, spd:2.6},
+  {m:'Fox',  n:6, bio:BIO_LAUKAI, s:0.19, spd:3.0},
+  {m:'Wolf', n:5, bio:BIO_TAMSUS, s:0.31, spd:3.2},
+  {m:'Cow',  n:5, bio:BIO_LAUKAI, s:0.33, spd:1.2},
+  {m:'Horse',n:4, bio:BIO_LAUKAI, s:0.35, spd:2.8}
+];
+function faunaInit(){
+  const m4=new THREE.Matrix4();
+  for(const d of FAUNA_DEF){
+    const geo=TURTAS[d.m]; if(!geo) continue;
+    const kiek=CFG.quality==='high'?d.n:Math.max(2,Math.round(d.n*.5));
+    const im=new THREE.InstancedMesh(geo,TURTAS_MAT,kiek);
+    im.raycast=()=>{}; im.castShadow=true; im.userData.shad=true;
+    im.frustumCulled=false;
+    scene.add(im);
+    const grupe={mesh:im,def:d,vnt:[]};
+    let made=0,guard=0;
+    while(made<kiek&&guard++<3000){
+      const a=Math.random()*TAU, r=Math.sqrt(Math.random())*(WORLD-30)+18;
+      const x=Math.cos(a)*r, z=Math.sin(a)*r;
+      if(!walkable(x,z)) continue;
+      if(biomeAt(x,z)!==d.bio) continue;
+      const v={x,z,yaw:rnd(0,TAU),tx:x,tz:z,cd:rnd(0,5),pos:{x,z}};
+      grupe.vnt.push(v); wanderers.push(v); made++;
+    }
+    im.count=grupe.vnt.length;
+    if(grupe.vnt.length) FAUNA.push(grupe);
+  }
+}
+const fnM=new THREE.Matrix4(), fnQ=new THREE.Quaternion(),
+      fnV=new THREE.Vector3(), fnS=new THREE.Vector3(), fnUp=new THREE.Vector3(0,1,0);
+function updateFauna(dt){
+  if(!FAUNA.length) return;
+  const px=player.pos.x, pz=player.pos.z, matyt=!ZONE;
+  for(const g of FAUNA){
+    g.mesh.visible=matyt;
+    if(!matyt) continue;
+    const d=g.def;
+    for(let i=0;i<g.vnt.length;i++){
+      const v=g.vnt[i];
+      const dx=v.x-px, dz=v.z-pz, dist=Math.hypot(dx,dz);
+      let spd=d.spd*.35;
+      if(dist<13){                       // pabėga
+        v.tx=v.x+dx/(dist||1)*22; v.tz=v.z+dz/(dist||1)*22; v.cd=1.2; spd=d.spd;
+      }else{
+        v.cd-=dt;
+        if(v.cd<=0){
+          v.cd=rnd(3,9);
+          const a=rnd(0,TAU), r=rnd(4,16);
+          v.tx=v.x+Math.cos(a)*r; v.tz=v.z+Math.sin(a)*r;
+        }
+      }
+      const ax=v.tx-v.x, az=v.tz-v.z, ad=Math.hypot(ax,az);
+      if(ad>.6){
+        const nx=v.x+ax/ad*spd*dt, nz=v.z+az/ad*spd*dt;
+        if(walkable(nx,nz)&&treeClear(nx,nz,.9)){ v.x=nx; v.z=nz; v.yaw=Math.atan2(ax,az); }
+        else v.cd=0;
+      }
+      v.pos.x=v.x; v.pos.z=v.z;
+      fnQ.setFromAxisAngle(fnUp,v.yaw);
+      fnS.set(d.s,d.s,d.s);
+      fnV.set(v.x,heightAt(v.x,v.z),v.z);
+      fnM.compose(fnV,fnQ,fnS);
+      g.mesh.setMatrixAt(i,fnM);
+    }
+    g.mesh.instanceMatrix.needsUpdate=true;
+  }
+}
+
+function turtasInit(){
+  if(typeof THREE==='undefined'||!THREE.GLTFLoader) return;
+  loadGlbAny(TURTAS_URLS,g=>{
+    g.scene.traverse(o=>{ if(o.isMesh&&o.geometry) TURTAS[o.name||(o.parent&&o.parent.name)]=o.geometry; });
+    if(!Object.keys(TURTAS).length) return;
+    TURTAS_MAT=new THREE.MeshLambertMaterial({vertexColors:true});
+    turtasOn=true;
+    dressForest(); dressRocks(); dressUndergrowth(); dressBoats(); faunaInit();
+    applyQuality();
+    log(T('assetsLoaded')+Object.keys(TURTAS).length,'lg-s');
+  },()=>console.warn('GIRIA_TURTAS.glb neįkeltas — lieka paprasti medžiai'));
+}
+/* ═══════════════════════════════════════════════════════════════════════
+   POŽEMIAI (v194)
+
+   KAS TAI. Du dideli, ilgi, šakoti požemiai su akligatviais: „Vilkų olos"
+   (miške) ir „Gintaro kasyklos" (tamsiame miške). Kiekvieno tinklelis
+   55×55 langelių po 6 m = 330×330 m, t. y. maždaug dvigubai daugiau nei
+   buvo VISAS ankstesnis žaidimo pasaulis (236×236 m).
+
+   KAIP SUDĖLIOTA. Klasikinis „recursive backtracker" labirintas ant nelyginio
+   tinklelio — jis savaime duoda daug akligatvių ir vieną kelią tarp bet kurių
+   dviejų taškų. Po to:
+     · išmušama ~7 % sienų — atsiranda kilpų, tad kelias nebe vienintelis;
+     · iškertamos salės (3×3 … 5×5) — vietos kautis;
+     · akligatviuose sodomos rūdos (kasama kirtikliu), salėse — priešai.
+
+   KUR JIE ERDVĖJE. Ne po kaimaviete, o TOLI šone (ox = 30000 ir 60000).
+   Taip nė vienas atstumu paremtas skaičiavimas (taikinių ieškojimas, arcHit,
+   priešų aggro, minimapas) nesumaišo požemio su paviršiumi — jiems tereikia
+   zonos patikros ten, kur ji svarbi. Tokie koordinačių dydžiai three.js
+   nekenkia: modelViewMatrix skaičiuojamas dvigubu tikslumu CPU pusėje ir į
+   shaderį eina jau kameros atžvilgiu.
+
+   ŠVIESA. Saulės po žeme nėra: applyAtmosphere() ją prigesina, o pusrutulio
+   šviesą perdažo į rusvą prieblandą. Deglai — vienas Points debesis (vienas
+   piešimo iškvietimas) ir viena taškinė šviesa, sekanti žaidėją.
+   ═══════════════════════════════════════════════════════════════════════ */
+const DUN_C=6;                 // langelio kraštinė (m)
+const DUN_G=55;                // tinklelio matmuo (nelyginis!)
+const DUN_H=5.2;               // lubų aukštis
+const DUN_DEFS=[
+  {key:'olos', name:{lt:'Vilkų olos',en:'Wolf caves'}, seed:13370,
+   bio:BIO_MISKAS, rmin:96, rmax:140, ang:2.15, ox:30000, oz:0,
+   floor:0x2a2721, wall:0x38332c, roof:0x14120f, torch:0xffa348,
+   ore:['akmuo','akmuo','gelezis','gelezis','sidabras'],
+   mobs:['kipsas','kaukas','kipsas','lauma','vilkas'], mobN:12, oreN:26},
+  {key:'kasyklos', name:{lt:'Gintaro kasyklos',en:'Amber mines'}, seed:90210,
+   bio:BIO_TAMSUS, rmin:168, rmax:206, ang:-1.05, ox:60000, oz:0,
+   floor:0x2e281e, wall:0x413528, roof:0x18130d, torch:0xffc85a,
+   ore:['gelezis','sidabras','sidabras','gintaras2','gintaras2'],
+   mobs:['slogutis','kipsas','vilkas','slogutis','lauma'], mobN:14, oreN:28}
+];
+const DUNS={};
+let dunLight=null, dunPortalCd=0, lastBio=-1;
+
+/* atsitiktinumas su sėkla — kad tas pats požemis atrodytų vienodai */
+function dunRng(a){
+  return function(){
+    a|=0; a=a+0x6D2B79F5|0;
+    let t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+
+/* --- labirintas: 1 = uola, 0 = koridorius --- */
+function dunMaze(G,rng){
+  const sol=new Uint8Array(G*G).fill(1);
+  const id=(i,j)=>j*G+i;
+  const stack=[[1,1]];
+  sol[id(1,1)]=0;
+  while(stack.length){
+    const cur=stack[stack.length-1], i=cur[0], j=cur[1];
+    const dirs=[[2,0],[-2,0],[0,2],[0,-2]];
+    for(let k=3;k>0;k--){ const r=Math.floor(rng()*(k+1)); const tmp=dirs[k]; dirs[k]=dirs[r]; dirs[r]=tmp; }
+    let ejo=false;
+    for(const d of dirs){
+      const ni=i+d[0], nj=j+d[1];
+      if(ni<1||nj<1||ni>G-2||nj>G-2) continue;
+      if(!sol[id(ni,nj)]) continue;
+      sol[id(i+d[0]/2,j+d[1]/2)]=0; sol[id(ni,nj)]=0;
+      stack.push([ni,nj]); ejo=true; break;
+    }
+    if(!ejo) stack.pop();
+  }
+  /* kilpos: išmušam dalį sienų tarp dviejų koridorių — nebelieka vienintelio kelio */
+  for(let j=1;j<G-1;j++) for(let i=1;i<G-1;i++){
+    if(!sol[id(i,j)]) continue;
+    const h=!sol[id(i-1,j)]&&!sol[id(i+1,j)]&&sol[id(i,j-1)]&&sol[id(i,j+1)];
+    const v=!sol[id(i,j-1)]&&!sol[id(i,j+1)]&&sol[id(i-1,j)]&&sol[id(i+1,j)];
+    if((h||v)&&rng()<0.07) sol[id(i,j)]=0;
+  }
+  /* salės */
+  const sales=[];
+  for(let s=0;s<11;s++){
+    const w=3+2*Math.floor(rng()*2), hgt=3+2*Math.floor(rng()*2);
+    const i0=1+2*Math.floor(rng()*((G-w-2)/2)), j0=1+2*Math.floor(rng()*((G-hgt-2)/2));
+    for(let j=j0;j<j0+hgt;j++) for(let i=i0;i<i0+w;i++) sol[id(i,j)]=0;
+    sales.push({i:i0+(w>>1), j:j0+(hgt>>1)});
+  }
+  /* akligatviai: koridoriaus langelis su vieninteliu laisvu kaimynu */
+  const galai=[];
+  for(let j=1;j<G-1;j++) for(let i=1;i<G-1;i++){
+    if(sol[id(i,j)]) continue;
+    let n=0;
+    if(!sol[id(i-1,j)])n++; if(!sol[id(i+1,j)])n++;
+    if(!sol[id(i,j-1)])n++; if(!sol[id(i,j+1)])n++;
+    if(n===1) galai.push({i,j});
+  }
+  return {sol,sales,galai};
+}
+
+/* --- požemio žemėlapio paveikslėlis (minimapui) --- */
+function dunMapBmp(D0){
+  const G=D0.G, N=G*4;
+  const c=document.createElement('canvas'); c.width=c.height=N;
+  const g=c.getContext&&c.getContext('2d');
+  if(!g||!g.fillRect) return null;
+  g.fillStyle='#0a0b0c'; g.fillRect(0,0,N,N);
+  g.fillStyle='#5b5348';
+  for(let j=0;j<G;j++) for(let i=0;i<G;i++)
+    if(!D0.sol[j*G+i]) g.fillRect(i*4,j*4,4,4);
+  return {bmp:c,cx:D0.ox,cz:D0.oz,half:G*DUN_C/2};
+}
+
+/* --- geometrija --- */
+function dunBuild(def){
+  const rng=dunRng(def.seed);
+  const G=DUN_G, m=dunMaze(G,rng);
+  const off=(G-1)/2;
+  const D0={key:def.key,def,G,sol:m.sol,ox:def.ox,oz:def.oz,
+            grp:new THREE.Group(),torchPts:null,map:null,
+            start:null,enter:null,exit:null};
+  D0.grp.visible=false; scene.add(D0.grp);
+  const wx=i=>def.ox+(i-off)*DUN_C, wz=j=>def.oz+(j-off)*DUN_C;
+
+  /* atviri langeliai */
+  const atviri=[];
+  for(let j=0;j<G;j++) for(let i=0;i<G;i++) if(!m.sol[j*G+i]) atviri.push({i,j});
+
+  /* sienos — tik tos uolos, kurios ribojasi su koridoriumi (vidurio niekas nemato) */
+  const sienos=[];
+  for(let j=0;j<G;j++) for(let i=0;i<G;i++){
+    if(!m.sol[j*G+i]) continue;
+    let salia=false;
+    for(let b=-1;b<=1&&!salia;b++) for(let a=-1;a<=1;a++){
+      const ni=i+a,nj=j+b;
+      if(ni<0||nj<0||ni>=G||nj>=G) continue;
+      if(!m.sol[nj*G+ni]){ salia=true; break; }
+    }
+    if(salia) sienos.push({i,j});
+  }
+
+  const mm=new THREE.Matrix4(), q=new THREE.Quaternion(), sc=new THREE.Vector3(1,1,1), v=new THREE.Vector3();
+  const tint=new THREE.Color();
+
+  /* grindys (padalintos 3×3, kad taškinė šviesa nesikapotų) */
+  const fg=new THREE.PlaneGeometry(DUN_C,DUN_C,3,3); fg.rotateX(-Math.PI/2);
+  const fMesh=new THREE.InstancedMesh(fg,new THREE.MeshLambertMaterial({color:def.floor}),atviri.length);
+  fMesh.raycast=()=>{};
+  atviri.forEach((c,k)=>{
+    v.set(wx(c.i),0,wz(c.j)); mm.compose(v,q,sc); fMesh.setMatrixAt(k,mm);
+    const t=.82+h2(c.i*3.7,c.j*2.9)*.34; tint.setRGB(t,t*.97,t*.92);
+    if(fMesh.setColorAt) fMesh.setColorAt(k,tint);
+  });
+  fMesh.instanceMatrix.needsUpdate=true;
+  if(fMesh.instanceColor) fMesh.instanceColor.needsUpdate=true;
+  D0.grp.add(fMesh);
+
+  /* lubos */
+  const cg=new THREE.PlaneGeometry(DUN_C,DUN_C); cg.rotateX(Math.PI/2);
+  const cMesh=new THREE.InstancedMesh(cg,new THREE.MeshLambertMaterial({color:def.roof}),atviri.length);
+  cMesh.raycast=()=>{};
+  atviri.forEach((c,k)=>{ v.set(wx(c.i),DUN_H,wz(c.j)); mm.compose(v,q,sc); cMesh.setMatrixAt(k,mm); });
+  cMesh.instanceMatrix.needsUpdate=true;
+  D0.grp.add(cMesh);
+
+  /* uolos */
+  const wg=new THREE.BoxGeometry(DUN_C,DUN_H,DUN_C);
+  const wMesh=new THREE.InstancedMesh(wg,new THREE.MeshLambertMaterial({color:def.wall}),sienos.length);
+  wMesh.raycast=()=>{};
+  sienos.forEach((c,k)=>{
+    const sy=.94+h2(c.i*5.1,c.j*4.3)*.12;
+    sc.set(1,sy,1);
+    v.set(wx(c.i),DUN_H*sy/2,wz(c.j)); mm.compose(v,q,sc); wMesh.setMatrixAt(k,mm);
+    const t=.80+h2(c.i*2.3,c.j*6.1)*.38; tint.setRGB(t,t*.95,t*.88);
+    if(wMesh.setColorAt) wMesh.setColorAt(k,tint);
+  });
+  sc.set(1,1,1);
+  wMesh.instanceMatrix.needsUpdate=true;
+  if(wMesh.instanceColor) wMesh.instanceColor.needsUpdate=true;
+  D0.grp.add(wMesh);
+
+  /* deglai — vienas Points debesis visam požemiui */
+  const degl=[];
+  for(let k=0;k<atviri.length;k++) if(rng()<0.055) degl.push(atviri[k]);
+  if(degl.length){
+    const pos=new Float32Array(degl.length*3);
+    degl.forEach((c,k)=>{ pos[k*3]=wx(c.i); pos[k*3+1]=2.9; pos[k*3+2]=wz(c.j); });
+    const pg=new THREE.BufferGeometry();
+    pg.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    const pmat=new THREE.PointsMaterial({size:2.9,map:glowTex,color:def.torch,
+      transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,sizeAttenuation:true});
+    const pts=new THREE.Points(pg,pmat);
+    pts.frustumCulled=false; pts.raycast=()=>{};
+    D0.torchPts=pts; D0.grp.add(pts);
+  }
+
+  /* pradžios langelis — arčiausias tinklelio kampui, kad kelias būtų ilgas */
+  let best=atviri[0], bd=1e9;
+  for(const c of atviri){ const d=c.i*c.i+c.j*c.j; if(d<bd){bd=d;best=c;} }
+  D0.start={x:wx(best.i),z:wz(best.j)};
+  D0.sales=m.sales.map(s=>({x:wx(s.i),z:wz(s.j)}));
+  D0.galai=m.galai.map(s=>({x:wx(s.i),z:wz(s.j)}));
+  D0.map=dunMapBmp(D0);
+  return D0;
+}
+
+/* --- kietumas ir susidūrimai --- */
+function dunSolidAt(x,z){
+  const D0=DUNS[ZONE]; if(!D0) return false;
+  const off=(D0.G-1)/2;
+  const i=Math.round((x-D0.ox)/DUN_C+off), j=Math.round((z-D0.oz)/DUN_C+off);
+  if(i<0||j<0||i>=D0.G||j>=D0.G) return true;
+  return !!D0.sol[j*D0.G+i];
+}
+function dunCollide(p,prev){
+  const D0=DUNS[ZONE]; if(!D0) return;
+  const off=(D0.G-1)/2, R=MOVER_R+.06, h=DUN_C/2;
+  const ci=Math.round((p.x-D0.ox)/DUN_C+off), cj=Math.round((p.z-D0.oz)/DUN_C+off);
+  for(let b=-1;b<=1;b++) for(let a=-1;a<=1;a++){
+    const i=ci+a, j=cj+b;
+    const kieta=(i<0||j<0||i>=D0.G||j>=D0.G)?1:D0.sol[j*D0.G+i];
+    if(!kieta) continue;
+    const cx=D0.ox+(i-off)*DUN_C, cz=D0.oz+(j-off)*DUN_C;
+    const x0=cx-h,x1=cx+h,z0=cz-h,z1=cz+h;
+    const nx=clamp(p.x,x0,x1), nz=clamp(p.z,z0,z1);
+    const dx=p.x-nx, dz=p.z-nz, d=Math.hypot(dx,dz);
+    if(d>=R) continue;
+    if(d>1e-4){ p.x=nx+dx/d*R; p.z=nz+dz/d*R; }
+    else{
+      const a1=p.x-x0,a2=x1-p.x,a3=p.z-z0,a4=z1-p.z;
+      const mn=Math.min(a1,a2,a3,a4);
+      if(mn===a1) p.x=x0-R; else if(mn===a2) p.x=x1+R;
+      else if(mn===a3) p.z=z0-R; else p.z=z1+R;
+      if(prev){ p.x=prev.x; p.z=prev.z; }
+    }
+  }
+}
+
+/* --- vartai (abiejose pusėse vienodi, tik spalva kita) --- */
+function dunGate(x,y,z,spalva,vardas){
+  const g=new THREE.Group();
+  const st=new THREE.MeshLambertMaterial({color:0x6b6459});
+  const kol=new THREE.BoxGeometry(.7,3.2,.7);
+  const l=new THREE.Mesh(kol,st), r=new THREE.Mesh(kol,st);
+  l.position.set(-1.5,1.6,0); r.position.set(1.5,1.6,0); g.add(l); g.add(r);
+  const sk=new THREE.Mesh(new THREE.BoxGeometry(3.9,.7,.8),st);
+  sk.position.y=3.5; g.add(sk);
+  const anga=new THREE.Mesh(new THREE.PlaneGeometry(2.6,3.1),
+    new THREE.MeshBasicMaterial({color:spalva,transparent:true,opacity:.5,side:THREE.DoubleSide,depthWrite:false}));
+  anga.position.y=1.6; g.add(anga);
+  const halo=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:spalva,
+    transparent:true,opacity:.55,depthWrite:false,blending:THREE.AdditiveBlending}));
+  halo.scale.set(7,7,1); halo.position.y=1.8; g.add(halo);
+  g.position.set(x,y,z);
+  g.userData.halo=halo;
+  return {obj:g,x,z,tag:makeTag(vardas,'#ffd166',false)};
+}
+
+/* --- vieta girioje: einam ratu, kol randam tinkamą tašką norimame biome --- */
+function dunFindSpot(def){
+  for(let k=0;k<4000;k++){
+    const a=def.ang+k*0.0917;
+    const r=def.rmin+((k*13)%100)/100*(def.rmax-def.rmin);
+    const x=Math.cos(a)*r, z=Math.sin(a)*r;
+    if(!walkable(x,z)) continue;
+    if(biomeAt(x,z)!==def.bio) continue;
+    const y=heightAt(x,z);
+    if(y>17) continue;
+    if(!treeClear(x,z,3.4)) continue;
+    return {x,z,y};
+  }
+  const x=Math.cos(def.ang)*def.rmin, z=Math.sin(def.ang)*def.rmin;
+  return {x,z,y:heightAt(x,z)};
+}
+
+/* --- turinys: rūdos akligatviuose, priešai salėse --- */
+function dunFill(D0){
+  const def=D0.def, rng=dunRng(def.seed+7777);
+  SPAWN_ZONE=D0.key;
+  /* rūdos */
+  const galai=D0.galai.slice();
+  for(let k=galai.length-1;k>0;k--){ const r=Math.floor(rng()*(k+1)); const t=galai[k]; galai[k]=galai[r]; galai[r]=t; }
+  const kiek=Math.min(def.oreN,galai.length);
+  for(let k=0;k<kiek;k++){
+    const sp=galai[k];
+    const kk=NODE_KINDS.find(x=>x.key===def.ore[k%def.ore.length]);
+    if(!kk) continue;
+    const mat=new THREE.MeshLambertMaterial({color:kk.color,
+      emissive:kk.key==='gintaras2'?0x4a2f06:0x151310});
+    const ms=new THREE.Mesh(kk.geo(),mat);
+    ms.position.set(sp.x+(rng()-.5)*1.6,kk.h,sp.z+(rng()-.5)*1.6);
+    nodeBatchAdd(kk,ms);                     // v194: bendras tinklelis
+    const nd={obj:ms,kind:kk,pos:ms.position,ready:true,cd:0,zone:D0.key,
+      tag:makeTag(kk.label,'#c8b07a',false)};
+    nodes.push(nd);
+    if(kk.r) addBody({x:ms.position.x,z:ms.position.z},kk.r,()=>nd.ready);
+  }
+  /* priešai */
+  const vietos=D0.sales.concat(galai.slice(kiek));
+  for(let k=0;k<def.mobN&&k<vietos.length;k++){
+    const sp=vietos[k%vietos.length];
+    const md=MOBS.find(x=>x.key===def.mobs[k%def.mobs.length]);
+    if(!md) continue;
+    const x=sp.x+(rng()-.5)*3, z=sp.z+(rng()-.5)*3;
+    if(dunSolidRaw(D0,x,z)) continue;
+    const e=spawnEnemy(md,x,z);
+    e.zone=D0.key; e.__hid=1; e.obj.visible=false;
+  }
+  SPAWN_ZONE=null;
+}
+/* kietumas KONKREČIAM požemiui (dunSolidAt žiūri tik į aktyvųjį) */
+function dunSolidRaw(D0,x,z){
+  const off=(D0.G-1)/2;
+  const i=Math.round((x-D0.ox)/DUN_C+off), j=Math.round((z-D0.oz)/DUN_C+off);
+  if(i<0||j<0||i>=D0.G||j>=D0.G) return true;
+  return !!D0.sol[j*D0.G+i];
+}
+
+/* --- viskas sukuriama krovimosi metu --- */
+const DUN_GATES=[];
+function dunInit(){
+  if(typeof THREE==='undefined'||!THREE.InstancedMesh) return;
+  for(const def of DUN_DEFS){
+    const D0=dunBuild(def);
+    DUNS[def.key]=D0;
+    dunFill(D0);
+    const sp=dunFindSpot(def);
+    D0.enter=dunGate(sp.x,sp.y,sp.z,0x4a2f6b,Lx(def.name));
+    scene.add(D0.enter.obj);
+    DUN_GATES.push({g:D0.enter,zone:null,to:def.key});
+    D0.exit=dunGate(D0.start.x,0,D0.start.z,0x6fbf7a,T('dunExit'));
+    D0.grp.add(D0.exit.obj);
+    DUN_GATES.push({g:D0.exit,zone:def.key,to:null});
+    /* žaidėjas turi atsirasti ŠALIA išėjimo vartų, ne ant jų — kitaip praėjus
+       atvėsimui iškart būtų išmestas atgal. Ieškom laisvo kaimyno; jei nė vieno
+       nėra (neturėtų būti), lieka pats langelis. */
+    D0.startSafe={x:D0.start.x,z:D0.start.z};
+    for(const d of [[0,1],[1,0],[0,-1],[-1,0]]){
+      const nx=D0.start.x+d[0]*DUN_C, nz=D0.start.z+d[1]*DUN_C;
+      if(!dunSolidRaw(D0,nx,nz)){ D0.startSafe={x:nx,z:nz}; break; }
+    }
+  }
+  dunLight=new THREE.PointLight(0xffb367,3.0,19,1.7);
+  dunLight.visible=false; scene.add(dunLight);
+}
+
+/* --- perėjimas --- */
+function enterZone(id,x,z){
+  ZONE=id;
+  for(const k in DUNS) DUNS[k].grp.visible=(k===id);
+  const paviršius=!id;
+  ground.visible=paviršius; water.visible=paviršius;
+  waves.visible=paviršius; waves2.visible=paviršius;
+  sky.visible=paviršius; sunSprite.visible=paviršius;
+  fire.visible=paviršius; flies.visible=paviršius;
+  if(mist) mist.visible=paviršius;
+  if(grassMesh) grassMesh.visible=paviršius;
+  for(const o of OVERWORLD_HIDE) if(o) o.visible=paviršius;
+  if(dunLight) dunLight.visible=!paviršius;
+  MAPSRC=id?DUNS[id].map:WORLD_MAP;
+  player.pos.x=x; player.pos.z=z; player.pos.y=heightAt(x,z);
+  player.moveTo=null; player.targetId=null; player.gatherId=null;
+  player.autoAtk=false; player.approach=false;
+  zoneGlbCache=null;
+  dunPortalCd=3.0;
+  log(id?(T('dunEnter')+Lx(DUNS[id].def.name)):T('dunLeave'),'lg-a');
+  sfx('chop');
+}
+
+/* v194: sąrašas GLB priešų TIK dabartinėje zonoje — kad mikserių biudžetas
+   nesikapstytų po kitos zonos personažus. Perskaičiuojamas, kai pasikeičia
+   zona arba atsiranda naujas įkrautas modelis. */
+let zoneGlbCache=null, zoneGlbLen=-1;
+function zoneGlb(){
+  if(zoneGlbCache&&zoneGlbLen===ENEMY_GLB.length) return zoneGlbCache;
+  zoneGlbLen=ENEMY_GLB.length;
+  zoneGlbCache=ENEMY_GLB.filter(A=>A.e&&(A.e.zone||null)===ZONE);
+  return zoneGlbCache;
+}
+
+/* --- kadras --- */
+function updateZones(dt){
+  if(dunPortalCd>0) dunPortalCd-=dt;
+  const px=player.pos.x, pz=player.pos.z;
+  for(const G0 of DUN_GATES){
+    if(G0.zone!==ZONE) continue;
+    const d=Math.hypot(px-G0.g.x,pz-G0.g.z);
+    placeTag(G0.g.tag,G0.g.x,(ZONE?0:heightAt(G0.g.x,G0.g.z))+4.2,G0.g.z,60);
+    const halo=G0.g.obj.userData.halo;
+    if(halo) halo.material.opacity=.42+Math.sin(perfNow()*.003)*.16;
+    if(d<2.5&&dunPortalCd<=0){
+      if(G0.to) enterZone(G0.to,DUNS[G0.to].startSafe.x,DUNS[G0.to].startSafe.z);
+      else{
+        const iš=DUNS[ZONE];
+        enterZone(null,iš.enter.x,iš.enter.z+3.2);
+      }
+      return;
+    }
+  }
+  if(ZONE){
+    if(dunLight){ dunLight.position.set(px,2.4,pz); dunLight.intensity=2.9+Math.sin(perfNow()*.006)*.42; }
+    const D0=DUNS[ZONE];
+    if(D0&&D0.torchPts) D0.torchPts.material.opacity=.78+Math.sin(perfNow()*.004)*.18;
+    return;
+  }
+  /* biomo pranešimas — kad būtų aišku, kur atsidūrei */
+  const b=biomeAt(px,pz);
+  if(b!==lastBio){
+    if(lastBio>=0) log(T(b===BIO_LAUKAI?'bioLaukai':b===BIO_MISKAS?'bioMiskas':'bioTamsus'),'lg-a');
+    lastBio=b;
+  }
+}
+const perfNow=()=>(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
+
+/* objektai, kuriuos reikia paslėpti nusileidus po žeme (užpildoma žemiau) */
+const OVERWORLD_HIDE=[];
+let WORLD_MAP=null;
+function worldInit(){
+  WORLD_MAP=buildWorldMap();
+  MAPSRC=WORLD_MAP;
+  if(typeof merchant!=='undefined'&&merchant&&merchant.obj) OVERWORLD_HIDE.push(merchant.obj);
+  if(typeof merchant!=='undefined'&&merchant&&merchant.stall) OVERWORLD_HIDE.push(merchant.stall);
+  if(typeof CATALOG_MODELS!=='undefined') for(const m of CATALOG_MODELS) OVERWORLD_HIDE.push(m);
+  if(typeof dummies!=='undefined') for(const d of dummies) if(d.obj) OVERWORLD_HIDE.push(d.obj);
+  dunInit();
+  turtasInit();
+}
+worldInit();
 requestAnimationFrame(frame);
 </script>
 </body>

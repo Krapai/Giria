@@ -706,8 +706,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v200';
-const GAME_CHANGES='v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
+const GAME_VERSION='v201';
+const GAME_CHANGES='v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -5316,11 +5316,29 @@ const ITEMS={
      rūšiai savi (vartotojo prašymu: „vilko nagai", ne šiaip nagai). Šernams ir
      žvėrims su kanopomis nagų nebūna, tad ten kanopos. */
   kailis:{n:{lt:'Kailis',en:'Hide'},i:'🟫'}, mesa:{n:{lt:'Žalia mėsa',en:'Raw meat'},i:'🥩'},
+  /* v201: TIKROS Baltijos kraštų vaistažolės. Kiekviena auga ten, kur auga ir
+     tikrovėje: saulėtose pievose (jonažolė, ramunė, kraujažolė, čiobrelis),
+     miške (sidabražolė, pakalnutė, dilgėlė), tamsiame eglyne (pataisas,
+     vilkauogė) ir prie vandens (ajeras, pelkinė mėta). Senoji bendra „žolė"
+     palikta — ji vis dar krenta iš tų pačių vietų ir naudojama receptuose. */
+  jonazole:{n:{lt:'Jonažolė',en:"St John's wort"},i:'🌼'},
+  ramune:{n:{lt:'Ramunė',en:'Chamomile'},i:'🌼'},
+  kraujazole:{n:{lt:'Kraujažolė',en:'Yarrow'},i:'🌿'},
+  ciobrelis:{n:{lt:'Čiobrelis',en:'Wild thyme'},i:'🌱'},
+  sidabrazole:{n:{lt:'Sidabražolė',en:'Tormentil'},i:'🌿'},
+  pakalnute:{n:{lt:'Pakalnutė',en:'Lily of the valley'},i:'🔔'},
+  dilgele:{n:{lt:'Dilgėlė',en:'Nettle'},i:'🌿'},
+  pataisas:{n:{lt:'Pataisas',en:'Clubmoss'},i:'🌲'},
+  vilkauoge:{n:{lt:'Vilkauogė',en:'Belladonna'},i:'🖤'},
+  ajeras:{n:{lt:'Ajeras',en:'Sweet flag'},i:'🌾'},
+  meta:{n:{lt:'Pelkinė mėta',en:'Water mint'},i:'🍃'},
   nagai_vilko:{n:{lt:'Vilko nagai',en:'Wolf claws'},i:'🐾'},
   nagai_lapes:{n:{lt:'Lapės nagai',en:'Fox claws'},i:'🐾'},
-  kanopos_elnio:{n:{lt:'Elnio kanopos',en:'Deer hooves'},i:'🦌'},
-  kanopos_briedzio:{n:{lt:'Briedžio kanopos',en:'Elk hooves'},i:'🦌'},
-  kanopos_karves:{n:{lt:'Karvės kanopos',en:'Cow hooves'},i:'🐄'},
+  /* v201: raguočiai duoda RAGUS. Kanopos lieka tik arkliui — jis vienintelis
+     be ragų (elnias ir briedis turi ragus, karvė irgi). */
+  ragai_elnio:{n:{lt:'Elnio ragai',en:'Deer antlers'},i:'🦌'},
+  ragai_briedzio:{n:{lt:'Briedžio ragai',en:'Elk antlers'},i:'🦌'},
+  ragai_karves:{n:{lt:'Karvės ragai',en:'Cow horns'},i:'🐄'},
   kanopos_arklio:{n:{lt:'Arklio kanopos',en:'Horse hooves'},i:'🐴'}
 };
 
@@ -5578,6 +5596,32 @@ const NODE_KINDS=[
   {key:'sidabras', color:0xb6c0cb,geo:()=>new THREE.OctahedronGeometry(.55,0),h:.5,r:.55,label:'Sidabro gysla',xp:44,mine:true,dun:true},
   {key:'gintaras2',color:0xd9982f,geo:()=>new THREE.OctahedronGeometry(.46,0),h:.5,r:.46,label:'Gintaro gysla',xp:38,mine:true,dun:true,gives:'gintaras'}
 ];
+/* v201: VAISTAŽOLĖS. Kiekviena — savas šaltinis (sava spalva, forma ir
+   pavadinimas), tad ir renkasi kaip atskiras daiktas. herb:true — dėl jo
+   skinama ta pačia „Farm_Harvest" (nr5) animacija kaip senoji žolė.
+   bio: kuriame biome auga; vand:true — auga tik prie vandens (žr.
+   spawnWaterHerbs). */
+const ZOLES=[
+  {key:'jonazole',   label:'Jonažolė',      color:0xd8c341, bio:0, xp:16, forma:'kuokstas'},
+  {key:'ramune',     label:'Ramunė',        color:0xe8e4d2, bio:0, xp:15, forma:'skeciai'},
+  {key:'kraujazole', label:'Kraujažolė',    color:0xcfd6c0, bio:0, xp:17, forma:'skeciai'},
+  {key:'ciobrelis',  label:'Čiobrelis',     color:0x9c7fb0, bio:0, xp:18, forma:'kilimelis'},
+  {key:'sidabrazole',label:'Sidabražolė',   color:0xe0c86a, bio:1, xp:19, forma:'kuokstas'},
+  {key:'pakalnute',  label:'Pakalnutė',     color:0xeef0e6, bio:1, xp:22, forma:'varpeliai'},
+  {key:'dilgele',    label:'Dilgėlė',       color:0x4f7a3a, bio:1, xp:14, forma:'kuokstas'},
+  {key:'pataisas',   label:'Pataisas',      color:0x3f6b46, bio:2, xp:24, forma:'kilimelis'},
+  {key:'vilkauoge',  label:'Vilkauogė',     color:0x4a3550, bio:2, xp:26, forma:'varpeliai'},
+  {key:'ajeras',     label:'Ajeras',        color:0x7a9450, vand:true, xp:21, forma:'kuokstas'},
+  {key:'meta',       label:'Pelkinė mėta',  color:0x6aa07a, vand:true, xp:20, forma:'skeciai'}
+];
+const ZOLES_GEO={
+  kuokstas:()=>new THREE.ConeGeometry(.30,.72,5),
+  skeciai:()=>new THREE.SphereGeometry(.32,7,5,0,TAU,0,Math.PI*.62),
+  kilimelis:()=>new THREE.SphereGeometry(.34,8,4,0,TAU,0,Math.PI*.34),
+  varpeliai:()=>new THREE.CylinderGeometry(.10,.24,.66,6)
+};
+for(const z of ZOLES) NODE_KINDS.push({key:z.key, color:z.color, geo:ZOLES_GEO[z.forma],
+  h:.34, label:z.label, xp:z.xp, herb:true, bio:z.bio, vand:!!z.vand});
 /* akmuo irgi kasamas — pažymim po sąrašo, kad senas įrašas liktų nepaliestas */
 NODE_KINDS.find(k=>k.key==='akmuo').mine=true;
 /* v194: šaltiniai dabar dėliojami PAGAL BIOMĄ ir tolygiai pagal plotą.
@@ -5586,9 +5630,9 @@ NODE_KINDS.find(k=>k.key==='akmuo').mine=true;
      tamsus miškas — gintaras, mediena, akmuo (ten brangiausia)
    Kiekis paaugintas su pasauliu: 42 -> 150 (žemoje kokybėje 90). */
 const NODE_BIO={
-  0:['uogos','zole','akmuo','zole','uogos'],
-  1:['mediena','grybas','uogos','zole','mediena','akmuo'],
-  2:['gintaras','mediena','akmuo','grybas','gintaras']
+  0:['uogos','zole','akmuo','jonazole','ramune','kraujazole','ciobrelis','uogos'],
+  1:['mediena','grybas','uogos','zole','sidabrazole','pakalnute','dilgele','mediena','akmuo'],
+  2:['gintaras','mediena','akmuo','grybas','pataisas','vilkauoge','gintaras']
 };
 /* v194: ŠALTINIŲ TINKLELIAI.
    Pasauliui paaugus 4 kartus šaltinių iš 42 pasidarė 120, o požemiuose dar
@@ -5660,6 +5704,34 @@ function spawnNodes(){
     if(k.r) addBody({x,z},k.r,()=>nd.ready);   // v156: paimtas/atvėstantis šaltinis nestabdo
   }
 }
+/* v201: ajeras ir mėta auga TIK vandens pakrantėse, tad joms atskira sėja:
+   ieškom taško, kuris pats yra sausas, bet per 2,5 m nuo jo jau vanduo. */
+function spawnWaterHerbs(){
+  const zoles=NODE_KINDS.filter(k=>k.vand);
+  if(!zoles.length) return;
+  const N=CFG.quality==='high'?26:14;
+  let pad=0, guard=0;
+  while(pad<N&&guard++<6000){
+    const a=Math.random()*TAU, r=Math.sqrt(Math.random())*(WORLD-20)+8;
+    const x=Math.cos(a)*r, z=Math.sin(a)*r;
+    if(!walkable(x,z)) continue;
+    if(waterTypeAt(x,z)) continue;                       // pats taškas turi būti sausas
+    let prie=false;
+    for(let k=0;k<8&&!prie;k++){
+      const b=k/8*TAU;
+      if(waterTypeAt(x+Math.cos(b)*2.5,z+Math.sin(b)*2.5)) prie=true;
+    }
+    if(!prie) continue;
+    if(!treeClear(x,z,1.4)) continue;
+    const kk=zoles[pad%zoles.length];
+    const m=new THREE.Mesh(kk.geo(),new THREE.MeshLambertMaterial({color:kk.color}));
+    m.position.set(x,heightAt(x,z)+kk.h,z); m.castShadow=true; m.userData.shad=true;
+    nodeBatchAdd(kk,m);
+    nodes.push({obj:m,kind:kk,pos:m.position,ready:true,cd:0,
+      tag:makeTag(kk.label,'#8fbf7a',false)});
+    pad++;
+  }
+}
 /* v133: 3 fiksuoti, AMŽINI šaltiniai prie laužo — vartotojo prašymu,
    testavimui: 1 medis (kirtimas), 1 „kasomas metalas" (artimiausias esamas
    kasimo tipo šaltinis — akmuo/„Titnago luitas", skaldymo meistrystė;
@@ -5687,6 +5759,7 @@ function spawnFireDemoNodes(){
   }
 }
 spawnNodes();
+spawnWaterHerbs();      // v201: ajeras ir mėta prie vandens
 spawnFireDemoNodes();
 
 /* keliautojų botai pašalinti — mažesnė apkrova.
@@ -10253,7 +10326,7 @@ function gather(n){
       hx:n.pos.x,hy:n.pos.y+.3,hz:n.pos.z,hc:n.kind.color};
     updatePlayerWeaponVisual();
   }
-  else if(n.kind.key==='zole') triggerPlayerClip(playerGltfActions.herb,1);
+  else if(n.kind.key==='zole'||n.kind.herb) triggerPlayerClip(playerGltfActions.herb,1);
   if(!stone) sfx('chop');
   let qty=gatherMult(n.kind.key);
   if((n.kind.key==='mediena'||n.kind.key==='akmuo')&&Math.random()<(D.meistryste-1)) qty*=2;
@@ -10274,7 +10347,7 @@ function gather(n){
   } else if(n.kind.key==='sidabras'){
     if(Math.random()<.35) give('gelezis',1);
     if(Math.random()<.12) give('bronza',1);
-  } else if(n.kind.key==='zole'&&Math.random()<.25) give('medziaga',1);
+  } else if((n.kind.key==='zole'||n.kind.herb)&&Math.random()<.25) give('medziaga',1);
   /* v106: patirtis eina į tą meistrystę, kurią atitinka veiksmas */
   const gSkill=n.kind.key==='mediena'?'kirtimas':(n.kind.mine?'skaldymas':'rinkimas');
   addXp(gSkill,Math.round(n.kind.xp*gatherXpMult()));
@@ -11309,8 +11382,10 @@ function dressRocks(){
 }
 /* pomiškis: krūmai girioje, gėlės ir žolės kuokštai laukuose */
 function dressUndergrowth(){
-  const KRUMAI=['Bush','Bush_Large','Bush_Small_Flowers','Bush_Large_Flowers','Plant_1'];
-  const PIEVA =['Flower_1_Clump','Flower_3_Clump','Flower_5_Clump','Grass_Large','Grass_Small','Plant_Flowers'];
+  /* v201: gėlių sumažinta (vartotojo prašymu) — pievoje jos nebe pusė
+     pomiškio, o kas šeštas kuokštas; krūmuose žydinčių liko po vieną. */
+  const KRUMAI=['Bush','Bush_Large','Plant_1','Bush','Bush_Small_Flowers','Bush_Large_Flowers'];
+  const PIEVA =['Grass_Large','Grass_Small','Grass_Large','Plant_1','Grass_Small','Flower_3_Clump'];
   const gK={}, gP={};
   const n=CFG.quality==='high'?900:320;
   for(let i=0;i<n;i++){
@@ -11356,15 +11431,15 @@ const FAUNA=[];
    (žr. updateFauna), tad kaina nepasikeitė. */
 const FAUNA_DEF=[
   {m:'Deer', n:7, bio:BIO_MISKAS, s:0.37, spd:2.4,
-   key:'elnias', name:{lt:'Elnias',en:'Deer'},        lvl:3, hp:34, xp:38, nagai:'kanopos_elnio'},
+   key:'elnias', name:{lt:'Elnias',en:'Deer'},        lvl:3, hp:34, xp:38, nagai:'ragai_elnio'},
   {m:'Stag', n:3, bio:BIO_MISKAS, s:0.37, spd:2.6,
-   key:'briedis', name:{lt:'Briedis',en:'Elk'},       lvl:5, hp:58, xp:64, nagai:'kanopos_briedzio'},
+   key:'briedis', name:{lt:'Briedis',en:'Elk'},       lvl:5, hp:58, xp:64, nagai:'ragai_briedzio'},
   {m:'Fox',  n:6, bio:BIO_LAUKAI, s:0.19, spd:3.0,
    key:'lape', name:{lt:'Lapė',en:'Fox'},             lvl:2, hp:18, xp:22, nagai:'nagai_lapes'},
   {m:'Wolf', n:5, bio:BIO_TAMSUS, s:0.31, spd:3.2,
    key:'pilkasis', name:{lt:'Pilkasis vilkas',en:'Grey wolf'}, lvl:6, hp:70, xp:86, nagai:'nagai_vilko'},
   {m:'Cow',  n:5, bio:BIO_LAUKAI, s:0.33, spd:1.2,
-   key:'karve', name:{lt:'Karvė',en:'Cow'},           lvl:1, hp:26, xp:14, nagai:'kanopos_karves'},
+   key:'karve', name:{lt:'Karvė',en:'Cow'},           lvl:1, hp:26, xp:14, nagai:'ragai_karves'},
   {m:'Horse',n:4, bio:BIO_LAUKAI, s:0.35, spd:2.8,
    key:'arklys', name:{lt:'Laukinis arklys',en:'Wild horse'},  lvl:4, hp:48, xp:52, nagai:'kanopos_arklio'}
 ];
@@ -11416,10 +11491,21 @@ const FAUNA_KNEE=0.45;
    2·kojosIlgis·sin(A) — sulyginus gaunam stride = 2·kojosIlgis·sin(A)/duty.
    Tada pėda stovi ant žemės tikrai, kad ir koks būtų greitis. Kampai (A)
    dėl to padidinti — su senaisiais žingsniai būtų buvę per smulkūs. */
+/* v201: skaičiai pagal paskelbtus arklio eisenos matavimus, ne iš akies.
+   ŽINGSNIS: priekinės kojos protrakcijos–retrakcijos amplitudė (visas mostas)
+   laisvu žingsniu 57–63°, užpakalinių 51–56° — t. y. pusamplitudė apie 0,52 rad
+   priekinėms ir 0,46 rad užpakalinėms; todėl PRIEKIS ir UŽPAKALIS dabar turi
+   skirtingą amplitudę (prA/uzA). Atramos dalis vidutiniams ir stambiems
+   žinduoliams einant 0,60–0,75 — imta 0,65. Kojų eiliškumas žingsniu: ta pati
+   pusė, priekinė seka užpakalinę praėjus ketvirčiui ciklo (fazės 0, ¼, ½, ¾);
+   risčia — įstrižos poros, t. y. pusės ciklo skirtumas.
+   „over" — kiek koja mosto gale ATSITRAUKIA prieš pastatydama pėdą: tikrose
+   eisenose retrakcija prasideda dar ore, tad pėda nusileidžia beveik nustojusi
+   judėti pirmyn. Be to žingsnis atrodydavo dūriais. */
 const GAIT={
-  zingsnis:{fazes:[.25,.75,0,.5], A:.42, duty:.62, kilst:.010, linges:.012, B:.38},
-  riscia:  {fazes:[0,.5,.5,0],    A:.58, duty:.45, kilst:.045, linges:.020, B:.62},
-  suolis:  {fazes:[.45,.55,0,.1], A:.80, duty:.35, kilst:.085, linges:.055, B:.92}
+  zingsnis:{fazes:[.25,.75,0,.5], prA:.52, uzA:.46, duty:.65, over:.14, linges:.012, B:.75},
+  riscia:  {fazes:[0,.5,.5,0],    prA:.66, uzA:.60, duty:.45, over:.10, linges:.020, B:1.00},
+  suolis:  {fazes:[.45,.55,0,.1], prA:.86, uzA:.80, duty:.35, over:.06, linges:.055, B:1.25}
 };
 /* Kojos masyve: 0 kairė priekinė, 1 dešinė priekinė, 2 kairė užpakalinė,
    3 dešinė užpakalinė (pagal centro x ir z ženklus). */
@@ -11515,16 +11601,22 @@ const fnM=new THREE.Matrix4(), fnQ=new THREE.Quaternion(),
       fnV=new THREE.Vector3(), fnS=new THREE.Vector3(), fnUp=new THREE.Vector3(0,1,0),
       fnL=new THREE.Matrix4(), fnT=new THREE.Matrix4(), fnR=new THREE.Matrix4(),
       fnK=new THREE.Matrix4(), fnL2=new THREE.Matrix4(), fnE=new THREE.Euler();
+const fnKamp=[0,0,0,0], fnAtr=[false,false,false,false];   // v201: kojų kampai ir ar jos ant žemės
 /* Kojos kampas per vieną ciklą: atramoje tolygiai atgal, moste — glotniai
    pirmyn. Teigiamas kampas = koja atgal (sukimas apie +X pėdą veda į −Z). */
-function legAngle(p,A,duty){
+function legAngle(p,A,duty,over){
   p-=Math.floor(p);
-  /* atrama: pėda prilipusi prie žemės, tad koja tolygiai atsilieka —
-     kampas auga nuo −A (pėda priekyje) iki +A (pėda gale) */
+  /* ATRAMA: pėda prilipusi prie žemės, koja tolygiai atsilieka —
+     kampas auga nuo −A (pėda priekyje) iki +A (pėda gale). */
   if(p<duty) return -A+2*A*(p/duty);
-  /* mostas: koja greitai grąžinama pirmyn */
-  const q=(p-duty)/(1-duty);
-  return A-2*A*(q*q*(3-2*q));
+  /* MOSTAS: koja greitai keliama pirmyn iki didžiausios protrakcijos
+     (−A·(1+over)) ties 85 % mosto, o paskutinius 15 % jau traukiama atgal,
+     kad pėda nusileistų beveik nejudėdama pirmyn — taip daro tikri žvėrys
+     (retrakcija prasideda dar ore). */
+  const q=(p-duty)/(1-duty), vir=-A*(1+(over||0));
+  if(q<0.85){ const u=q/0.85; return A+(vir-A)*(u*u*(3-2*u)); }
+  const u=(q-0.85)/0.15;
+  return vir+(-A-vir)*(u*u*(3-2*u));
 }
 /* v199: KELIO LENKIMAS. Vartotojas: „kojos juda, bet nesilanksto". Tikri
    keturkojai atramoje laiko koją beveik tiesią (ji neša svorį), o moste
@@ -11581,14 +11673,30 @@ function updateFauna(dt){
       const eis=v.sv>d.spd*.72?GAIT.suolis:(v.sv>d.spd*.5?GAIT.riscia:GAIT.zingsnis);
       const jud=clamp(v.sv/(d.spd*.3),0,1);          // stovint kojos nurimsta
       /* v200: žingsnio ilgis skaičiuojamas iš TIKRO mosto kampo (jud*A), tad
-         ir lėčiau einant, ir įsibėgėjus pėda lieka priklijuota prie žemės. */
-      const zings=Math.max(.05,2*g.kojosIlgis*Math.sin(jud*eis.A)/eis.duty);
+         ir lėčiau einant, ir įsibėgėjus pėda lieka priklijuota prie žemės.
+         v201: matas imamas iš priekinės kojos — ji ilgesnio mosto. */
+      const zings=Math.max(.05,2*g.kojosIlgis*Math.sin(jud*eis.prA)/eis.duty);
       v.gait+=nuejo/zings;
       const faze=v.gait;
 
+      /* v201: kojų kampai suskaičiuojami PIRMA — iš jų gaunamas ir kūno
+         aukštis. Standi koja, pasukta kampu θ, „pasitrumpina" iki cos θ, tad
+         norint, kad atraminė pėda liktų ant žemės, kūnas turi pakilti
+         kojosIlgis·(1−cos θ). Imamas MAŽIAUSIAS iš atraminių kojų reikalavimų
+         (kitaip kita pėda smigtų į žemę). Būtent tai ir yra tikrasis žingsnio
+         „vaulting" — kūnas kyla persiritdamas per atraminę koją. */
+      for(let k=0;k<4;k++){
+        const amp=jud*(k<2?eis.prA:eis.uzA);
+        fnKamp[k]=legAngle(faze+eis.fazes[k],amp,eis.duty,eis.over);
+        fnAtr[k]=((faze+eis.fazes[k])%1+1)%1<eis.duty;
+      }
+      let kilst=0, buvo=false;
+      for(let k=0;k<4;k++) if(fnAtr[k]){
+        const h=g.kojosIlgis*(1-Math.cos(fnKamp[k]));
+        if(!buvo||h<kilst){ kilst=h; buvo=true; }
+      }
       fnQ.setFromAxisAngle(fnUp,v.yaw);
       fnS.set(d.s,d.s,d.s);
-      const kilst=jud*eis.kilst*g.kojosIlgis*Math.abs(Math.sin(faze*TAU));
       fnV.set(v.x,heightAt(v.x,v.z)+kilst,v.z);
       fnM.compose(fnV,fnQ,fnS);
       if(jud>.02){                                   // liemens linga (pitch)
@@ -11599,7 +11707,7 @@ function updateFauna(dt){
       g.meshes[0].setMatrixAt(i,fnM);
       for(let k=0;k<4;k++){
         const vir=g.dalys[1+k], apa=g.dalys[5+k];
-        const kampas=jud*legAngle(faze+eis.fazes[k],eis.A,eis.duty);
+        const kampas=fnKamp[k];
         fnR.makeRotationX(kampas);                   // klubas/petys
         fnT.makeTranslation(vir.px,vir.py,vir.pz);
         fnK.multiplyMatrices(fnT,fnR);
@@ -12087,6 +12195,32 @@ function dunTex(kind){
     DUN_TEX[kind]=dunTexture(kind);
   return DUN_TEX[kind];
 }
+/* v201: UOLOS BLOKAS. Iki šiol siena buvo tobulas BoxGeometry — dėl to
+   požemis atrodė kaip kartoninių dėžių eilė (vartotojo žodžiais). Dabar
+   kampai nuskeliami: kiekviena viršūnė traukiama į vidų tuo labiau, kuo
+   arčiau ji vertikalios briaunos (ax·az) ir viršutinio/apatinio krašto, o
+   paskui dar pastumiama triukšmu. Susidūrimai nesikeičia — jie skaičiuojami
+   pagal langelių tinklelį (dunSolidAt), ne pagal šią geometriją, tad
+   apvalinimas yra grynai vaizdinis. */
+function dunUolaGeo(){
+  const g=new THREE.BoxGeometry(DUN_C,DUN_H,DUN_C,3,4,3);
+  const p=g.attributes.position;
+  if(!p.setXYZ) return g;
+  for(let i=0;i<p.count;i++){
+    let x=p.getX(i), y=p.getY(i), z=p.getZ(i);
+    const ax=Math.abs(x)/(DUN_C/2), az=Math.abs(z)/(DUN_C/2), ay=Math.abs(y)/(DUN_H/2);
+    const kampas=ax*az;                       // 1 tik pačiame kampe
+    const krastas=Math.max(0,ay-.55)/.45;     // viršus ir apačia
+    const t=1-.26*kampas-.12*krastas*Math.max(ax,az);
+    x*=t; z*=t; y*=1-.04*kampas;
+    const n1=h2(x*2.7+z*1.3, y*1.9), n2=h2(z*3.1-x*1.1, y*2.7+11);
+    x+=(n1-.5)*DUN_C*.06; z+=(n2-.5)*DUN_C*.06; y+=(n1*.7+n2*.3-.5)*DUN_H*.04;
+    p.setXYZ(i,x,y,z);
+  }
+  p.needsUpdate=true;
+  if(g.computeVertexNormals) g.computeVertexNormals();
+  return g;
+}
 function dunBuild(def){
   const rng=dunRng(def.seed);
   const G=DUN_G, m=dunMaze(G,rng);
@@ -12115,6 +12249,7 @@ function dunBuild(def){
   }
 
   const mm=new THREE.Matrix4(), q=new THREE.Quaternion(), sc=new THREE.Vector3(1,1,1), v=new THREE.Vector3();
+  const qUp=new THREE.Vector3(0,1,0);        // v201: uolų blokų pasukimui
   const tint=new THREE.Color();
 
   /* grindys (padalintos 3×3, kad taškinė šviesa nesikapotų) */
@@ -12139,12 +12274,16 @@ function dunBuild(def){
   D0.grp.add(cMesh);
 
   /* uolos */
-  const wg=new THREE.BoxGeometry(DUN_C,DUN_H,DUN_C);
+  const wg=dunUolaGeo();
   const wMesh=new THREE.InstancedMesh(wg,new THREE.MeshLambertMaterial({color:def.wall,map:dunTex('siena')}),sienos.length);
   wMesh.raycast=()=>{};
   sienos.forEach((c,k)=>{
     const sy=.94+h2(c.i*5.1,c.j*4.3)*.12;
-    sc.set(1,sy,1);
+    /* v201: keturi galimi pasukimai + nedidelis pločio skirtumas — tas pats
+       blokas nebeatrodo kaip pakartotas šimtą kartų. */
+    const sxz=.98+h2(c.i*3.7+2,c.j*2.9)*.09;
+    sc.set(sxz,sy,sxz);
+    q.setFromAxisAngle(qUp,Math.floor(h2(c.i*7.3,c.j*5.9)*4)*Math.PI/2);
     v.set(wx(c.i),DUN_H*sy/2,wz(c.j)); mm.compose(v,q,sc); wMesh.setMatrixAt(k,mm);
     const t=.80+h2(c.i*2.3,c.j*6.1)*.38; tint.setRGB(t,t*.95,t*.88);
     if(wMesh.setColorAt) wMesh.setColorAt(k,tint);

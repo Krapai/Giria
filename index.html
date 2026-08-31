@@ -748,8 +748,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v204';
-const GAME_CHANGES='v204: vienuolika vaistažolių gavo savo modelius — ramunė žydi baltais žiedais su geltonu viduriu, kraujažolė skėčiu, pakalnutė kabančiais varpeliais, vilkauogė juodomis uogomis, ajeras kardo lapais; nuskintas augalas dabar traukiasi į žemę, o ne kabo ore. v203: žvėrių kojos nebeatsiskiria nuo pilvo — dabar jos pjaunamos ten, kur iš tikrųjų prasideda (išmatuota kiekvienam žvėriui atskirai), ir sukamos apie tą pačią vietą; einant priekinė koja aiškiai parlenkia riešą po krūtine (60°, kaip tikram arkliui), o užpakalinė lieka beveik tiesi; kūnas nebekyla, kai koja išskėsta, tad pėdos nebekabo ore; redagavimo mygtukai ✎ ir 🧱 iškelti iš ☰ meniu į mygtukų eilutę, į kairę nuo grafikos mygtukų. v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
+const GAME_VERSION='v205';
+const GAME_CHANGES='v205: redaktorius greitesnis — 🧱 iš karto įjungia redagavimą, o pasirinkus modelį kiekvienas paspaudimas ant žemės pastato dar vieną daiktą (nebereikia kiekvieno patvirtinti); telefone katalogas bestatant nebeužsiveria; augalai ir ranka pastatyti objektai nebesisuka. v204: vienuolika vaistažolių gavo savo modelius — ramunė žydi baltais žiedais su geltonu viduriu, kraujažolė skėčiu, pakalnutė kabančiais varpeliais, vilkauogė juodomis uogomis, ajeras kardo lapais; nuskintas augalas dabar traukiasi į žemę, o ne kabo ore. v203: žvėrių kojos nebeatsiskiria nuo pilvo — dabar jos pjaunamos ten, kur iš tikrųjų prasideda (išmatuota kiekvienam žvėriui atskirai), ir sukamos apie tą pačią vietą; einant priekinė koja aiškiai parlenkia riešą po krūtine (60°, kaip tikram arkliui), o užpakalinė lieka beveik tiesi; kūnas nebekyla, kai koja išskėsta, tad pėdos nebekabo ore; redagavimo mygtukai ✎ ir 🧱 iškelti iš ☰ meniu į mygtukų eilutę, į kairę nuo grafikos mygtukų. v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -6371,7 +6371,10 @@ function pinchDist(){
 }
 
 function worldClick(sx,sy){
-  if(isTouch&&anyPanelOpen()){ closePanels(); return; }   // telefone bakstelėjimas uždaro langą
+  /* v205: telefone bakstelėjimas uždaro atvirą langą — bet REDAGUOJANT taip
+     būtų neįmanoma dirbti: katalogas atviras, ir kiekvienas bakstelėjimas į
+     žemę jį užvertų vietoj to, kad pastatytų daiktą. */
+  if(isTouch&&anyPanelOpen()&&!EDIT.on){ closePanels(); return; }
   if(player.dead) return;
   if(hookFish()) return;                       // pakirtimas turi pirmenybę
   ndc.x=(sx/innerWidth)*2-1; ndc.y=-(sy/innerHeight)*2+1;
@@ -10902,7 +10905,12 @@ function updateNodes(dt){
       if(n.cd<=0){n.ready=true;n.obj.visible=true;resetNodeWear(n);}   // v138: vėl pilnas
       continue;
     }
-    n.obj.rotation.y+=dt*.6;
+    /* v205: šaltinis lėtai sukasi — tai sena „mane galima paimti" užuomina,
+       gera grybui ar akmeniui. Vaistažolė nuo v204 turi tikrą formą, ir
+       besisukantis augalas atrodo kaip klaida (vartotojas pastebėjo iškart).
+       Ranka pastatytas objektas irgi nebesisuka: redaktoriuje jam nustatomas
+       posūkis (ir.rot), o sukimas jį tuoj pat perrašydavo. */
+    if(!n.kind.herb&&!n.rankinis) n.obj.rotation.y+=dt*.6;
     placeTag(n.tag,n.pos.x,n.pos.y+1.1,n.pos.z,26);
   }
   nodeBatchSync();          // v194: visos instancijos į vieną tinklelį
@@ -11436,17 +11444,26 @@ function editRodyti(){
   for(const v of (kat[EDIT.kat]?kat[EDIT.kat].s:[]))
     h+='<button class="tbtn emd'+(EDIT.model===v?' on':'')+'" data-v="'+v+'">'+v+'</button>';
   h+='</div>';
-  h+='<div class="ehint">Pasirink modelį, tada bakstelėk žemę — ten jis atsiras. '+
-     'Bakstelėjus pastatytą objektą jį galima sukti, didinti ar ištrinti (juosta apačioje). '+
-     'Pastatyta: '+EDIT.objs.length+'</div>';
+  h+='<div class="ehint">Pasirink modelį ir spaudyk žemę — kiekvienas paspaudimas '+
+     'pastato dar vieną. Norėdamas perkelti, pasukti, padidinti ar ištrinti — '+
+     'bakstelėk jau pastatytą objektą (juosta apačioje). '+
+     'Pastatyta: <span id="eKiek">'+EDIT.objs.length+'</span></div>';
   h+='<button class="tbtn" id="eSave">💾 Išsaugoti</button>';
   h+='<div class="ehint">Nukopijuok šitą eilutę ir atsiųsk — ji įrašoma į žaidimą:</div>';
   h+='<textarea id="editJson" readonly></textarea>';
   b.innerHTML=h;
   b.querySelectorAll('.ekt').forEach(el=>el.onclick=()=>{ EDIT.kat=el.dataset.k; editRodyti(); });
-  b.querySelectorAll('.emd').forEach(el=>el.onclick=()=>{ EDIT.model=el.dataset.v; editRodyti(); });
+  b.querySelectorAll('.emd').forEach(el=>el.onclick=()=>{
+    EDIT.model=el.dataset.v; EDIT.sel=null;      // v205: naujas modelis — nieko nebepažymėta
+    editRodyti(); });
   const sv=document.getElementById('eSave'); if(sv) sv.onclick=()=>editSaugoti(false);
   editSaugoti(true);
+}
+/* v205: statant perpiešiam TIK skaičių — visas katalogas innerHTML'u nušoktų
+   į sąrašo pradžią po kiekvieno paspaudimo. */
+function editKiek(){
+  const el=document.getElementById('eKiek');
+  if(el) el.textContent=EDIT.objs.length;
 }
 function editRezimas(on){
   EDIT.on=on;
@@ -11471,12 +11488,21 @@ function editClick(){
   }
   if(!EDIT.model){ log('Pirma pasirink modelį kataloge (🧱).','lg-s'); return true; }
   const ir=editPastatyti(EDIT.kat,EDIT.model,p.x,p.z,Math.random()*TAU,1);
-  if(ir){ editZymeti(ir); editSaugoti(true); editRodyti(); }
+  /* v205: pastatytas daiktas NEBEPAŽYMIMAS. Anksčiau jis likdavo pažymėtas,
+     tad kitas paspaudimas ant žemės jį PERKELDAVO, o ne dėdavo naują — kiekvieną
+     daiktą reikėdavo atskirai „patvirtinti". Dabar: pasirenki modelį kataloge
+     ir spaudinėji žemę, kiek nori. Perkėlimui daiktas pažymimas paspaudus
+     ant jo paties. */
+  if(ir){ editSaugoti(true); editKiek(); }
   else log('Šio modelio dar nėra (paketas neįsikėlė).','lg-h');
   return true;
 }
 document.getElementById('mEdit').onclick=()=>{ toggleToolMenu(false); editRezimas(!EDIT.on); };
-document.getElementById('mKat').onclick=()=>{ toggleToolMenu(false); togglePanel('pEdit',null); editRodyti(); };
+/* v205: katalogas įjungia ir patį redagavimą — atskirai spausti ✎ nebereikia
+   (vartotojo prašymu). */
+document.getElementById('mKat').onclick=()=>{ toggleToolMenu(false);
+  if(!EDIT.on) editRezimas(true);
+  togglePanel('pEdit',null); editRodyti(); };
 document.getElementById('eRotL').onclick=()=>{ if(EDIT.sel){ EDIT.sel.rot-=Math.PI/12; editAtnaujintiObj(EDIT.sel);} };
 document.getElementById('eRotR').onclick=()=>{ if(EDIT.sel){ EDIT.sel.rot+=Math.PI/12; editAtnaujintiObj(EDIT.sel);} };
 document.getElementById('eBig').onclick =()=>{ if(EDIT.sel){ EDIT.sel.s=Math.min(6,EDIT.sel.s*1.12); editAtnaujintiObj(EDIT.sel);} };

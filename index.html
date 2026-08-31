@@ -227,7 +227,12 @@ body.touch #log{bottom:200px}
 /* v112: z-index:14 > .panel(12) — meniu mygtukai nebesislepia po atidarytais langais */
 #tools{position:absolute;right:12px;bottom:12px;display:flex;gap:8px;align-items:flex-end;z-index:14}
 #menuWrap{display:flex;flex-direction:column;align-items:center;gap:8px}
-#menuStack{display:none;flex-direction:column;gap:8px}
+/* v203: išskleistas meniu nebeišlipa pro ekrano viršų. Telefone paguldytu
+   ekranu (844x390) septyni mygtukai netilpdavo ir ⚙ atsidurdavo ties −46 px,
+   t. y. už ekrano. Dabar aukštis ribojamas, o netilpę mygtukai persikelia į
+   antrą stulpelį KAIRĖN (wrap-reverse), ne po ekrano kraštu. */
+#menuStack{display:none;flex-direction:column;gap:8px;
+  max-height:calc(100vh - 96px);flex-wrap:wrap-reverse;align-content:flex-end}
 #menuStack.open{display:flex}
 .tbtn{width:46px;height:46px;touch-action:manipulation;border-radius:12px;border:1px solid rgba(217,152,47,.3);
   background:var(--ink);color:var(--birch);font-size:19px;cursor:pointer;display:grid;place-items:center;
@@ -741,8 +746,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v202';
-const GAME_CHANGES='v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
+const GAME_VERSION='v203';
+const GAME_CHANGES='v203: žvėrių kojos nebeatsiskiria nuo pilvo — dabar jos pjaunamos ten, kur iš tikrųjų prasideda (išmatuota kiekvienam žvėriui atskirai), ir sukamos apie tą pačią vietą; einant priekinė koja parlenkia riešą po krūtine, o užpakalinė beveik nesilanksto, kaip ir gyvenime; kūnas nebekyla, kai koja išskėsta, tad pėdos nebekabo ore; išskleistas meniu telefone nebeišlipa pro ekrano viršų. v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -10713,7 +10718,7 @@ function makeLavonas(e){
   const m=new THREE.Mesh(g.dalys[0].geo,TURTAS_MAT);
   m.scale.setScalar(g.def.s);
   const y=heightAt(e.pos.x,e.pos.z);
-  m.position.set(e.pos.x,y+g.kojosIlgis*.45,e.pos.z);
+  m.position.set(e.pos.x,y+g.ugis*.1215,e.pos.z);   // v203: buvo 0,45·kojosIlgis, o kojosIlgis pasikeitė
   m.rotation.set(Math.PI*.46,e.yaw||0,0);          // guli ant šono
   m.castShadow=true; m.userData.shad=true; scene.add(m);
   LAVONAI.push({obj:m,pos:m.position.clone(),def:e.def,t:LAVONO_LAIKAS,
@@ -11737,21 +11742,35 @@ function beastDef(d){
    Koja atramoje sukasi TOLYGIAI atgal (pėda stovi vietoje), o moste greitai
    grąžinama pirmyn (glotni kreivė) — dėl to eisena atrodo kaip ėjimas, o ne
    kaip švytuoklė. */
-const FAUNA_LEG_TOP=0.27;
+/* v203: PILVO LINIJA MATUOJAMA, NE SPĖJAMA. Vartotojas: „tarp kojų atsiranda
+   tarpas". Taip ir turėjo būti: iki v202 koja buvo NUPJAUNAMA ties pastoviu
+   27 % ūgio, o SUKAMA apie 42 % — sukant apie tašką, esantį 15 % ūgio virš
+   pjūvio, visa koja pasislenka į šoną per 0,15·H·sin θ (arkliui ~12 cm), ir
+   ties pilvu žiojėja plyšys. Antra klaida: 27 % buvo tiesiog neteisinga.
+   Išmatavus tinklelius (tarpas tarp priekinių ir užpakalinių kojų užsiveria
+   ties: elnias 38 %, briedis 32 %, lapė 48 %, vilkas 42 %, karvė 38 %,
+   arklys 40 %), paaiškėjo, kad trečdalis kojos likdavo įaugusi į liemenį ir
+   nejudėdavo. Dabar riba SKAIČIUOJAMA kiekvienam žvėriui (faunaPilvas), o
+   sukimo taškas dedamas tik truputį virš jos — kojos viršus paslepiamas po
+   pilvu, tad tarpo neatsiranda, o svirtis lieka visa matoma koja. */
+const FAUNA_PILVAS=0.40;      // atsarga, jei matavimas nepavyktų
+const FAUNA_TUCK=0.05;        // kiek sukimo taškas paslepiamas kūne (ūgio dalimis)
+/* Ne viskas, kas kabo žemai, yra koja: lapės ir vilko UODEGA nusvyra iki kojų
+   aukščio (išmatuota: iki 2,0 nuo artimiausios pėdos, kai pati koja niekada
+   netoliau kaip 0,65). Ji guli ties viduriu (x≈0), tad būtų perplėšta pusiau
+   tarp dviejų užpakalinių kojų. Todėl kojai priskiriama tik tai, kas ir arti
+   pėdos stulpo, ir aiškiai šone. */
+const FAUNA_STULPAS=0.25;     // stulpo spindulys (ilgio dalimis)
+const FAUNA_VIDURYS=0.35;     // kojos |x| turi būti bent tiek nuo vidurio
+/* Kiek kūnas iš tikrųjų nusileidžia, kai koja išskėsta. Griežtai geometriškai
+   (standžiai kojai) tai svirtis·(1−cos θ) — arkliui iki 10 cm, ir kūnas imtų
+   krestelėti keturis kartus per žingsnį. Tikra koja tiek nekrenta: alkūnė,
+   riešas ir sausgyslė dalį prisiima, tad imama 0,6 geometrinio dydžio. */
+const FAUNA_LINGA=0.6;
 /* v199: kelias (priekinėse — riešas, užpakalinėse — kulnas) yra apatiniame
    kojos gale. Imama 0,45 kojos aukščio nuo žemės: blauzda — apatiniai 45 %,
    šlaunis — viršutiniai 55 %. B — kiek koja sulenkiama moste. */
 const FAUNA_KNEE=0.45;
-/* v202: PETIES IR KLUBO AUKŠTIS. Vartotojas: „priekinė koja keliasi į viršų, o
-   kelio sąnarys praktiškai lenkiasi atgal". Priežastis buvo ne lenkimo ženklas,
-   o SUKIMO TAŠKAS: matoma koja atsiskiria tik ties 27 % ūgio (žemiau prasideda
-   pilvas), ir aš ją sukau apie tą patį tašką. Tai anatomiškai tas pats, kas
-   sukioti dilbį apie alkūnę — koja kilnojasi, o ne mojuoja, ir lenkimas
-   atrodo kaip lūžis. Tikras petys ir klubas yra kūno VIDUJE, apie pusę ūgio.
-   Todėl sukama apie 0,42 ūgio tašką: kojos viršus lieka paslėptas liemenyje,
-   o mostas eina iš peties, kaip gyvo žvėries. Ilgesnė svirtis reiškia ir
-   ilgesnį žingsnį — žingsnio formulė ima būtent šį ilgį. */
-const FAUNA_HIP=0.42;
 /* v200: „ilgis" (žingsnio ilgis kojos ilgiais) PAŠALINTAS — jis buvo parinktas
    ranka ir dėl to pėda atramoje slydo: kūnas per atramą nueidavo 1,9 kojos
    ilgio, o pėda atsilikdavo tik 2·sin(A) ≈ 0,6. Dabar žingsnis IŠVEDAMAS:
@@ -11770,11 +11789,38 @@ const FAUNA_HIP=0.42;
    „over" — kiek koja mosto gale ATSITRAUKIA prieš pastatydama pėdą: tikrose
    eisenose retrakcija prasideda dar ore, tad pėda nusileidžia beveik nustojusi
    judėti pirmyn. Be to žingsnis atrodydavo dūriais. */
+/* v203: LENKIMAS ATSKIRTAS PRIEKIUI IR UŽPAKALIUI. Vartotojas: „arklys
+   ištiesia šlaunį į priekį, o blauzda lenkiasi atgal ir žingsnio metu
+   išsitiesia ant žemės atmesta tolyn <...> galinės kojos išvis beveik
+   nesilanksto einant". Taip ir yra: einant priekinė koja stipriai parlenkia
+   riešą po krūtine (todėl ji ir gali persikelti pirmyn), o užpakalinė
+   praktiškai nesilanksto — ji tik atsuka koją. Iki v202 abi poros lenkėsi
+   vienodai (B), tik priešingom pusėm. Dabar prB / uzB atskirai; risčioje ir
+   šuolyje užpakalinė irgi lenkiasi, nes ten kitaip neperkeltum kojos. */
 const GAIT={
-  zingsnis:{fazes:[.25,.75,0,.5], prA:.52, uzA:.46, duty:.65, over:.14, linges:.012, B:.45},
-  riscia:  {fazes:[0,.5,.5,0],    prA:.58, uzA:.52, duty:.45, over:.10, linges:.020, B:.70},
-  suolis:  {fazes:[.45,.55,0,.1], prA:.76, uzA:.70, duty:.35, over:.06, linges:.055, B:1.00}
+  zingsnis:{fazes:[.25,.75,0,.5], prA:.52, uzA:.46, duty:.65, over:.14, linges:.012, prB:.60, uzB:.10},
+  riscia:  {fazes:[0,.5,.5,0],    prA:.58, uzA:.52, duty:.45, over:.10, linges:.020, prB:.85, uzB:.45},
+  suolis:  {fazes:[.45,.55,0,.1], prA:.76, uzA:.70, duty:.35, over:.06, linges:.055, prB:1.15, uzB:.90}
 };
+/* Pilvo linija: žemiausias aukštis, kuriame TARP priekinių ir užpakalinių kojų
+   jau yra mėsos. Žemiau jo pjūvis kerta tik kojas. Grąžina ūgio dalį. */
+function faunaPilvas(pos,ymin,H,zmin,zmax){
+  const Z=zmax-zmin; if(!(Z>0)||!(H>0)) return FAUNA_PILVAS;
+  /* kojų tarpo vidurys — didžiausias tarpas tarp pėdų z reikšmių */
+  const apa=[];
+  for(let i=0;i<pos.count;i++) if(pos.getY(i)<ymin+H*0.08) apa.push(pos.getZ(i));
+  if(apa.length<8) return FAUNA_PILVAS;
+  apa.sort((a,b)=>a-b);
+  let tarpas=0,gz=0;
+  for(let i=1;i<apa.length;i++){ const d=apa[i]-apa[i-1]; if(d>tarpas){ tarpas=d; gz=(apa[i]+apa[i-1])/2; } }
+  if(tarpas<Z*0.15) return FAUNA_PILVAS;          // kojos neatskirtos — nematuojam
+  for(let f=0.06;f<=0.60;f+=0.02){
+    const y=ymin+H*f; let n=0;
+    for(let i=0;i<pos.count;i++)
+      if(Math.abs(pos.getY(i)-y)<H*0.03&&Math.abs(pos.getZ(i)-gz)<Z*0.10&&++n>2) return f;
+  }
+  return FAUNA_PILVAS;
+}
 /* Kojos masyve: 0 kairė priekinė, 1 dešinė priekinė, 2 kairė užpakalinė,
    3 dešinė užpakalinė (pagal centro x ir z ženklus). */
 function faunaSplit(geo){
@@ -11782,11 +11828,25 @@ function faunaSplit(geo){
   const idx=geo.index, kiek=idx?idx.count:pos.count;
   /* ribas skaičiuojam patys — computeBoundingBox() nėra testų aplinkoje, o
      mums tereikia Y rėžio */
-  let ymin=1e9,ymax=-1e9;
-  for(let i=0;i<pos.count;i++){ const y=pos.getY(i); if(y<ymin)ymin=y; if(y>ymax)ymax=y; }
-  const H=ymax-ymin, riba=ymin+H*FAUNA_LEG_TOP;
+  let ymin=1e9,ymax=-1e9,zmin=1e9,zmax=-1e9;
+  for(let i=0;i<pos.count;i++){
+    const y=pos.getY(i); if(y<ymin)ymin=y; if(y>ymax)ymax=y;
+    const z=pos.getZ(i); if(z<zmin)zmin=z; if(z>zmax)zmax=z;
+  }
+  const H=ymax-ymin;
+  const riba=ymin+H*faunaPilvas(pos,ymin,H,zmin,zmax);   // v203: išmatuota
   const kelis=ymin+(riba-ymin)*FAUNA_KNEE;          // v199: kelio/kulno aukštis
-  const klubas=ymin+H*FAUNA_HIP;                    // v202: petys/klubas kūno viduje
+  const klubas=riba+H*FAUNA_TUCK;                   // v203: petys tik truputį kūne
+  /* keturi pėdų stulpai — pagal juos sprendžiam, ar žemai kabantis trikampis
+     tikrai koja (žr. FAUNA_STULPAS) */
+  const st=[[0,0,0],[0,0,0],[0,0,0],[0,0,0]];
+  for(let i=0;i<pos.count;i++){
+    if(pos.getY(i)>=ymin+H*0.08) continue;
+    const x=pos.getX(i), z=pos.getZ(i);
+    const q=(x>=0?0:1)+(z>=0?0:2);
+    st[q][0]+=x; st[q][1]+=z; st[q][2]++;
+  }
+  const spind=Math.max(Math.abs(zmin),Math.abs(zmax))*FAUNA_STULPAS;
   /* 0 liemuo · 1–4 šlaunys · 5–8 blauzdos (ta pati ketvirčių tvarka) */
   const dal=[[],[],[],[],[],[],[],[],[]];
   const gi=i=>idx?idx.getX(i):i;
@@ -11797,7 +11857,10 @@ function faunaSplit(geo){
     if(cy<riba){
       const cx=(pos.getX(i0)+pos.getX(i1)+pos.getX(i2))/3;
       const cz=(pos.getZ(i0)+pos.getZ(i1)+pos.getZ(i2))/3;
-      k=1+(cx>=0?0:1)+(cz>=0?0:2)+(cy<kelis?4:0);
+      const q=(cx>=0?0:1)+(cz>=0?0:2), s=st[q];
+      if(s[2]&&Math.hypot(cx-s[0]/s[2],cz-s[1]/s[2])<spind&&
+         Math.abs(cx)>Math.abs(s[0]/s[2])*FAUNA_VIDURYS)
+        k=1+q+(cy<kelis?4:0);                     // kitaip lieka liemeniui
     }
     dal[k].push(i0,i1,i2);
   }
@@ -11823,12 +11886,17 @@ function faunaSplit(geo){
       const kop=kopija(geo.attributes[vardas],v);
       if(kop) g.setAttribute(vardas,kop);
     }
-    let sx=0,sz=0;
-    for(let i=0;i<v.length;i++){ sx+=pos.getX(v[i]); sz+=pos.getZ(v[i]); }
-    const nv=v.length||1;
-    dalys.push({geo:g,px:sx/nv,py:k>4?kelis:klubas,pz:sz/nv,n:v.length});
+    /* v203: sukimo taškas imamas iš SĄNARIO galo (viršutinių trikampių), o ne
+       iš viso gabalo vidurio — pasvirusiai kojai tai skiriasi per pusę jos
+       storio, ir būtent ties sąnariu atsivėrdavo plyšys. */
+    let sx=0,sz=0,nv=0,pv=-1e9,pz0=1e9;
+    for(let i=0;i<v.length;i++){ const y=pos.getY(v[i]); if(y>pv)pv=y; if(y<pz0)pz0=y; }
+    const virs=pv-(pv-pz0)*0.35;
+    for(let i=0;i<v.length;i++) if(pos.getY(v[i])>=virs){ sx+=pos.getX(v[i]); sz+=pos.getZ(v[i]); nv++; }
+    if(!nv){ for(let i=0;i<v.length;i++){ sx+=pos.getX(v[i]); sz+=pos.getZ(v[i]); nv++; } }
+    dalys.push({geo:g,px:sx/(nv||1),py:k>4?kelis:klubas,pz:sz/(nv||1),n:v.length});
   }
-  return {dalys,riba,kelis,klubas,kojosIlgis:riba-ymin,svirtis:klubas-ymin};
+  return {dalys,riba,kelis,klubas,ugis:H,kojosIlgis:riba-ymin,svirtis:klubas-ymin};
 }
 function faunaInit(){
   for(const d of FAUNA_DEF){
@@ -11840,7 +11908,7 @@ function faunaInit(){
       im.raycast=()=>{}; im.castShadow=true; im.userData.shad=true;
       im.frustumCulled=false; scene.add(im); return im;
     });
-    const grupe={mesh:meshes[0],meshes,dalys:sk.dalys,kojosIlgis:sk.kojosIlgis*d.s,
+    const grupe={mesh:meshes[0],meshes,dalys:sk.dalys,kojosIlgis:sk.kojosIlgis*d.s,ugis:sk.ugis*d.s,
       svirtis:sk.svirtis*d.s,def:d,vnt:[]};
     let made=0,guard=0;
     while(made<kiek&&guard++<3000){
@@ -11957,11 +12025,13 @@ function updateFauna(dt){
       const faze=v.gait;
 
       /* v201: kojų kampai suskaičiuojami PIRMA — iš jų gaunamas ir kūno
-         aukštis. Standi koja, pasukta kampu θ, „pasitrumpina" iki cos θ, tad
-         norint, kad atraminė pėda liktų ant žemės, kūnas turi pakilti
-         kojosIlgis·(1−cos θ). Imamas MAŽIAUSIAS iš atraminių kojų reikalavimų
-         (kitaip kita pėda smigtų į žemę). Būtent tai ir yra tikrasis žingsnio
-         „vaulting" — kūnas kyla persiritdamas per atraminę koją. */
+         aukštis. v203: ŽENKLAS BUVO ATVIRKŠČIAS. Standi svirties ilgio koja,
+         pasukta kampu θ, siekia žemyn tik svirtis·cos θ — vadinasi, kad pėda
+         liktų ant žemės, kūnas turi NUSILEISTI svirtis·(1−cos θ), o ne pakilti.
+         Dėl atvirkščio ženklo atraminės pėdos kabodavo ore (arkliui iki 12 cm),
+         o kūnas kildavo tada, kai turėtų leistis. Imamas ŽEMIAUSIAS iš
+         atraminių kojų reikalavimų — tada nė viena pėda nesmenga po žeme, o
+         kūnas persirita per atraminę koją (aukščiausiai, kai ji po pilvu). */
       for(let k=0;k<4;k++){
         const amp=jud*(k<2?eis.prA:eis.uzA);
         fnKamp[k]=legAngle(faze+eis.fazes[k],amp,eis.duty,eis.over);
@@ -11969,7 +12039,7 @@ function updateFauna(dt){
       }
       let kilst=0, buvo=false;
       for(let k=0;k<4;k++) if(fnAtr[k]){
-        const h=g.svirtis*(1-Math.cos(fnKamp[k]));
+        const h=-g.svirtis*(1-Math.cos(fnKamp[k]))*FAUNA_LINGA;
         if(!buvo||h<kilst){ kilst=h; buvo=true; }
       }
       fnQ.setFromAxisAngle(fnUp,v.yaw);
@@ -11992,7 +12062,7 @@ function updateFauna(dt){
         fnK.multiply(fnT);
         if(vir.n){ fnL.copy(fnK); fnL.premultiply(fnM); g.meshes[1+k].setMatrixAt(i,fnL); }
         if(apa.n){
-          const lenk=jud*legBend(faze+eis.fazes[k],eis.B,eis.duty)*(k<2?1:-1);
+          const lenk=jud*legBend(faze+eis.fazes[k],k<2?eis.prB:eis.uzB,eis.duty)*(k<2?1:-1);
           fnR.makeRotationX(lenk);                   // kelias/kulnas
           fnT.makeTranslation(apa.px,apa.py,apa.pz);
           fnL2.multiplyMatrices(fnT,fnR);

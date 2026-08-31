@@ -101,8 +101,15 @@ canvas{display:block;touch-action:none}
 #pEdit{width:320px}
 #editBody .ekat{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
 #editBody .ekat button{font-size:11px;padding:3px 7px}
-#editBody .elist{max-height:230px;overflow:auto;display:flex;flex-wrap:wrap;gap:3px}
-#editBody .elist button{font-size:11px;padding:2px 6px}
+/* v208: kataloge nebe vardai, o patys modeliai. Vardai kode techniniai
+   (Barrel_A, Pine_03) — iš jų nesuprasi, ką statai, todėl kiekvienas langelis
+   rodo nupieštą modelį, o vardas pasirodo užvedus arba bakstelėjus. */
+#editBody .elist{max-height:250px;overflow:auto;display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:4px}
+#editBody .elist button{padding:0;height:54px;display:grid;place-items:center;overflow:hidden}
+#editBody .elist img{width:48px;height:48px;object-fit:contain;pointer-events:none;display:block}
+#editBody .elist .etxt{font-size:9px;line-height:1.15;padding:2px;word-break:break-word;
+  max-height:100%;overflow:hidden}
 #editBody button.on{outline:1px solid var(--amber)}
 #editBody .ehint{font-size:11px;opacity:.75;margin:6px 0}
 #editBody textarea{width:100%;height:90px;font-size:10px;background:#0d1512;color:#cfd6c0;
@@ -762,8 +769,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v207';
-const GAME_CHANGES='v207: dirbtuvės vaistinė dabar vadinasi ŽINIUONYSTE ir turi dvi skiltis: „Nuovirai" — tai, kas padeda tau, „Nuodai" — tai, kuo kenki priešui. Nuodai veikia dviem būdais: molinį indą sviedi į pažymėtą priešą (sudūžta ir aptaško visus aplinkui), o tepalu ištepi ašmenis, ir tada nuodus perduoda kiekvienas kirtis. Girioje atsirado aštuoni tikri Baltijos grybai su savo modeliais — baravykas, voveraitė, pievagrybis ir beržinė čaga valgomi, o musmirė, žalsvoji musmirė, šėtoniškas baravykas ir skalsė nuodingi: iš jų verdami nuodai, o suvalgius žalius jie kenkia ir pačiam. v206: iš vaistažolių verdami eliksyrai — dirbtuvėje atsirado ketvirta kortelė „Gydymas", o joje penkiolika receptų: ramunių arbata ramina, dilgėlių sultys prideda gyvybės, čiobrelio sirupas — kvapo, sidabražolės nuoviras nuplauna nuodus, vilkauogės lašai leidžia matyti tamsoje, bet nuodija, o pakalnutės lašai stiprina kirtį atimdami gyvybės; kiekvienas poveikis parinktas pagal tikrą tos žolės veikimą žmogui. Veikiantys eliksyrai su likusiu laiku rodomi po patirties juosta. Pridėtas medus (valgomas ir eliksyrų sudėtinė dalis) bei iš jo daromas midus. v205: redaktorius greitesnis — 🧱 iš karto įjungia redagavimą, o pasirinkus modelį kiekvienas paspaudimas ant žemės pastato dar vieną daiktą (nebereikia kiekvieno patvirtinti); telefone katalogas bestatant nebeužsiveria; augalai ir ranka pastatyti objektai nebesisuka. v204: vienuolika vaistažolių gavo savo modelius — ramunė žydi baltais žiedais su geltonu viduriu, kraujažolė skėčiu, pakalnutė kabančiais varpeliais, vilkauogė juodomis uogomis, ajeras kardo lapais; nuskintas augalas dabar traukiasi į žemę, o ne kabo ore. v203: žvėrių kojos nebeatsiskiria nuo pilvo — dabar jos pjaunamos ten, kur iš tikrųjų prasideda (išmatuota kiekvienam žvėriui atskirai), ir sukamos apie tą pačią vietą; einant priekinė koja aiškiai parlenkia riešą po krūtine (60°, kaip tikram arkliui), o užpakalinė lieka beveik tiesi; kūnas nebekyla, kai koja išskėsta, tad pėdos nebekabo ore; redagavimo mygtukai ✎ ir 🧱 iškelti iš ☰ meniu į mygtukų eilutę, į kairę nuo grafikos mygtukų. v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
+const GAME_VERSION='v208';
+const GAME_CHANGES='v208: redaktoriaus kataloge (🧱) kiekvienas langelis dabar rodo patį modelį — nupieštą paveiksliuką, o ne techninį vardą; pavadinimas pasirodo užvedus pele arba bakstelėjus. v207: dirbtuvės vaistinė dabar vadinasi ŽINIUONYSTE ir turi dvi skiltis: „Nuovirai" — tai, kas padeda tau, „Nuodai" — tai, kuo kenki priešui. Nuodai veikia dviem būdais: molinį indą sviedi į pažymėtą priešą (sudūžta ir aptaško visus aplinkui), o tepalu ištepi ašmenis, ir tada nuodus perduoda kiekvienas kirtis. Girioje atsirado aštuoni tikri Baltijos grybai su savo modeliais — baravykas, voveraitė, pievagrybis ir beržinė čaga valgomi, o musmirė, žalsvoji musmirė, šėtoniškas baravykas ir skalsė nuodingi: iš jų verdami nuodai, o suvalgius žalius jie kenkia ir pačiam. v206: iš vaistažolių verdami eliksyrai — dirbtuvėje atsirado ketvirta kortelė „Gydymas", o joje penkiolika receptų: ramunių arbata ramina, dilgėlių sultys prideda gyvybės, čiobrelio sirupas — kvapo, sidabražolės nuoviras nuplauna nuodus, vilkauogės lašai leidžia matyti tamsoje, bet nuodija, o pakalnutės lašai stiprina kirtį atimdami gyvybės; kiekvienas poveikis parinktas pagal tikrą tos žolės veikimą žmogui. Veikiantys eliksyrai su likusiu laiku rodomi po patirties juosta. Pridėtas medus (valgomas ir eliksyrų sudėtinė dalis) bei iš jo daromas midus. v205: redaktorius greitesnis — 🧱 iš karto įjungia redagavimą, o pasirinkus modelį kiekvienas paspaudimas ant žemės pastato dar vieną daiktą (nebereikia kiekvieno patvirtinti); telefone katalogas bestatant nebeužsiveria; augalai ir ranka pastatyti objektai nebesisuka. v204: vienuolika vaistažolių gavo savo modelius — ramunė žydi baltais žiedais su geltonu viduriu, kraujažolė skėčiu, pakalnutė kabančiais varpeliais, vilkauogė juodomis uogomis, ajeras kardo lapais; nuskintas augalas dabar traukiasi į žemę, o ne kabo ore. v203: žvėrių kojos nebeatsiskiria nuo pilvo — dabar jos pjaunamos ten, kur iš tikrųjų prasideda (išmatuota kiekvienam žvėriui atskirai), ir sukamos apie tą pačią vietą; einant priekinė koja aiškiai parlenkia riešą po krūtine (60°, kaip tikram arkliui), o užpakalinė lieka beveik tiesi; kūnas nebekyla, kai koja išskėsta, tad pėdos nebekabo ore; redagavimo mygtukai ✎ ir 🧱 iškelti iš ☰ meniu į mygtukų eilutę, į kairę nuo grafikos mygtukų. v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -12098,6 +12105,88 @@ function editApplySaved(){
   }
   return liko.length;
 }
+/* ===================== KATALOGO PAVEIKSLIUKAI (v208) =====================
+   Kiekvienas modelis nupiešiamas VIENĄ kartą į 64x64 paveiksliuką ir
+   įsimenamas (EDIT_IKONOS), tad perjungiant kategorijas nieko neperskaičiuoja.
+   KODĖL per patį renderer'į, o ne antru WebGLRenderer: naršyklė leidžia ribotą
+   WebGL kontekstų skaičių, o čia naujo nereikia — piešiama į RenderTarget,
+   nuskaitomi taškai ir sudedami į 2D drobę.
+   VISKAS apgaubta try/catch: testų aplinkoje (netikras THREE) RenderTarget'o
+   nėra, ir tada langelyje lieka vardas, kaip iki v207. */
+const EDIT_IKONOS=new Map();
+const IKON_DYDIS=64;
+let ikonRT=null, ikonScene=null, ikonCam=null, ikonCnv=null, ikonBuf=null;
+/* tas pats modelis, kurį pastatytų editPastatyti — tik niekur nededamas */
+function editModelis(t,v){
+  if((t==='daiktai'||t==='augalai')&&typeof DAIKTAI!=='undefined'&&DAIKTAI[v]){
+    const g=new THREE.Group();
+    for(const d of DAIKTAI[v]) g.add(new THREE.Mesh(d.geo,d.mat));
+    return g;
+  }
+  if(t==='turtai'&&typeof TURTAS!=='undefined'&&TURTAS[v])
+    return new THREE.Mesh(TURTAS[v],TURTAS_MAT);
+  if(t==='saltiniai'){
+    const k=NODE_KINDS.find(kk=>kk.key===v); if(!k) return null;
+    const m=new THREE.Mesh(k.geo(),nodeMat(k));
+    m.userData.savaGeo=true;                 // ši geometrija sukurta čia — po to išmesti
+    return m;
+  }
+  return null;
+}
+function editIkona(t,v){
+  const raktas=t+'|'+v;
+  if(EDIT_IKONOS.has(raktas)) return EDIT_IKONOS.get(raktas);
+  let url='';
+  try{ url=editIkonaPiesti(t,v)||''; }catch(e){ url=''; }
+  EDIT_IKONOS.set(raktas,url);
+  return url;
+}
+function editIkonaPiesti(t,v){
+  if(typeof renderer==='undefined'||!renderer.setRenderTarget||
+     !renderer.readRenderTargetPixels||!THREE.WebGLRenderTarget) return '';
+  const obj=editModelis(t,v); if(!obj) return '';
+  if(!ikonRT){
+    ikonRT=new THREE.WebGLRenderTarget(IKON_DYDIS,IKON_DYDIS);
+    ikonScene=new THREE.Scene();
+    ikonScene.add(new THREE.AmbientLight(0xffffff,.52));
+    const l1=new THREE.DirectionalLight(0xfff0d8,1.15); l1.position.set(2,3,2.5); ikonScene.add(l1);
+    const l2=new THREE.DirectionalLight(0x9fb8d8,.38); l2.position.set(-2.5,1,-2); ikonScene.add(l2);
+    ikonCam=new THREE.PerspectiveCamera(30,1,.01,400);
+    ikonCnv=document.createElement('canvas'); ikonCnv.width=ikonCnv.height=IKON_DYDIS;
+    ikonBuf=new Uint8Array(IKON_DYDIS*IKON_DYDIS*4);
+  }
+  ikonScene.add(obj);
+  /* kamera pritaikoma PAČIAM daiktui: medis ir puodukas turi užimti langelį
+     vienodai, nors jų dydžiai skiriasi dešimt kartų */
+  const dez=new THREE.Box3().setFromObject(obj);
+  const dyd=dez.getSize(new THREE.Vector3()), cnt=dez.getCenter(new THREE.Vector3());
+  const r=Math.max(dyd.x,dyd.y,dyd.z,.05);
+  const d=r*2.35;
+  ikonCam.position.set(cnt.x+d*.60,cnt.y+d*.50,cnt.z+d*.60);
+  ikonCam.lookAt(cnt); ikonCam.updateProjectionMatrix();
+  /* pasaulio piešimo nustatymai turi likti tokie, kokie buvo */
+  const senasRT=renderer.getRenderTarget();
+  const senaSpalva=new THREE.Color(); renderer.getClearColor(senaSpalva);
+  const senaAlfa=renderer.getClearAlpha();
+  renderer.setRenderTarget(ikonRT);
+  renderer.setClearColor(0x0d1512,0);
+  renderer.clear();
+  renderer.render(ikonScene,ikonCam);
+  renderer.readRenderTargetPixels(ikonRT,0,0,IKON_DYDIS,IKON_DYDIS,ikonBuf);
+  renderer.setRenderTarget(senasRT);
+  renderer.setClearColor(senaSpalva,senaAlfa);
+  ikonScene.remove(obj);
+  if(obj.userData.savaGeo&&obj.geometry) obj.geometry.dispose();
+  const ctx=ikonCnv.getContext('2d');
+  const img=ctx.createImageData(IKON_DYDIS,IKON_DYDIS);
+  /* WebGL taškai eina iš apačios į viršų — apverčiam */
+  for(let y=0;y<IKON_DYDIS;y++){
+    const src=(IKON_DYDIS-1-y)*IKON_DYDIS*4, dst=y*IKON_DYDIS*4;
+    for(let i=0;i<IKON_DYDIS*4;i++) img.data[dst+i]=ikonBuf[src+i];
+  }
+  ctx.putImageData(img,0,0);
+  return ikonCnv.toDataURL('image/png');
+}
 function editRodyti(){
   const b=document.getElementById('editBody'); if(!b) return;
   const kat=editKategorijos();
@@ -12105,8 +12194,14 @@ function editRodyti(){
   let h='<div class="ekat">';
   for(const k in kat) h+='<button class="tbtn ekt'+(k===EDIT.kat?' on':'')+'" data-k="'+k+'">'+kat[k].v+'</button>';
   h+='</div><div class="elist">';
-  for(const v of (kat[EDIT.kat]?kat[EDIT.kat].s:[]))
-    h+='<button class="tbtn emd'+(EDIT.model===v?' on':'')+'" data-v="'+v+'">'+v+'</button>';
+  for(const v of (kat[EDIT.kat]?kat[EDIT.kat].s:[])){
+    const ik=editIkona(EDIT.kat,v), rk='E'+EDIT.kat+'|'+v;
+    POPUP_HTML[rk]='<b style="color:#ffc861">'+v+'</b><br>'+
+      '<span style="font-size:10.5px">'+kat[EDIT.kat].v+'</span>';
+    h+='<button class="tbtn emd'+(EDIT.model===v?' on':'')+'" data-v="'+v+'" data-p="'+rk+
+       '" title="'+v+'">'+
+       (ik?'<img src="'+ik+'" alt="'+v+'">':'<span class="etxt">'+v+'</span>')+'</button>';
+  }
   h+='</div>';
   h+='<div class="ehint">Pasirink modelį ir spaudyk žemę — kiekvienas paspaudimas '+
      'pastato dar vieną. Norėdamas perkelti, pasukti, padidinti ar ištrinti — '+
@@ -12117,9 +12212,22 @@ function editRodyti(){
   h+='<textarea id="editJson" readonly></textarea>';
   b.innerHTML=h;
   b.querySelectorAll('.ekt').forEach(el=>el.onclick=()=>{ EDIT.kat=el.dataset.k; editRodyti(); });
-  b.querySelectorAll('.emd').forEach(el=>el.onclick=()=>{
-    EDIT.model=el.dataset.v; EDIT.sel=null;      // v205: naujas modelis — nieko nebepažymėta
-    editRodyti(); });
+  /* v208: bindPopups čia netinka — jis pats pasiima onclick, o paspaudimas
+     PRIVALO parinkti modelį (v205: veiksmas kartojamas dešimtis kartų).
+     Todėl vardas rodomas užvedus, o paspaudus — ir parenkama, ir parodoma. */
+  b.querySelectorAll('.emd').forEach(el=>{
+    const rk=el.dataset.p;
+    const rodyk=(e,prisegti)=>{ try{ showAttrPopup(rk,e,!!prisegti); }catch(x){} };
+    if(!isTouch){
+      el.onmouseenter=e=>rodyk(e,false);
+      el.onmouseleave=()=>{ try{ hideAttrPopupSoon(); }catch(x){} };
+    }
+    el.onclick=e=>{
+      EDIT.model=el.dataset.v; EDIT.sel=null;    // v205: naujas modelis — nieko nebepažymėta
+      editRodyti();
+      rodyk(e,isTouch);
+    };
+  });
   const sv=document.getElementById('eSave'); if(sv) sv.onclick=()=>editSaugoti(false);
   editSaugoti(true);
 }

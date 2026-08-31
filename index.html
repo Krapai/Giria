@@ -372,7 +372,13 @@ body.touch #attrPopupClose{display:block}
 #pCraft{left:auto;right:12px;width:min(400px,calc(100vw - 24px));height:min(620px,84vh)}
 #pCraft.open{display:flex;flex-direction:column}
 #craftBody{overflow-y:auto;flex:1 1 auto;min-height:0;padding-right:3px;-webkit-overflow-scrolling:touch}
-#craftTabs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+#craftTabs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+/* v206: veikiančių eliksyrų juostelė. Rodoma TIK kai kas nors veikia
+   (display nustatomas kode), tad be eliksyrų skydelio aukštis nepakinta. */
+#efBar{display:none;gap:5px;flex-wrap:wrap;margin-top:5px}
+#efBar span{display:inline-flex;align-items:center;gap:2px;font-size:12px;line-height:1;
+  padding:2px 5px;border-radius:6px;border:1px solid rgba(217,152,47,.30);background:#131c17}
+#efBar b{font-weight:400;font-size:9.5px;color:var(--amber-lit)}
 .cTab{height:40px;border-radius:9px;border:1px solid rgba(217,152,47,.28);background:#131c17;
   color:var(--birch);cursor:pointer;font-size:9.5px;line-height:1.2;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:1px;touch-action:manipulation;padding:0 2px}
@@ -560,6 +566,7 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
     <div class="statTrack mana"><div id="manaFill"></div><span id="manaTxt">20</span></div>
     <div class="xpTrack"><div class="xpFill" id="stamFill" style="background:linear-gradient(90deg,#5d6b3c,#c8d97a)"></div></div>
     <div id="xpBar"><div id="xpFill"></div><span id="xpTxt">0%</span></div>
+    <div id="efBar"></div>
     <div id="rzHint">↔ plotis · ↕ mastelis</div>
   </div>
 
@@ -748,8 +755,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v205';
-const GAME_CHANGES='v205: redaktorius greitesnis — 🧱 iš karto įjungia redagavimą, o pasirinkus modelį kiekvienas paspaudimas ant žemės pastato dar vieną daiktą (nebereikia kiekvieno patvirtinti); telefone katalogas bestatant nebeužsiveria; augalai ir ranka pastatyti objektai nebesisuka. v204: vienuolika vaistažolių gavo savo modelius — ramunė žydi baltais žiedais su geltonu viduriu, kraujažolė skėčiu, pakalnutė kabančiais varpeliais, vilkauogė juodomis uogomis, ajeras kardo lapais; nuskintas augalas dabar traukiasi į žemę, o ne kabo ore. v203: žvėrių kojos nebeatsiskiria nuo pilvo — dabar jos pjaunamos ten, kur iš tikrųjų prasideda (išmatuota kiekvienam žvėriui atskirai), ir sukamos apie tą pačią vietą; einant priekinė koja aiškiai parlenkia riešą po krūtine (60°, kaip tikram arkliui), o užpakalinė lieka beveik tiesi; kūnas nebekyla, kai koja išskėsta, tad pėdos nebekabo ore; redagavimo mygtukai ✎ ir 🧱 iškelti iš ☰ meniu į mygtukų eilutę, į kairę nuo grafikos mygtukų. v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
+const GAME_VERSION='v206';
+const GAME_CHANGES='v206: iš vaistažolių verdami eliksyrai — dirbtuvėje atsirado ketvirta kortelė „Gydymas", o joje penkiolika receptų: ramunių arbata ramina, dilgėlių sultys prideda gyvybės, čiobrelio sirupas — kvapo, sidabražolės nuoviras nuplauna nuodus, vilkauogės lašai leidžia matyti tamsoje, bet nuodija, o pakalnutės lašai stiprina kirtį atimdami gyvybės; kiekvienas poveikis parinktas pagal tikrą tos žolės veikimą žmogui. Veikiantys eliksyrai su likusiu laiku rodomi po patirties juosta. Pridėtas medus (valgomas ir eliksyrų sudėtinė dalis) bei iš jo daromas midus. v205: redaktorius greitesnis — 🧱 iš karto įjungia redagavimą, o pasirinkus modelį kiekvienas paspaudimas ant žemės pastato dar vieną daiktą (nebereikia kiekvieno patvirtinti); telefone katalogas bestatant nebeužsiveria; augalai ir ranka pastatyti objektai nebesisuka. v204: vienuolika vaistažolių gavo savo modelius — ramunė žydi baltais žiedais su geltonu viduriu, kraujažolė skėčiu, pakalnutė kabančiais varpeliais, vilkauogė juodomis uogomis, ajeras kardo lapais; nuskintas augalas dabar traukiasi į žemę, o ne kabo ore. v203: žvėrių kojos nebeatsiskiria nuo pilvo — dabar jos pjaunamos ten, kur iš tikrųjų prasideda (išmatuota kiekvienam žvėriui atskirai), ir sukamos apie tą pačią vietą; einant priekinė koja aiškiai parlenkia riešą po krūtine (60°, kaip tikram arkliui), o užpakalinė lieka beveik tiesi; kūnas nebekyla, kai koja išskėsta, tad pėdos nebekabo ore; redagavimo mygtukai ✎ ir 🧱 iškelti iš ☰ meniu į mygtukų eilutę, į kairę nuo grafikos mygtukų. v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -908,6 +915,7 @@ const I18N={
     splatHexed:'užkalbėtas', splatSecondLife:'ANTRAS GYVENIMAS', splatMissed:'nepataikė',
     splatDodged:'išsisuko', splatRiposte:'atkirtis', levelUpFloat:'LYGIS ',
     timeOfDayLbl:'Paros metas: ', cycleStoppedSuffix:' (ciklas sustabdytas)', compassN:'Š',
+    efEnded:'Nustojo veikti: ', efClash:'Nesiderina, todėl nutrūko: ', efWashed:'Priešnuodis nuplovė: ',
   },
   en:{ loading:'Loading the forest…', sub:'Third-person RPG · in your browser',
     langQ:'Choose language', deviceQ:'How will you play?', devicePc:'🖥 Computer', devicePhone:'📱 Phone', sDevice:'Device',
@@ -1037,6 +1045,7 @@ const I18N={
     splatHexed:'hexed', splatSecondLife:'SECOND LIFE', splatMissed:'missed',
     splatDodged:'dodged', splatRiposte:'riposte', levelUpFloat:'LEVEL ',
     timeOfDayLbl:'Time of day: ', cycleStoppedSuffix:' (cycle stopped)', compassN:'N',
+    efEnded:'Wore off: ', efClash:"Doesn't mix, so it ended: ", efWashed:'The antidote washed out: ',
   }
 };
 function T(k){ const d=I18N[LANG]; return (d&&d[k]!==undefined)?d[k]:(I18N.lt[k]!==undefined?I18N.lt[k]:k); }
@@ -4987,7 +4996,7 @@ const AGROUPS=[
    {k:'vaistuGaminimas',ic:'💊',act:'gydymas',n:{lt:'Vaistų gaminimas',en:'Medicine making'},v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
    {k:'nuoduGaminimas',ic:'☠️',act:'virtuve', n:{lt:'Nuodų gaminimas',en:'Poison making'},   v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
    {k:'receptuZinojimas',ic:'📖',act:'virtuve',n:{lt:'Receptų žinojimas',en:'Recipe knowledge'},v:r=>1+r*0.045,f:v=>'×'+v.toFixed(2)},
-   {k:'ilgaGaliojimo',ic:'🍯',act:'virtuve',  n:{lt:'Ilga galiojimo trukmė',en:'Long shelf life'},v:r=>Math.min(0.50,r*0.030), f:v=>'−'+(v*100).toFixed(0)+'%'}]},
+   {k:'ilgaGaliojimo',ic:'🍯',act:'virtuve',  n:{lt:'Ilga galiojimo trukmė',en:'Long shelf life'},v:r=>Math.min(0.50,r*0.030), f:v=>'+'+(v*100).toFixed(0)+'%'}]},
 
  {id:'a_jv',kind:'mix',keys:['jega','vikrumas'],n:{lt:'Jėga + Vikrumas · dailidė',en:'Strength + Agility · carpentry'},i:'🪚',c:'#bfd07a',sub:[
    {k:'lankuGamyba',ic:'🏹',act:'amatai',    n:{lt:'Lankų gamyba',en:'Bow making'},        v:r=>1+r*0.10, f:v=>'×'+v.toFixed(2)},
@@ -5117,7 +5126,7 @@ const ATTR_INFO={
  vaistuGaminimas:{lt:'Stipresnis gydomųjų vaistų poveikis.',en:'Stronger effect from crafted medicine.'},
  nuoduGaminimas:{lt:'Stipresnis nuodų poveikis.',en:'Stronger effect from crafted poison.'},
  receptuZinojimas:{lt:'Amatų patirties daugiklis.',en:'Multiplier for crafting experience.'},
- ilgaGaliojimo:{lt:'Pagaminti valgiai/vaistai ilgiau negenda.',en:'Cooked food and medicine last longer before spoiling.'},
+ ilgaGaliojimo:{lt:'Eliksyro poveikis trunka tiek procentų ilgiau.',en:'An elixir effect lasts this much longer.'},
  lankuGamyba:{lt:'Pagamintų lankų žala ir kokybė.',en:'Damage and quality of crafted bows.'},
  irankiuGamyba:{lt:'Pagamintų įrankių efektyvumas.',en:'Effectiveness of crafted tools.'},
  medzioApdirbimas:{lt:'Pagamintų medinių daiktų kokybė.',en:'Quality of crafted wooden items.'},
@@ -5230,6 +5239,10 @@ const usedIn=g=>g.sub.reduce((a,sb)=>a+RANK[sb.k],0);
 const groupOfKey=k=>GROUPS.find(g=>g.sub.some(sb=>sb.k===k));
 
 const D={};
+/* v206: veikiantys eliksyrai: {k — daikto raktas, t — kiek sekundžių liko,
+   g — kokia galia išgerta (D.vaistuGaminimas gėrimo metu)}. Skelbiama ČIA, virš
+   derive(), nes derive() juos priskaičiuoja. */
+const efektai=[];
 /* v191: syncActRanks PAŠALINTA — rangai vėl renkami rankomis iš uždirbtų taškų.
    sub laukas act lieka: pagal jį žinom, kuri meistrystė duoda tos srities tašką
    (GATHER_ACTS/CRAFT_ACTS) ir kuri kovoje nekyla (v188). */
@@ -5239,6 +5252,14 @@ function derive(){
   for(const sk of Object.keys(gear)){
     const it=gear[sk]; if(!it||!it.b) continue;
     for(const [key,v] of Object.entries(it.b)) D[key]=(D[key]||0)+v;
+  }
+  /* v206: eliksyrai. Kaip ir biomo rūkas (žr. PROJEKTAS.md), antra sistema tik
+     PRIDEDA prie to, ką jau nustatė rangai ir apranga — niekada neperrašo. Ir
+     dedama PRIEŠ ribas žemiau, kad eliksyras negalėtų peršokti išsisukimo,
+     taiklumo ar kritinio šanso lubų. */
+  for(const ef of efektai){
+    const c=CONSUM[ef.k]; if(!c) continue;
+    if(c.add) for(const [k,v] of Object.entries(c.add)) D[k]=(D[k]||0)+v*ef.g;
   }
   D.kritSansas=Math.min(.65,D.kritSansas);
   for(const sk of Object.keys(gear)) if(gear[sk]&&gear[sk].critAlways) D.kritSansas=1;   // v104
@@ -5381,7 +5402,29 @@ const ITEMS={
   ragai_elnio:{n:{lt:'Elnio ragai',en:'Deer antlers'},i:'🦌'},
   ragai_briedzio:{n:{lt:'Briedžio ragai',en:'Elk antlers'},i:'🦌'},
   ragai_karves:{n:{lt:'Karvės ragai',en:'Cow horns'},i:'🐄'},
-  kanopos_arklio:{n:{lt:'Arklio kanopos',en:'Horse hooves'},i:'🐴'}
+  kanopos_arklio:{n:{lt:'Arklio kanopos',en:'Horse hooves'},i:'🐴'},
+  /* v206: MEDUS IR VAISTINĖ. Medus — atskiras valgomas daiktas; iš kur jis
+     imamas, dar nenuspręsta (vartotojas: „jį kažkur įdėsim vėliau"), tad kol
+     kas jokia vieta jo neduoda ir penki receptai, kuriems jo reikia, laukia.
+     Midus — iš medaus daromas gėrimas, kartu ir trauktinių pagrindas.
+     Eliksyrai (el_*) — jų sudėtis ELIX_REC, poveikis CONSUM, o žmogui skirtas
+     aprašymas „Giria failai atsargai/ELEKSYRAI.txt". */
+  medus:{n:{lt:'Medus',en:'Honey'},i:'🍯'},
+  midus:{n:{lt:'Midus',en:'Mead'},i:'🍶'},
+  el_ramunes:{n:{lt:'Ramunių arbata',en:'Chamomile tea'},i:'🍵'},
+  el_kraujazoles:{n:{lt:'Kraujažolės nuoviras',en:'Yarrow decoction'},i:'🩹'},
+  el_dilgeliu:{n:{lt:'Dilgėlių sultys',en:'Nettle juice'},i:'🥬'},
+  el_metos:{n:{lt:'Mėtų gaiva',en:'Mint cooler'},i:'🧊'},
+  el_ciobrelio:{n:{lt:'Čiobrelio sirupas',en:'Thyme syrup'},i:'🫖'},
+  el_sidabrazoles:{n:{lt:'Sidabražolės nuoviras',en:'Tormentil decoction'},i:'🫙'},
+  el_ajero:{n:{lt:'Ajero stiprinamasis',en:'Calamus tonic'},i:'🥃'},
+  el_zaizdu:{n:{lt:'Žaizdų gėrimas',en:'Wound draught'},i:'🧪'},
+  el_jonazoles:{n:{lt:'Jonažolės trauktinė',en:"St John's wort tincture"},i:'🧴'},
+  el_pataiso:{n:{lt:'Pataiso žiežirbos',en:'Clubmoss sparks'},i:'🎆'},
+  el_pakalnutes:{n:{lt:'Pakalnutės lašai',en:'Lily of the valley drops'},i:'💗'},
+  el_vilkauoges:{n:{lt:'Vilkauogės lašai',en:'Belladonna drops'},i:'👁'},
+  el_raganos:{n:{lt:'Raganos akys',en:"Witch's eyes"},i:'🔮'},
+  el_balzamas:{n:{lt:'Girios balzamas',en:'Forest balm'},i:'🏺'}
 };
 
 /* ===================== ŽVEJYBA =====================
@@ -6518,10 +6561,11 @@ function addXp(skill,amount){
   gainCharXp(gained);
   refreshUI();
 }
+const bagCap=()=>Math.round((D.talpa+D.amatininkas)*6);
+const bagFree=()=>bagCap()-Object.values(bag).reduce((a,b)=>a+b,0);
 function give(key,n){
-  const carried=Object.values(bag).reduce((a,b)=>a+b,0), cap=Math.round((D.talpa+D.amatininkas)*6);
-  if(carried>=cap){ log(T('bagFull')+cap+T('bagFullEnd'),'lg-h'); return; }
-  n=Math.min(n,cap-carried);
+  if(bagFree()<=0){ log(T('bagFull')+bagCap()+T('bagFullEnd'),'lg-h'); return; }
+  n=Math.min(n,bagFree());
   bag[key]=(bag[key]||0)+n;
   log('+'+n+' '+Lx(ITEMS[key].n),'lg-g'); drawBag();
 }
@@ -7243,6 +7287,7 @@ function hurtPlayer(dmg,from){
    animacijos. Prisikėlimas dabar po 3 s (buvo 1,3 s), kaip paprašyta. */
 function die(overkill){
   player.dead=true; player.hp=0; player.targetId=null; player.moveTo=null;
+  if(efektai.length){ efektai.length=0; derive(); }   // v206: eliksyrai baigiasi numirus
   const clip=overkill?playerGltfActions.death:(playerGltfActions.deathAlt||playerGltfActions.death);
   triggerPlayerClip(clip,1);
   player.dash=null; player.mine=null;      // v138: kirtiklio poza neperrašo mirties
@@ -8476,7 +8521,7 @@ const CHAR_TABS={char:'Keliautojas',skills:{lt:'Meistrystės',en:'Masteries'},co
        kalavijui daugiausia geležies → kalvystė, o odiniams batams su
        pakaustu daugiausia odos → odininkystė (vartotojo taisyklė, v181).
    Reikalaujamas lygis auga kartu su medžiaga ir daikto stambumu. */
-const CRAFT_KEYS=['kalvyste','odininkyste','dailide'];
+const CRAFT_KEYS=['kalvyste','odininkyste','dailide','gydymas'];
 const RES_CRAFT={gelezis:'kalvyste',plienas:'kalvyste',bronza:'kalvyste',sidabras:'kalvyste',
   oda:'odininkyste',medziaga:'odininkyste',
   mediena:'dailide',kaulas:'dailide',titnagas:'dailide',akmuo:'dailide'};
@@ -8513,9 +8558,60 @@ function recipeOf(id){
   const lvl=Math.max(1,Math.round(mt.m*8-2)+Math.round(ty.b/4));
   return {id,res,craft,lvl,xp:Math.round(8+viso*1.5),viso};
 }
+/* v206: ELIKSYRŲ RECEPTAI. Amatas — Gydymas (SKILLS.gydymas), tas pats, kurio
+   aprašymas nuo seno buvo „Gydomųjų burtų ir ŽOLIŲ stiprumas".
+   Kas iš ko ir kodėl — „Giria failai atsargai/ELEKSYRAI.txt".
+   PASTABA: penkiems receptams reikia MEDAUS, dar trims — iš medaus daromo
+   MIDAUS, o medaus kol kas niekur negalima gauti (vartotojas jį dės vėliau).
+   Tad aštuoni receptai laukia, o septyni iš vienų žolių veikia jau dabar. */
+const ELIX_CRAFT='gydymas';
+const ELIX_REC={
+  el_ramunes:     {res:{ramune:3},                                  lvl:1, xp:10},
+  el_kraujazoles: {res:{kraujazole:3,zole:1},                       lvl:2, xp:12},
+  midus:          {res:{medus:3,uogos:2},                           lvl:3, xp:12},
+  el_dilgeliu:    {res:{dilgele:4},                                 lvl:3, xp:14},
+  el_metos:       {res:{meta:3},                                    lvl:4, xp:14},
+  el_ciobrelio:   {res:{ciobrelis:3,medus:1},                       lvl:4, xp:16},
+  el_sidabrazoles:{res:{sidabrazole:3},                             lvl:5, xp:18},
+  el_ajero:       {res:{ajeras:3,zole:1},                           lvl:6, xp:18},
+  el_zaizdu:      {res:{kraujazole:2,ramune:2,dilgele:2,medus:1},    lvl:7, xp:24},
+  el_jonazoles:   {res:{jonazole:3,midus:1},                        lvl:8, xp:26},
+  el_pataiso:     {res:{pataisas:4},                                lvl:9, xp:26},
+  el_pakalnutes:  {res:{pakalnute:2,medus:1},                       lvl:11,xp:30},
+  el_vilkauoges:  {res:{vilkauoge:2,midus:1},                       lvl:13,xp:34},
+  el_raganos:     {res:{vilkauoge:2,sidabrazole:3,midus:1},         lvl:15,xp:40},
+  el_balzamas:    {res:{jonazole:2,ajeras:2,meta:2,ciobrelis:2,medus:2,midus:1}, lvl:18,xp:52}
+};
+/* dirbtuvės eilutei reikia to paties pavidalo, kokį duoda recipeOf */
+function elixRow(id){
+  const r=ELIX_REC[id]; if(!r) return null;
+  const c=CONSUM[id];
+  return {id, res:r.res, craft:ELIX_CRAFT, lvl:r.lvl, xp:r.xp,
+    viso:Object.values(r.res).reduce((a,b)=>a+b,0), elix:true,
+    it:{id, i:ITEMS[id].i, n:Lx(ITEMS[id].n), d:Lx(c.d)}};
+}
+function craftElixir(id){
+  const r=elixRow(id); if(!r) return false;
+  if(SKILLS[r.craft].lv<r.lvl){ log(T('craftNeedLvl')+Lx(SKILLS[r.craft].n)+' '+r.lvl,'lg-h'); return false; }
+  for(const [k,v] of Object.entries(r.res)) if((bag[k]||0)<v){ log(T('craftNoRes')+Lx(ITEMS[k].n),'lg-h'); return false; }
+  /* žaliavos nurašomos TIK jei pagamintas indas turės kur tilpti */
+  if(bagFree()<=0){ log(T('bagFull')+bagCap()+T('bagFullEnd'),'lg-h'); return false; }
+  for(const [k,v] of Object.entries(r.res)) bag[k]-=v;
+  /* „Vaistažolininkas" (zoles ×1,10 už rangą) — šansas gauti du indus */
+  const n=Math.random()<Math.min(.6,(D.zoles||1)-1)?2:1;
+  give(id,n);
+  addXp(ELIX_CRAFT,r.xp);
+  addXp('amatai',Math.max(1,Math.round(r.xp*.5*(D.receptuZinojimas||1))));
+  sfx('chop');
+  log(T('craftMade')+Lx(ITEMS[id].n)+(n>1?T('craftTwice'):''),'lg-s');
+  burst(player.pos.x,player.pos.y+1.1,player.pos.z,16,0x8fd07a,2.4);
+  refreshUI(); drawCraft(); drawBag();
+  return true;
+}
 const canCraft=r=>!!r&&SKILLS[r.craft].lv>=r.lvl&&
   Object.entries(r.res).every(([k,v])=>(bag[k]||0)>=v);
 function craftItem(id){
+  if(ELIX_REC[id]) return craftElixir(id);      // v206: eliksyrai turi savo receptus
   const r=recipeOf(id); if(!r) return false;
   if(SKILLS[r.craft].lv<r.lvl){ log(T('craftNeedLvl')+Lx(SKILLS[r.craft].n)+' '+r.lvl,'lg-h'); return false; }
   for(const [k,v] of Object.entries(r.res)) if((bag[k]||0)<v){ log(T('craftNoRes')+Lx(ITEMS[k].n),'lg-h'); return false; }
@@ -8532,6 +8628,8 @@ function craftItem(id){
 /* ===================== DIRBTUVĖS LANGAS ===================== */
 let craftTab='kalvyste';
 function craftRows(){
+  if(craftTab===ELIX_CRAFT)
+    return Object.keys(ELIX_REC).map(elixRow).sort((a,b)=>a.lvl-b.lvl||a.it.n.localeCompare(b.it.n));
   return Object.keys(CATALOG).map(recipeOf).filter(r=>r&&r.craft===craftTab)
     .sort((a,b)=>a.lvl-b.lvl||CATALOG[a.id].n.localeCompare(CATALOG[b.id].n));
 }
@@ -8543,7 +8641,7 @@ function craftHtml(){
   h+='<div class="hint" style="margin:7px 0">'+T('craftHint')+'</div>';
   const eil=craftRows();
   for(const r of eil){
-    const it=CATALOG[r.id], gali=canCraft(r), lygis=lv>=r.lvl;
+    const it=r.it||CATALOG[r.id], gali=canCraft(r), lygis=lv>=r.lvl;
     const res=Object.entries(r.res).map(([k,v])=>{
       const turi=bag[k]||0;
       return '<span style="color:'+(turi>=v?'#8fd07a':'#c4462f')+'">'+ITEMS[k].i+v+'</span>';
@@ -9422,30 +9520,163 @@ const MASTERY_INFO={
    Iki šiol krepšio gėrybės buvo tik atsargos — jų panaudoti nebuvo kaip.
    Dabar paspaudus krepšyje jos suvalgomos/išgeriamos: atstato jėgas ir groja
    geltoną nr4 animaciją (A_NO.use), kaip prašė vartotojas. */
+/* v206: ELIKSYRAI. Kiekvieno poveikis parinktas pagal TIKRĄ tos žolės veikimą
+   žmogui (žr. „Giria failai atsargai/ELEKSYRAI.txt" — ten surašyta, kas iš ko
+   gaminama, koks tikras vaistinis veikimas ir kaip jis paverstas žaidimo
+   skaičiais). Laukai:
+     hp/mana/stam  — atstatoma iš karto;
+     kaina         — kiek gyvybės kainuoja pats gėrimas (nuodingos žolės);
+     sec           — kiek sekundžių veikia; be jo daiktas tiesiog maistas;
+     add           — kas PRIDEDAMA prie D (derive() juos sudeda su rangais ir
+                     apranga, prieš ribas);
+     hpS/manaS/stamS — atsistatymas per sekundę, kol veikia;
+     nuodai        — nuodų žala per sekundę (žemiau 1 gyvybės nenuveda);
+     priesnuodis   — nuplauna nuodingus eliksyrus ir saugo nuo jų;
+     kirsti        — kurių eliksyrų negalima gerti kartu (išgėrus šitą, tie
+                     nutrūksta). */
 const CONSUM={
   uogos: {hp:8,             n:{lt:'Uogos',en:'Berries'}},
   grybas:{stam:14,          n:{lt:'Grybas',en:'Mushroom'}},
   duona: {hp:10,stam:8,     n:{lt:'Duona',en:'Bread'}},
-  zole:  {hp:22,mana:10,    n:{lt:'Vaistažolė',en:'Herb'}}
+  zole:  {hp:22,mana:10,    n:{lt:'Vaistažolė',en:'Herb'}},
+  medus: {hp:14,stam:18,    n:{lt:'Medus',en:'Honey'},
+    d:{lt:'Greita jėga ir žaizdų tepalas — medus vienintelis maistas, kuris negenda.',
+       en:'Quick strength and a wound dressing — honey is the one food that never spoils.'}},
+  midus: {hp:10,stam:14,sec:120, n:{lt:'Midus',en:'Mead'},
+    add:{zala:2,nepalauziamas:0.03,taiklumas:-0.06},
+    d:{lt:'Rauginto medaus gėrimas: drąsos prideda, taiklumo atima.',
+       en:'Fermented honey: it lends courage and takes away aim.'}},
+
+  el_ramunes:{sec:180,stam:20, n:{lt:'Ramunių arbata',en:'Chamomile tea'},
+    add:{kovosAtsigavimas:4,manosAtgavimas:0.5},
+    d:{lt:'Ramina ir atleidžia mėšlungį: ištvermė ir mana grįžta greičiau.',
+       en:'Calms and eases cramps: stamina and mana return faster.'}},
+  el_kraujazoles:{sec:120,hp:12,hpS:0.5, n:{lt:'Kraujažolės nuoviras',en:'Yarrow decoction'},
+    add:{runuSarvai:1.2},
+    d:{lt:'Stabdo kraujavimą — žaizdos užsitraukia pačios, smūgiai skauda mažiau.',
+       en:'Stops bleeding — wounds close on their own and blows hurt less.'}},
+  el_dilgeliu:{sec:240, n:{lt:'Dilgėlių sultys',en:'Nettle juice'},
+    add:{gyvybe:18,atkaklumas:0.7},
+    d:{lt:'Geležis ir kraujo stiprinimas: daugiau gyvybės ir spartesnis gijimas.',
+       en:'Iron and blood-building: more health and faster natural healing.'}},
+  el_metos:{sec:150,stam:15, n:{lt:'Mėtų gaiva',en:'Mint cooler'},
+    add:{greitis:0.5,taiklumas:0.05},
+    d:{lt:'Vėsina ir prablaivina galvą — koja lengvesnė, akis tikslesnė.',
+       en:'Cools and clears the head — a lighter step and a truer eye.'}},
+  el_ciobrelio:{sec:200,hp:10,stam:25, n:{lt:'Čiobrelio sirupas',en:'Thyme syrup'},
+    add:{kovosIstverme:22,kovosAtsigavimas:3},
+    d:{lt:'Atveria kvėpavimą: ilgiau bėgi, greičiau atsigauni.',
+       en:'Opens the breath: you run longer and recover faster.'}},
+  el_sidabrazoles:{sec:300,priesnuodis:true, n:{lt:'Sidabražolės nuoviras',en:'Tormentil decoction'},
+    add:{valia:3,nepalauziamas:0.04},
+    d:{lt:'Rauginės sutraukia — nuplauna nuodus ir atlaiko svetimą kerą.',
+       en:'Its tannins bind — it washes out poison and holds off hostile magic.'}},
+  el_ajero:{sec:300, n:{lt:'Ajero stiprinamasis',en:'Calamus tonic'},
+    add:{istverme:25,ritmingasKvepavimas:0.12},
+    d:{lt:'Kartus šaknies gėrimas nuo nuovargio: darbo ištvermė didesnė ir eikvojama lėčiau.',
+       en:'A bitter root drink against fatigue: more work stamina, spent slower.'}},
+  el_zaizdu:{sec:180,hp:25,hpS:1.1, n:{lt:'Žaizdų gėrimas',en:'Wound draught'},
+    add:{runuSarvai:1.5,atkaklumas:0.6},
+    d:{lt:'Kraujažolė, ramunė ir dilgėlė kartu: kraujas sustoja, uždegimas atslūgsta, žaizda užauga.',
+       en:'Yarrow, chamomile and nettle together: bleeding stops, swelling falls, the wound closes.'}},
+  el_jonazoles:{sec:240, n:{lt:'Jonažolės trauktinė',en:"St John's wort tincture"},
+    add:{siela:20,burtuGalia:2.5,manosAtgavimas:0.8,issisukimas:-0.04},
+    d:{lt:'Nervų ir nuotaikos žolė — siela stipresnė, bet akys jautrios šviesai, tad sunkiau išsisukti.',
+       en:'A herb for nerves and mood — a stronger soul, but light-shy eyes make dodging harder.'}},
+  el_pataiso:{sec:90, n:{lt:'Pataiso žiežirbos',en:'Clubmoss sparks'},
+    add:{sielosLiepsna:1.6,kritSansas:0.05},
+    d:{lt:'Pataiso sporos ore blyksteli liepsna — kirčiai padega priešą.',
+       en:'Clubmoss spores flash into flame in the air — strikes set the enemy alight.'}},
+  el_pakalnutes:{sec:90,kaina:10,kirsti:['el_vilkauoges'], n:{lt:'Pakalnutės lašai',en:'Lily of the valley drops'},
+    add:{zala:3.5,atakosSparta:0.12},
+    d:{lt:'Širdis plaka stipriau ir lėčiau — kirtis sunkesnis. Nuodinga: pats gėrimas atima gyvybės.',
+       en:'The heart beats stronger and slower — a heavier strike. Poisonous: the drink itself costs health.'}},
+  el_vilkauoges:{sec:120,nuodai:0.45,kirsti:['el_pakalnutes'], n:{lt:'Vilkauogės lašai',en:'Belladonna drops'},
+    add:{izvalga:8,issisukimas:0.06,kritSansas:0.04},
+    d:{lt:'Vyzdžiai išsiplečia — matai toliau ir tamsoje, kūnas atsipalaiduoja. Kol veikia, nuodai graužia.',
+       en:'The pupils widen — you see further and in the dark, the body loosens. While it lasts, the poison gnaws.'}},
+  el_raganos:{sec:180, n:{lt:'Raganos akys',en:"Witch's eyes"},
+    add:{izvalga:10,issisukimas:0.07,kritSansas:0.05},
+    d:{lt:'Vilkauogė, surišta sidabražolės rauginėmis: matymas lieka, nuodai — ne.',
+       en:'Belladonna bound by tormentil tannins: the sight stays, the poison does not.'}},
+  el_balzamas:{sec:360,hp:20,mana:20,stam:30, n:{lt:'Girios balzamas',en:'Forest balm'},
+    add:{gyvybe:15,siela:15,kovosIstverme:15,greitis:0.3,atkaklumas:0.5},
+    d:{lt:'Visos girios stiprybė viename inde — po truputį visko ir ilgam.',
+       en:'The whole forest in one vessel — a little of everything, for a long while.'}}
 };
+/* Ar kuris nors veikiantis eliksyras saugo nuo nuodų */
+const priesnuodis=()=>efektai.some(e=>CONSUM[e.k]&&CONSUM[e.k].priesnuodis);
+function startEfektas(k,c,g){
+  /* nesuderinami eliksyrai (pakalnutė ir vilkauogė abu veikia širdį) */
+  if(c.kirsti) for(const kk of c.kirsti){
+    const j=efektai.findIndex(e=>e.k===kk);
+    if(j>=0){ efektai.splice(j,1); log(T('efClash')+Lx(ITEMS[kk].n),'lg-h'); }
+  }
+  /* priešnuodis nuplauna VISUS nuodingus eliksyrus — kartu su jų nauda
+     (todėl ir yra „Raganos akys": vilkauogė, jau surišta sidabražole) */
+  if(c.priesnuodis) for(let i=efektai.length-1;i>=0;i--)
+    if(CONSUM[efektai[i].k].nuodai){ log(T('efWashed')+Lx(ITEMS[efektai[i].k].n),'lg-h'); efektai.splice(i,1); }
+  const trukme=c.sec*(1+(D.ilgaGaliojimo||0));
+  const cur=efektai.find(e=>e.k===k);
+  if(cur){ cur.t=Math.max(cur.t,trukme); cur.g=Math.max(cur.g,g); }
+  else efektai.push({k,t:trukme,g});
+  derive();
+  return trukme;
+}
+function updateEfektai(dt){
+  if(!efektai.length||player.dead) return;
+  const saugo=priesnuodis();
+  let baigesi=false;
+  for(let i=efektai.length-1;i>=0;i--){
+    const ef=efektai[i], c=CONSUM[ef.k];
+    ef.t-=dt;
+    if(c.hpS)   player.hp  =Math.min(player.maxHp,  player.hp  +c.hpS  *ef.g*dt);
+    if(c.manaS) player.mana=Math.min(player.maxMana,player.mana+c.manaS*ef.g*dt);
+    if(c.stamS) player.stam=Math.min(player.maxStam,player.stam+c.stamS*ef.g*dt);
+    /* nuodai NIEKADA neužmuša: žemiausiai nuveda iki 1 gyvybės */
+    if(c.nuodai&&!saugo) player.hp=Math.max(1,player.hp-c.nuodai*ef.g*dt);
+    if(ef.t<=0){ efektai.splice(i,1); baigesi=true; log(T('efEnded')+Lx(ITEMS[ef.k].n),'lg-h'); }
+  }
+  if(baigesi){ derive(); refreshUI(); }
+}
+/* juostelė skydelyje: perpiešiama tik pasikeitus (kas kadrą būtų DOM švaistymas) */
+let efBarKey=null;
+function drawEfBar(){
+  const el=document.getElementById('efBar'); if(!el) return;
+  const raktas=efektai.map(e=>e.k+':'+Math.ceil(e.t)).join('|');
+  if(raktas===efBarKey) return;
+  efBarKey=raktas;
+  el.style.display=efektai.length?'flex':'none';
+  el.innerHTML=efektai.map(e=>'<span title="'+Lx(ITEMS[e.k].n)+'">'+ITEMS[e.k].i+
+    '<b>'+Math.ceil(e.t)+'s</b></span>').join('');
+}
 function useConsumable(k){
   const c=CONSUM[k]; if(!c) return false;
   if(!(bag[k]>0)){ return false; }
   if(player.dead||player.swimming) return false;
   bag[k]--;
-  if(c.hp)   player.hp  =Math.min(player.maxHp,  player.hp+c.hp);
-  if(c.mana) player.mana=Math.min(player.maxMana,player.mana+c.mana);
-  if(c.stam) player.stam=Math.min(player.maxStam,player.stam+c.stam);
+  /* vaistų stiprumas — „Vaistų gaminimas" (a_intelektas). Paprastam maistui
+     (uogos, grybas, duona, medus) jis negalioja. */
+  const g=(c.sec||c.add)?(D.vaistuGaminimas||1):1;
+  const kiek=v=>Math.round(v*g);
+  if(c.hp)   player.hp  =Math.min(player.maxHp,  player.hp+kiek(c.hp));
+  if(c.mana) player.mana=Math.min(player.maxMana,player.mana+kiek(c.mana));
+  if(c.stam) player.stam=Math.min(player.maxStam,player.stam+kiek(c.stam));
+  if(c.kaina) player.hp=Math.max(1,player.hp-c.kaina);      // nuodingos žolės kaina
+  const sek=c.sec?startEfektas(k,c,g):0;
   /* geltona nr4 — valgymo/gėrimo judesys */
   if(playerGltfActions.use) triggerPlayerClip(playerGltfActions.use,1);
   player.obj.userData.act={a:'use',t:0,dur:.9};
   sfx('pickup');
   const dalys=[];
-  if(c.hp) dalys.push('+'+c.hp+' ❤');
-  if(c.mana) dalys.push('+'+c.mana+' ✨');
-  if(c.stam) dalys.push('+'+c.stam+' 🫁');
-  log(T('used')+Lx(ITEMS[k].n)+' ('+dalys.join(', ')+')','lg-s');
+  if(c.hp) dalys.push('+'+kiek(c.hp)+' ❤');
+  if(c.mana) dalys.push('+'+kiek(c.mana)+' ✨');
+  if(c.stam) dalys.push('+'+kiek(c.stam)+' 🫁');
+  if(c.kaina) dalys.push('−'+c.kaina+' ❤');
+  if(sek) dalys.push(Math.round(sek)+' s');
+  log(T('used')+Lx(ITEMS[k].n)+(dalys.length?' ('+dalys.join(', ')+')':''),'lg-s');
   addXp('virtuve',3);
+  if(c.sec) addXp('gydymas',3);
   drawBag(); refreshUI();
   return true;
 }
@@ -11258,6 +11489,7 @@ function frame(now){
   updateGearDrops(dt);          // v189: ant žemės gulintys daiktai
   updateLavonai(dt);            // v200: žvėrių lavonai (30 s)
   updateActs(dt);
+  updateEfektai(dt); drawEfBar();                       // v206: eliksyrų laikas
   updateSkillBar(); updateCastBar(); updateStatBars();   // v189: juostos kas kadrą
   document.getElementById('bCast').classList.toggle('on',!!player.meditating);
   updateMusic(dt);

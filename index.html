@@ -748,8 +748,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v203';
-const GAME_CHANGES='v203: žvėrių kojos nebeatsiskiria nuo pilvo — dabar jos pjaunamos ten, kur iš tikrųjų prasideda (išmatuota kiekvienam žvėriui atskirai), ir sukamos apie tą pačią vietą; einant priekinė koja aiškiai parlenkia riešą po krūtine (60°, kaip tikram arkliui), o užpakalinė lieka beveik tiesi; kūnas nebekyla, kai koja išskėsta, tad pėdos nebekabo ore; redagavimo mygtukai ✎ ir 🧱 iškelti iš ☰ meniu į mygtukų eilutę, į kairę nuo grafikos mygtukų. v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
+const GAME_VERSION='v204';
+const GAME_CHANGES='v204: vienuolika vaistažolių gavo savo modelius — ramunė žydi baltais žiedais su geltonu viduriu, kraujažolė skėčiu, pakalnutė kabančiais varpeliais, vilkauogė juodomis uogomis, ajeras kardo lapais; nuskintas augalas dabar traukiasi į žemę, o ne kabo ore. v203: žvėrių kojos nebeatsiskiria nuo pilvo — dabar jos pjaunamos ten, kur iš tikrųjų prasideda (išmatuota kiekvienam žvėriui atskirai), ir sukamos apie tą pačią vietą; einant priekinė koja aiškiai parlenkia riešą po krūtine (60°, kaip tikram arkliui), o užpakalinė lieka beveik tiesi; kūnas nebekyla, kai koja išskėsta, tad pėdos nebekabo ore; redagavimo mygtukai ✎ ir 🧱 iškelti iš ☰ meniu į mygtukų eilutę, į kairę nuo grafikos mygtukų. v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -5656,14 +5656,300 @@ const ZOLES=[
   {key:'ajeras',     label:'Ajeras',        color:0x7a9450, vand:true, xp:21, forma:'kuokstas'},
   {key:'meta',       label:'Pelkinė mėta',  color:0x6aa07a, vand:true, xp:20, forma:'skeciai'}
 ];
+/* v204: VAISTAŽOLIŲ MODELIAI. Iki v203 visos vienuolika buvo keturios
+   bendrinės formos (kūgis, pusrutulis, plokščias kupolas, ritinys) su viena
+   spalva — pievoje jos skyrėsi tik atspalviu, o vartotojas prašė, kad
+   atrodytų kaip gyvos. Dabar kiekviena turi savą tinklelį iš stiebų, lapų ir
+   žiedų.
+   KODĖL KODE, O NE .GLB: augalų vienuolika, jie smulkūs, o kiekvienas .glb
+   kainuotų atskirą siuntimą ir tekstūras; be to jie jau piešiami po vieną
+   InstancedMesh rūšiai (žr. nodeBatchAdd), tad vienas tinklelis rūšiai yra
+   pigiausia, ką galima padaryti — vienuolika piešimo iškvietimų iš viso.
+   SPALVA — VIRŠŪNĖSE (žiedas geltonas, lapai žali), tad medžiaga balta su
+   vertexColors (žr. nodeMat) ir DoubleSide, nes lapas yra plokštuma ir iš
+   nugaros kitaip dingtų.
+   PRADŽIA TIES ŽEME (y=0), todėl h=0: nuskintas augalas mažėja žemyn
+   (obj.scale), o ne kabo ore, kaip būdavo su kūgiais. */
+function zNew(){ return {p:[],c:[]}; }
+function zTri(B,a,b,c,sp){
+  B.p.push(a[0],a[1],a[2], b[0],b[1],b[2], c[0],c[1],c[2]);
+  const r=((sp>>16)&255)/255, g=((sp>>8)&255)/255, bl=(sp&255)/255;
+  for(let i=0;i<3;i++) B.c.push(r,g,bl);
+}
+function zQuad(B,a,b,c,d,sp){ zTri(B,a,b,c,sp); zTri(B,a,c,d,sp); }
+function zGeo(B){
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(B.p,3));
+  g.setAttribute('color',new THREE.Float32BufferAttribute(B.c,3));
+  g.computeVertexNormals();
+  return g;
+}
+/* stiebas: n briaunų vamzdis nuo a iki b (r0 apačioje, r1 viršuje) */
+function zStiebas(B,a,b,r0,r1,sp,n){
+  n=n||3;
+  const dx=b[0]-a[0], dy=b[1]-a[1], dz=b[2]-a[2];
+  const L=Math.hypot(dx,dy,dz)||1e-6, ux=dx/L, uy=dy/L, uz=dz/L;
+  let px=-uy, py=ux, pz=0;
+  if(Math.hypot(px,py,pz)<1e-4){ px=1; py=0; pz=0; }
+  const pl=Math.hypot(px,py,pz); px/=pl; py/=pl; pz/=pl;
+  const qx=uy*pz-uz*py, qy=uz*px-ux*pz, qz=ux*py-uy*px;
+  const rat=(t,r,c)=>[c[0]+(px*Math.cos(t)+qx*Math.sin(t))*r,
+                      c[1]+(py*Math.cos(t)+qy*Math.sin(t))*r,
+                      c[2]+(pz*Math.cos(t)+qz*Math.sin(t))*r];
+  for(let i=0;i<n;i++){
+    const t0=i/n*TAU, t1=(i+1)/n*TAU;
+    zQuad(B,rat(t0,r0,a),rat(t1,r0,a),rat(t1,r1,b),rat(t0,r1,b),sp);
+  }
+}
+/* Lapas nuo taško p kryptimi yaw, pakeltas kampu pitch ir NULINKĘS galu
+   žemyn (linkis). Linkis svarbus ne dėl grožio: žaidimo kamera žemai, o
+   plokščias vandens lygio lapas iš tokio kampo matomas iš briaunos — pirmoje
+   v204 versijoje dėl to dilgėlės, čiobrelio ir vilkauogės lapų iš viso
+   nesimatė, augalai atrodė kaip pliki stiebai. Lenktas lapas visada rodo
+   dalį paviršiaus. */
+function zLapas(B,p,yaw,pitch,ilgis,plotis,sp,linkis){
+  if(linkis===undefined) linkis=.55;
+  const co=Math.cos(yaw), si=Math.sin(yaw), cp=Math.cos(pitch), sp2=Math.sin(pitch);
+  const nx=co, nz=-si;
+  const T=(t,w,h)=>[p[0]+si*cp*ilgis*t+nx*w,
+                    p[1]+ilgis*(sp2*t-linkis*t*t*.5)+h,
+                    p[2]+co*cp*ilgis*t+nz*w];
+  zTri(B,T(0,0,0),T(.35,-plotis/2,0),T(.35,plotis/2,0),sp);
+  zQuad(B,T(.35,-plotis/2,0),T(.78,-plotis*.30,-plotis*.10),
+          T(.78,plotis*.30,-plotis*.10),T(.35,plotis/2,0),sp);
+  zTri(B,T(.78,-plotis*.30,-plotis*.10),T(1,0,-plotis*.22),T(.78,plotis*.30,-plotis*.10),sp);
+}
+/* plokščias skritulys (žiedo vidurys, smulkus žiedelis) */
+function zDiskas(B,c,r,sp,n){
+  n=n||6;
+  for(let i=0;i<n;i++){
+    const t0=i/n*TAU, t1=(i+1)/n*TAU;
+    zTri(B,[c[0],c[1]+r*.25,c[2]],
+           [c[0]+Math.cos(t0)*r,c[1],c[2]+Math.sin(t0)*r],
+           [c[0]+Math.cos(t1)*r,c[1],c[2]+Math.sin(t1)*r],sp);
+  }
+}
+/* ramunės tipo žiedas: vainiklapių ratas + vidurio skritulys */
+function zRamunes(B,c,r,zied,vid,n){
+  n=n||8;
+  for(let i=0;i<n;i++){
+    const t=i/n*TAU, t2=t+TAU/n*.55;
+    zQuad(B,[c[0]+Math.cos(t)*r*.30,c[1],c[2]+Math.sin(t)*r*.30],
+            [c[0]+Math.cos(t2)*r*.30,c[1],c[2]+Math.sin(t2)*r*.30],
+            [c[0]+Math.cos(t2)*r,c[1]-r*.10,c[2]+Math.sin(t2)*r],
+            [c[0]+Math.cos(t)*r,c[1]-r*.10,c[2]+Math.sin(t)*r],zied);
+  }
+  zDiskas(B,[c[0],c[1]+r*.05,c[2]],r*.34,vid,6);
+}
+/* varpelis (pakalnutė): kūgis smaigaliu žemyn */
+function zVarpelis(B,c,r,h,sp){
+  for(let i=0;i<5;i++){
+    const t0=i/5*TAU, t1=(i+1)/5*TAU;
+    zTri(B,[c[0],c[1]-h,c[2]],
+           [c[0]+Math.cos(t0)*r,c[1],c[2]+Math.sin(t0)*r],
+           [c[0]+Math.cos(t1)*r,c[1],c[2]+Math.sin(t1)*r],sp);
+  }
+}
+/* uoga: aštuonsienis — pigiausias apvalus daiktas */
+function zUoga(B,c,r,sp){
+  const t=[c[0],c[1]+r,c[2]], b=[c[0],c[1]-r,c[2]];
+  const R=[[r,0],[0,r],[-r,0],[0,-r]].map(v=>[c[0]+v[0],c[1],c[2]+v[1]]);
+  for(let i=0;i<4;i++){ const j=(i+1)%4; zTri(B,t,R[i],R[j],sp); zTri(B,b,R[j],R[i],sp); }
+}
+/* pastovus atsitiktinumas: tas pats augalas visada atrodo vienodai */
+function zRnd(sekla){ let s=sekla>>>0; return ()=>((s=(s*1664525+1013904223)>>>0)/4294967296); }
+
+/* Vienuolika augalų. Aukščiai kaip tikrovėje, tik suspausti į 0,2–0,9 m,
+   kad girioje būtų matomi ir vienodai renkami. */
 const ZOLES_GEO={
-  kuokstas:()=>new THREE.ConeGeometry(.30,.72,5),
-  skeciai:()=>new THREE.SphereGeometry(.32,7,5,0,TAU,0,Math.PI*.62),
-  kilimelis:()=>new THREE.SphereGeometry(.34,8,4,0,TAU,0,Math.PI*.34),
-  varpeliai:()=>new THREE.CylinderGeometry(.10,.24,.66,6)
+  /* JONAŽOLĖ: keli status stiebai, priešiniai smulkūs lapeliai, viršuje
+     plokščia geltonų penkialapių žiedų kekė. */
+  jonazole:()=>{ const B=zNew(), R=zRnd(11);
+    for(let s=0;s<4;s++){
+      const a=s/4*TAU+R()*.5, r=.05+R()*.05, h=.42+R()*.14;
+      const ap=[Math.cos(a)*r,0,Math.sin(a)*r], vir=[ap[0]*2.4,h,ap[2]*2.4];
+      zStiebas(B,ap,vir,.012,.008,0x5c7f3e);
+      for(let l=1;l<=3;l++){
+        const t=l/4, p=[ap[0]+(vir[0]-ap[0])*t,h*t,ap[2]+(vir[2]-ap[2])*t];
+        zLapas(B,p,a+1.57,.25,.090,.042,0x6f9257,.7);
+        zLapas(B,p,a-1.57,.25,.090,.042,0x6f9257,.7);
+      }
+      for(let z=0;z<3;z++){
+        const c=[vir[0]+(R()-.5)*.07,h-.02+R()*.05,vir[2]+(R()-.5)*.07];
+        zRamunes(B,c,.032,0xf2d23a,0xd8a72a,5);
+      }
+    }
+    return zGeo(B); },
+  /* RAMUNĖ: plonyčiai stiebai, plunksniški lapeliai, po vieną baltą žiedą su
+     geltonu viduriu. */
+  ramune:()=>{ const B=zNew(), R=zRnd(23);
+    for(let s=0;s<5;s++){
+      const a=s/5*TAU+R()*.6, r=.04+R()*.06, h=.30+R()*.14;
+      const ap=[Math.cos(a)*r,0,Math.sin(a)*r], vir=[ap[0]*2.2,h,ap[2]*2.2];
+      zStiebas(B,ap,vir,.010,.007,0x86a86a);
+      for(let l=0;l<3;l++){
+        const t=.2+l*.22, p=[ap[0]+(vir[0]-ap[0])*t,h*t,ap[2]+(vir[2]-ap[2])*t];
+        zLapas(B,p,a+2.1+l,.15,.075,.026,0x86a86a,.7);
+      }
+      zRamunes(B,[vir[0],vir[1]+.01,vir[2]],.055,0xf2f0e4,0xe8c33c,8);
+    }
+    return zGeo(B); },
+  /* KRAUJAŽOLĖ: kieti stiebai, labai smulkūs plunksniški lapai ir TANKUS
+     PLOKŠČIAS skėtis viršuje — būtent iš jo ji atpažįstama. */
+  kraujazole:()=>{ const B=zNew(), R=zRnd(37);
+    for(let s=0;s<3;s++){
+      const a=s/3*TAU+R()*.7, r=.03+R()*.04, h=.44+R()*.10;
+      const ap=[Math.cos(a)*r,0,Math.sin(a)*r], vir=[ap[0]*1.8,h,ap[2]*1.8];
+      zStiebas(B,ap,vir,.013,.009,0x8fa07a);
+      for(let l=0;l<4;l++){
+        const t=.15+l*.2, p=[ap[0]+(vir[0]-ap[0])*t,h*t,ap[2]+(vir[2]-ap[2])*t];
+        for(const zn of [1,-1]) zLapas(B,p,a+1.57*zn,.05,.065,.020,0x9aa88a,.8);
+      }
+      for(let z=0;z<9;z++){
+        const b=z/9*TAU, br=.02+R()*.055;
+        zDiskas(B,[vir[0]+Math.cos(b)*br,h+.005+R()*.012,vir[2]+Math.sin(b)*br],
+          .022,0xe8e6d6,5);
+      }
+    }
+    return zGeo(B); },
+  /* ČIOBRELIS: žemas kilimėlis — šliaužiantys sumedėję stiebeliai, mažyčiai
+     lapeliai ir tankios rausvai violetinės žiedų galvutės. */
+  ciobrelis:()=>{ const B=zNew(), R=zRnd(51);
+    for(let s=0;s<7;s++){
+      const a=s/7*TAU+R()*.5, ilg=.10+R()*.09;
+      const ap=[0,.01,0], vir=[Math.cos(a)*ilg,.05+R()*.05,Math.sin(a)*ilg];
+      zStiebas(B,ap,vir,.008,.006,0x6b5a3e);
+      for(let l=1;l<=3;l++){
+        const t=l/4, p=[vir[0]*t,.01+(vir[1]-.01)*t,vir[2]*t];
+        for(const zn of [1,-1]) zLapas(B,p,a+1.57*zn,.45,.048,.034,0x5e7f4a,.7);
+      }
+      for(let z=0;z<4;z++)
+        zDiskas(B,[vir[0]*1.05,vir[1]+.014+z*.016,vir[2]*1.05],.030-z*.005,0xa96fb5,5);
+    }
+    return zGeo(B); },
+  /* SIDABRAŽOLĖ: žemi ploni stiebeliai, penkiskiautis lapas ir smulkūs
+     geltoni žiedai. */
+  sidabrazole:()=>{ const B=zNew(), R=zRnd(67);
+    for(let s=0;s<5;s++){
+      const a=s/5*TAU+R()*.6, ilg=.09+R()*.07, h=.16+R()*.09;
+      const ap=[0,.01,0], vir=[Math.cos(a)*ilg,h,Math.sin(a)*ilg];
+      zStiebas(B,ap,vir,.008,.006,0x74915c);
+      const p=[vir[0]*.6,h*.6,vir[2]*.6];
+      for(let l=0;l<3;l++) zLapas(B,p,a+(l-1)*.9,.20,.070,.042,0x74915c,.7);
+      zRamunes(B,[vir[0],vir[1]+.008,vir[2]],.030,0xf0cc4a,0xd8a72a,4);
+    }
+    return zGeo(B); },
+  /* PAKALNUTĖ: du platūs statūs lapai ir vienas palinkęs stiebas su
+     kabančiais baltais varpeliais. */
+  pakalnute:()=>{ const B=zNew();
+    /* Du platūs lapai iš vieno kero, palinkę į PRIEŠINGAS puses — kitaip jie
+       persidengia ir augalas atrodo kaip žalias gumulas. */
+    zLapas(B,[-.03,.02,-.01],1.90,1.10,.42,.150,0x3f7a3f,.35);
+    zLapas(B,[ .03,.02,-.01],1.90+Math.PI,1.10,.42,.150,0x357033,.35);
+    /* žiedstiebis PRIEKYJE lapų (kad varpelių nedengtų), viršuje palinkęs */
+    const ap=[0,.02,.05], vid=[.01,.24,.06], vir=[.05,.30,.09];
+    zStiebas(B,ap,vid,.012,.010,0x5c8a45);
+    zStiebas(B,vid,vir,.010,.008,0x5c8a45);
+    /* varpeliai kabo eile po palinkusia dalimi */
+    for(let v=0;v<6;v++){
+      const t=v/5;
+      const c=[vid[0]+(vir[0]-vid[0])*t-.02+t*.02,
+               vid[1]+(vir[1]-vid[1])*t-.03-t*.015,
+               vid[2]+(vir[2]-vid[2])*t];
+      zStiebas(B,[c[0],c[1]+.026,c[2]],c,.005,.005,0x5c8a45);
+      zVarpelis(B,c,.034,.050,0xf7f9f0);
+    }
+    return zGeo(B); },
+  /* DILGĖLĖ: status keturbriaunis stiebas, poromis priešiniai dantyti lapai,
+     lapų pažastyse kabantys žalsvi žiedynai. */
+  dilgele:()=>{ const B=zNew(), R=zRnd(83);
+    for(let s=0;s<2;s++){
+      const a=s*2.2+.4, r=.03*s, h=.58+R()*.16;
+      const ap=[Math.cos(a)*r,0,Math.sin(a)*r], vir=[ap[0]+.03,h,ap[2]+.02];
+      zStiebas(B,ap,vir,.016,.011,0x4f7a3a,4);
+      for(let l=1;l<=4;l++){
+        const t=l/5, p=[ap[0]+(vir[0]-ap[0])*t,h*t,ap[2]+(vir[2]-ap[2])*t];
+        const yaw=a+l*1.1;
+        for(const zn of [1,-1]) zLapas(B,p,yaw+1.57*zn,.30,.145,.090,0x3f6b34,.8);
+        if(l>1) for(const zn of [1,-1]){
+          const c=[p[0]+Math.sin(yaw+1.57*zn)*.03,p[1]-.012,p[2]+Math.cos(yaw+1.57*zn)*.03];
+          zStiebas(B,c,[c[0]+Math.sin(yaw+1.57*zn)*.05,c[1]-.05,c[2]+Math.cos(yaw+1.57*zn)*.05],
+            .010,.004,0x8fae72);
+        }
+      }
+    }
+    return zGeo(B); },
+  /* PATAISAS: šliaužianti šakelė su statmenom šakutėm ir gelsva sporine
+     žvakute — pagal ją jis ir pažįstamas. */
+  pataisas:()=>{ const B=zNew(), R=zRnd(97);
+    for(let s=0;s<3;s++){
+      const a=s/3*TAU+.4, ilg=.16+R()*.06;
+      const ap=[Math.cos(a)*.02,.015,Math.sin(a)*.02];
+      const gal=[Math.cos(a)*ilg,.03,Math.sin(a)*ilg];
+      zStiebas(B,ap,gal,.010,.008,0x39633f);
+      for(let v=1;v<=3;v++){
+        const t=v/4, p=[ap[0]+(gal[0]-ap[0])*t,.02,ap[2]+(gal[2]-ap[2])*t];
+        const auk=.07+R()*.05;
+        zStiebas(B,p,[p[0],p[1]+auk,p[2]],.008,.005,0x39633f);
+        for(let l=0;l<4;l++)
+          zLapas(B,[p[0],p[1]+auk*(.3+l*.2),p[2]],l*1.6,.5,.036,.018,0x467a4c,.6);
+        if(v===2) zStiebas(B,[p[0],p[1]+auk,p[2]],[p[0],p[1]+auk+.06,p[2]],.014,.009,0xc9c26a,5);
+      }
+    }
+    return zGeo(B); },
+  /* VILKAUOGĖ: aukštas stiebas, platūs lapai ir juodos blizgios uogos su
+     žaliomis taurelėmis. */
+  vilkauoge:()=>{ const B=zNew(), R=zRnd(113);
+    const h=.62;
+    zStiebas(B,[0,0,0],[.02,h,.01],.020,.013,0x5c6b4a,4);
+    for(let l=0;l<6;l++){
+      const t=.18+l*.15, p=[.02*t,h*t,.01*t];
+      zLapas(B,p,l*1.75,.16,.175,.115,l%2?0x3a4f30:0x44583a,.75);
+    }
+    for(let u=0;u<4;u++){
+      const a=u/4*TAU+.3, r=.05+R()*.03, y=h*(.55+R()*.35);
+      const c=[Math.cos(a)*r,y,Math.sin(a)*r];
+      zStiebas(B,[c[0]*.3,y+.05,c[2]*.3],[c[0],y+.022,c[2]],.005,.005,0x5c7a4a);
+      zDiskas(B,[c[0],c[1]+.020,c[2]],.026,0x5c7a4a,5);
+      zUoga(B,c,.032,0x1a1420);
+    }
+    return zGeo(B); },
+  /* AJERAS: kardo formos lapai iš vieno kero ir įstriža gelsva burbuolė. */
+  ajeras:()=>{ const B=zNew(), R=zRnd(131);
+    for(let s=0;s<7;s++){
+      const a=s/7*TAU+R()*.4, h=.55+R()*.30, palink=.10+R()*.10;
+      const ap=[Math.cos(a)*.02,0,Math.sin(a)*.02];
+      const vid=[ap[0]+Math.cos(a)*palink*.4,h*.6,ap[2]+Math.sin(a)*palink*.4];
+      const vir=[ap[0]+Math.cos(a)*palink,h,ap[2]+Math.sin(a)*palink];
+      zQuad(B,[ap[0]-.018,0,ap[2]],[ap[0]+.018,0,ap[2]],
+              [vid[0]+.012,vid[1],vid[2]],[vid[0]-.012,vid[1],vid[2]],0x7fa055);
+      zTri(B,[vid[0]-.012,vid[1],vid[2]],[vid[0]+.012,vid[1],vid[2]],vir,0x8fae60);
+    }
+    zStiebas(B,[.03,.30,.02],[.16,.44,.06],.016,.010,0xc6c26a,5);
+    return zGeo(B); },
+  /* PELKINĖ MĖTA: keturbriaunis stiebas, priešiniai lapai ir apvali alyvinė
+     žiedų galvutė viršuje. */
+  meta:()=>{ const B=zNew(), R=zRnd(149);
+    for(let s=0;s<3;s++){
+      const a=s/3*TAU+R()*.6, r=.03+R()*.03, h=.34+R()*.12;
+      const ap=[Math.cos(a)*r,0,Math.sin(a)*r], vir=[ap[0]*1.6,h,ap[2]*1.6];
+      zStiebas(B,ap,vir,.012,.009,0x5f8a5c,4);
+      for(let l=1;l<=3;l++){
+        const t=l/4, p=[ap[0]+(vir[0]-ap[0])*t,h*t,ap[2]+(vir[2]-ap[2])*t];
+        for(const zn of [1,-1]) zLapas(B,p,a+l*1.2+1.57*zn,.25,.085,.055,0x5f8a5c,.7);
+      }
+      for(let z=0;z<5;z++){
+        const b=z/5*TAU;
+        zDiskas(B,[vir[0]+Math.cos(b)*.020,h+.015,vir[2]+Math.sin(b)*.020],.024,0xa88fd0,5);
+      }
+      zDiskas(B,[vir[0],h+.030,vir[2]],.026,0xb79ee0,5);
+    }
+    return zGeo(B); }
 };
-for(const z of ZOLES) NODE_KINDS.push({key:z.key, color:z.color, geo:ZOLES_GEO[z.forma],
-  h:.34, label:z.label, xp:z.xp, herb:true, bio:z.bio, vand:!!z.vand});
+/* vc:true — spalvos viršūnėse (žr. nodeMat); h:0 — tinklelis prasideda ties
+   žeme, tad nuskintas augalas traukiasi žemyn, o ne kabo ore. */
+for(const z of ZOLES) NODE_KINDS.push({key:z.key, color:z.color, geo:ZOLES_GEO[z.key],
+  h:0, label:z.label, xp:z.xp, herb:true, bio:z.bio, vand:!!z.vand, vc:true});
 /* akmuo irgi kasamas — pažymim po sąrašo, kad senas įrašas liktų nepaliestas */
 NODE_KINDS.find(k=>k.key==='akmuo').mine=true;
 /* v194: šaltiniai dabar dėliojami PAGAL BIOMĄ ir tolygiai pagal plotą.
@@ -5686,15 +5972,22 @@ const NODE_BIO={
    n.obj (Mesh su position/rotation/scale/visible), tik jis nebepridedamas į
    sceną: nodeBatchSync() kas kadrą nurašo jo padėtį į instanciją.
    Nematomas (išsekęs ar kitos zonos) šaltinis suspaudžiamas į nulį. */
+/* v204: šaltinio medžiaga vienoje vietoje. Vaistažolės spalvą turi
+   VIRŠŪNĖSE, tad joms balta medžiaga su vertexColors, o lapai plokšti —
+   reikia DoubleSide, kitaip iš nugaros dingtų. */
+function nodeMat(k){
+  return new THREE.MeshLambertMaterial({
+    color:k.vc?0xffffff:k.color, vertexColors:!!k.vc,
+    side:k.vc?THREE.DoubleSide:THREE.FrontSide,
+    emissive:(k.key==='gintaras'||k.key==='gintaras2')?0x4a2f06:0x000000});
+}
 const NODE_BATCH={}, NODE_BATCH_MAX=256;
 const nbM=new THREE.Matrix4(), nbQ=new THREE.Quaternion(),
       nbV=new THREE.Vector3(), nbS=new THREE.Vector3(), nbUp=new THREE.Vector3(0,1,0);
 function nodeBatchAdd(k,obj){
   let B=NODE_BATCH[k.key];
   if(!B){
-    const mat=new THREE.MeshLambertMaterial({color:k.color,
-      emissive:(k.key==='gintaras'||k.key==='gintaras2')?0x4a2f06:0x000000});
-    const im=new THREE.InstancedMesh(k.geo(),mat,NODE_BATCH_MAX);
+    const im=new THREE.InstancedMesh(k.geo(),nodeMat(k),NODE_BATCH_MAX);
     im.castShadow=true; im.userData.shad=true; im.raycast=()=>{};
     im.frustumCulled=false; im.count=0;
     B={mesh:im,list:[]}; NODE_BATCH[k.key]=B; scene.add(im);
@@ -5735,9 +6028,7 @@ function spawnNodes(){
     }
     if(!k) ok=false;
     if(!ok) continue;                       // geriau praleisti nei pastatyti nepasiekiamą
-    const mat=new THREE.MeshLambertMaterial({color:k.color,
-      emissive:k.key==='gintaras'?0x4a2f06:0x000000});
-    const m=new THREE.Mesh(k.geo(),mat);
+    const m=new THREE.Mesh(k.geo(),nodeMat(k));
     m.position.set(x,heightAt(x,z)+k.h,z); m.castShadow=true; m.userData.shad=true;
     nodeBatchAdd(k,m);                       // v194: į bendrą tinklelį, ne į sceną
     const nd={obj:m,kind:k,pos:m.position,ready:true,cd:0,
@@ -5766,7 +6057,7 @@ function spawnWaterHerbs(){
     if(!prie) continue;
     if(!treeClear(x,z,1.4)) continue;
     const kk=zoles[pad%zoles.length];
-    const m=new THREE.Mesh(kk.geo(),new THREE.MeshLambertMaterial({color:kk.color}));
+    const m=new THREE.Mesh(kk.geo(),nodeMat(kk));
     m.position.set(x,heightAt(x,z)+kk.h,z); m.castShadow=true; m.userData.shad=true;
     nodeBatchAdd(kk,m);
     nodes.push({obj:m,kind:kk,pos:m.position,ready:true,cd:0,
@@ -5789,9 +6080,7 @@ function spawnFireDemoNodes(){
                {kindKey:'gintaras',x:1.2,z:2.8}];
   for(const sp of spots){
     const k=NODE_KINDS.find(kk=>kk.key===sp.kindKey);
-    const mat=new THREE.MeshLambertMaterial({color:k.color,
-      emissive:k.key==='gintaras'?0x4a2f06:0x000000});
-    const m=new THREE.Mesh(k.geo(),mat);
+    const m=new THREE.Mesh(k.geo(),nodeMat(k));
     m.position.set(sp.x,heightAt(sp.x,sp.z)+k.h,sp.z); m.castShadow=true; m.userData.shad=true;
     nodeBatchAdd(k,m);                       // v194
     const nd={obj:m,kind:k,pos:m.position,ready:true,cd:0,infinite:true,
@@ -11082,7 +11371,7 @@ function editPastatyti(tipas,vardas,x,z,rot,s){
     obj=new THREE.Mesh(TURTAS[vardas],TURTAS_MAT); obj.castShadow=true;
   }else if(tipas==='saltiniai'){
     const k=NODE_KINDS.find(kk=>kk.key===vardas); if(!k) return null;
-    const m=new THREE.Mesh(k.geo(),new THREE.MeshLambertMaterial({color:k.color}));
+    const m=new THREE.Mesh(k.geo(),nodeMat(k));
     m.position.set(x,y+k.h,z); m.castShadow=true; m.userData.shad=true; scene.add(m);
     const nd={obj:m,kind:k,pos:m.position,ready:true,cd:0,rankinis:true,
       tag:makeTag(k.label,'#8fbf7a',false)};

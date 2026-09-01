@@ -232,6 +232,15 @@ body.touch #log{bottom:200px}
 
 /* buttons */
 /* v112: z-index:14 > .panel(12) — meniu mygtukai nebesislepia po atidarytais langais */
+/* v210: kadrų dažnis KAMPE. Iki šiol jis buvo tik Nustatymų lange (oFps), tad
+   norint pamatyti, ar žaidimas sulėtėjo, reikėdavo atsidaryti langą — o jis
+   pats atima kadrus. Vieta parinkta skaičiais: Keliautojo kortelė baigiasi
+   ties 166 px, žemėlapis prasideda ties W-98, tad 390 px ekrane laisva juosta
+   yra 170...292 px — langelis 118 px joje telpa. */
+#fpsBox{position:absolute;top:12px;left:172px;max-width:118px;z-index:13;
+  font:10px/1.35 ui-monospace,Consolas,monospace;color:#9fb39c;pointer-events:none;
+  background:rgba(12,18,14,.55);border:1px solid rgba(217,152,47,.22);
+  border-radius:6px;padding:3px 6px;white-space:pre}
 #tools{position:absolute;right:12px;bottom:12px;display:flex;gap:8px;align-items:flex-end;z-index:14}
 #menuWrap{display:flex;flex-direction:column;align-items:center;gap:8px}
 /* v203: išskleistas meniu nebeišlipa pro ekrano viršų. Telefone paguldytu
@@ -674,6 +683,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
     <div id="shopWrap"><div id="shopNav"></div><div id="shopBody"></div></div>
   </div>
   <div class="panel card" id="pFish"><button class="pClose" title="Uždaryti">✕</button><h3 id="pFishTitle">Žvejyba</h3><div id="fishBody"></div></div>
+  <!-- v210: žynė Aušrinė — kol kas vienintelė medaus vieta girioje -->
+  <div class="panel card" id="pZyne"><button class="pClose" title="Uždaryti">✕</button><h3 id="pZyneTitle">Žynė Aušrinė</h3><div id="zyneBody"></div></div>
   <div class="panel card" id="pSet"><button class="pClose" title="Uždaryti">✕</button><h3 id="pSetTitle">Nustatymai</h3>
     <div class="row"><span id="sLang">Kalba</span><button class="tbtn" id="oLang" style="width:auto;height:26px;padding:0 12px;font-size:12px">Lietuviškai</button></div>
     <div class="row"><span id="sDevice">Įrenginys</span><button class="tbtn" id="oDevice" style="width:auto;height:26px;padding:0 12px;font-size:12px">🖥 Kompiuteris</button></div>
@@ -693,12 +704,13 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
     <div class="row"><span id="sLod">LOD</span><button class="tbtn" id="oLod" style="width:auto;height:26px;padding:0 12px;font-size:12px">Įjungtas</button></div>
     <div class="row"><span id="sTags">Vardų juostos</span><button class="tbtn" id="oTags" style="width:auto;height:26px;padding:0 12px;font-size:12px">Įjungtos</button></div>
     <div class="row"><span id="sDayCycle">Paros ciklas</span><button class="tbtn" id="oCycle" style="width:auto;height:26px;padding:0 12px;font-size:12px">Veikia</button></div>
-    <div class="row"><span id="sFps">FPS</span><span id="oFps">—</span></div>
+    <div class="row"><span id="sFps">FPS</span><span><span id="oFps">—</span> <button class="tbtn" id="oFpsBox" style="width:auto;height:22px;padding:0 8px;font-size:11px">Rodyti kampe</button></span></div>
     <div class="row"><span id="sVersion">Versija</span><span id="oVer">—</span></div>
     <div class="row" style="display:block"><div class="hint" id="ctrlHint"></div></div>
   </div>
 </div>
 
+<div id="fpsBox" style="display:none">—</div>
 <div id="fade"></div>
 <div id="attrPopup" style="display:none"><button id="attrPopupClose">✕</button><div id="attrPopupBody"></div></div>
 
@@ -769,8 +781,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v209';
-const GAME_CHANGES='v209: kasami akmenys ir rūdos nebe geometrinės figūros — dabar tai tikri riedulių modeliai su uolos tekstūra, o geležis, sidabras ir gintaras turi savo spalvos gyslas ir žibančius grūdelius; tikri akmenys nebesisuka. Medžiai kompiuteryje gavo TIKRAS žievės ir lapų tekstūras (naujas failas gamta/GIRIA_MEDZIAI.glb) — beržai lieka senieji, nes tekstūruotų beržų pakete nėra; telefone medžiai lieka pigūs, kad kadrų dažnis nenukristų. v208: redaktoriaus kataloge (🧱) kiekvienas langelis dabar rodo patį modelį — nupieštą paveiksliuką, o ne techninį vardą; pavadinimas pasirodo užvedus pele arba bakstelėjus. v207: dirbtuvės vaistinė dabar vadinasi ŽINIUONYSTE ir turi dvi skiltis: „Nuovirai" — tai, kas padeda tau, „Nuodai" — tai, kuo kenki priešui. Nuodai veikia dviem būdais: molinį indą sviedi į pažymėtą priešą (sudūžta ir aptaško visus aplinkui), o tepalu ištepi ašmenis, ir tada nuodus perduoda kiekvienas kirtis. Girioje atsirado aštuoni tikri Baltijos grybai su savo modeliais — baravykas, voveraitė, pievagrybis ir beržinė čaga valgomi, o musmirė, žalsvoji musmirė, šėtoniškas baravykas ir skalsė nuodingi: iš jų verdami nuodai, o suvalgius žalius jie kenkia ir pačiam. v206: iš vaistažolių verdami eliksyrai — dirbtuvėje atsirado ketvirta kortelė „Gydymas", o joje penkiolika receptų: ramunių arbata ramina, dilgėlių sultys prideda gyvybės, čiobrelio sirupas — kvapo, sidabražolės nuoviras nuplauna nuodus, vilkauogės lašai leidžia matyti tamsoje, bet nuodija, o pakalnutės lašai stiprina kirtį atimdami gyvybės; kiekvienas poveikis parinktas pagal tikrą tos žolės veikimą žmogui. Veikiantys eliksyrai su likusiu laiku rodomi po patirties juosta. Pridėtas medus (valgomas ir eliksyrų sudėtinė dalis) bei iš jo daromas midus. v205: redaktorius greitesnis — 🧱 iš karto įjungia redagavimą, o pasirinkus modelį kiekvienas paspaudimas ant žemės pastato dar vieną daiktą (nebereikia kiekvieno patvirtinti); telefone katalogas bestatant nebeužsiveria; augalai ir ranka pastatyti objektai nebesisuka. v204: vienuolika vaistažolių gavo savo modelius — ramunė žydi baltais žiedais su geltonu viduriu, kraujažolė skėčiu, pakalnutė kabančiais varpeliais, vilkauogė juodomis uogomis, ajeras kardo lapais; nuskintas augalas dabar traukiasi į žemę, o ne kabo ore. v203: žvėrių kojos nebeatsiskiria nuo pilvo — dabar jos pjaunamos ten, kur iš tikrųjų prasideda (išmatuota kiekvienam žvėriui atskirai), ir sukamos apie tą pačią vietą; einant priekinė koja aiškiai parlenkia riešą po krūtine (60°, kaip tikram arkliui), o užpakalinė lieka beveik tiesi; kūnas nebekyla, kai koja išskėsta, tad pėdos nebekabo ore; redagavimo mygtukai ✎ ir 🧱 iškelti iš ☰ meniu į mygtukų eilutę, į kairę nuo grafikos mygtukų. v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
+const GAME_VERSION='v210';
+const GAME_CHANGES='v210: kadrų dažnis grąžintas — dabar piešiama tik tai, kas iš tikrųjų matoma. Iki šiol vaizdo plokštė kas kadrą apdorodavo VISUS 1100 medžių, akmenis ir pomiškį, nors į ekraną telpa vos keliolika procentų jų: išmatuota 4,5 mln. trikampių kadre, iš kurių į kamerą pateko 0,07 mln. Dabar medžiai, akmenys ir augalai, esantys už kadro ribų, praleidžiami (šešėlį metantys dar patikrinami pagal pačią šešėlių kamerą, tad nė vienas šešėlis nedingsta) — 4,5 mln. trikampių virto 0,45 mln., o vaizdas liko toks pat, taškas į tašką. Nei grafikos kokybė, nei matymo nuotolis nesumažinti. Kadrų dažnį dabar galima matyti ir ekrano kampe: Nustatymai → FPS → „Rodyti kampe" (šalia rodomi piešimo iškvietimai ir trikampiai). Žynė Aušrinė prie laužo pradėjo pardavinėti MEDŲ — be jo nepagaminami aštuoni Žiniuonystės receptai iš penkiolikos. v209: kasami akmenys ir rūdos nebe geometrinės figūros — dabar tai tikri riedulių modeliai su uolos tekstūra, o geležis, sidabras ir gintaras turi savo spalvos gyslas ir žibančius grūdelius; tikri akmenys nebesisuka. Medžiai kompiuteryje gavo TIKRAS žievės ir lapų tekstūras (naujas failas gamta/GIRIA_MEDZIAI.glb) — beržai lieka senieji, nes tekstūruotų beržų pakete nėra; telefone medžiai lieka pigūs, kad kadrų dažnis nenukristų. v208: redaktoriaus kataloge (🧱) kiekvienas langelis dabar rodo patį modelį — nupieštą paveiksliuką, o ne techninį vardą; pavadinimas pasirodo užvedus pele arba bakstelėjus. v207: dirbtuvės vaistinė dabar vadinasi ŽINIUONYSTE ir turi dvi skiltis: „Nuovirai" — tai, kas padeda tau, „Nuodai" — tai, kuo kenki priešui. Nuodai veikia dviem būdais: molinį indą sviedi į pažymėtą priešą (sudūžta ir aptaško visus aplinkui), o tepalu ištepi ašmenis, ir tada nuodus perduoda kiekvienas kirtis. Girioje atsirado aštuoni tikri Baltijos grybai su savo modeliais — baravykas, voveraitė, pievagrybis ir beržinė čaga valgomi, o musmirė, žalsvoji musmirė, šėtoniškas baravykas ir skalsė nuodingi: iš jų verdami nuodai, o suvalgius žalius jie kenkia ir pačiam. v206: iš vaistažolių verdami eliksyrai — dirbtuvėje atsirado ketvirta kortelė „Gydymas", o joje penkiolika receptų: ramunių arbata ramina, dilgėlių sultys prideda gyvybės, čiobrelio sirupas — kvapo, sidabražolės nuoviras nuplauna nuodus, vilkauogės lašai leidžia matyti tamsoje, bet nuodija, o pakalnutės lašai stiprina kirtį atimdami gyvybės; kiekvienas poveikis parinktas pagal tikrą tos žolės veikimą žmogui. Veikiantys eliksyrai su likusiu laiku rodomi po patirties juosta. Pridėtas medus (valgomas ir eliksyrų sudėtinė dalis) bei iš jo daromas midus. v205: redaktorius greitesnis — 🧱 iš karto įjungia redagavimą, o pasirinkus modelį kiekvienas paspaudimas ant žemės pastato dar vieną daiktą (nebereikia kiekvieno patvirtinti); telefone katalogas bestatant nebeužsiveria; augalai ir ranka pastatyti objektai nebesisuka. v204: vienuolika vaistažolių gavo savo modelius — ramunė žydi baltais žiedais su geltonu viduriu, kraujažolė skėčiu, pakalnutė kabančiais varpeliais, vilkauogė juodomis uogomis, ajeras kardo lapais; nuskintas augalas dabar traukiasi į žemę, o ne kabo ore. v203: žvėrių kojos nebeatsiskiria nuo pilvo — dabar jos pjaunamos ten, kur iš tikrųjų prasideda (išmatuota kiekvienam žvėriui atskirai), ir sukamos apie tą pačią vietą; einant priekinė koja aiškiai parlenkia riešą po krūtine (60°, kaip tikram arkliui), o užpakalinė lieka beveik tiesi; kūnas nebekyla, kai koja išskėsta, tad pėdos nebekabo ore; redagavimo mygtukai ✎ ir 🧱 iškelti iš ☰ meniu į mygtukų eilutę, į kairę nuo grafikos mygtukų. v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -896,6 +908,11 @@ const I18N={
     attackingLbl:'Puoli: ', targetLbl:'Taikinys: ', fellLbl:' krito.', levelSuffix:' lygis',
     thunderPoseFound:'Perkūno smūgio poza: rasta ', thunderPoseEnd:' kaulų šiame modelyje.',
     merchantName:'Pirklys Gedvydas', weaponsMerchantLbl:'ginklų pirklys', hunterGenitive:'Skalvio',
+    pZyne:'Žynė Aušrinė', zyneSellerLbl:'medaus prekeivė',
+    zyneGreet:'„Medaus? Bitės šįmet dosnios.“',
+    zyneHint:'Medus reikalingas Žiniuonystės nuovirams ir midui. Girioje drevių dar nėra — kol kas medų atneša žynė.',
+    zyneTooFar:'Per toli nuo žynės — prieik arčiau.',
+    fpsShow:'Rodyti kampe', fpsHide:'Slėpti',
     goingTo:'Eini pas ', goingToEnd:'…', goingToMerchant:'Eini pas pirklį…',
     merchantGreet:'„Ginklai ir šarvai — rinkis.“', gedvydasGreet:'„Sveikas, keliautojau!“',
     merchantDrawCalls:' piešimo iškvietimų (detalumas aukštas).',
@@ -1031,6 +1048,11 @@ const I18N={
     attackingLbl:'Attacking: ', targetLbl:'Target: ', fellLbl:' fell.', levelSuffix:' level',
     thunderPoseFound:'Thunderstrike pose: found ', thunderPoseEnd:' bones in this model.',
     merchantName:'Merchant Gedvydas', weaponsMerchantLbl:'weapons merchant', hunterGenitive:'Skalvis',
+    pZyne:'Priestess Aušrinė', zyneSellerLbl:'honey seller',
+    zyneGreet:'"Honey? The bees were generous this year."',
+    zyneHint:'Honey is needed for wortcunning brews and for mead. There are no wild hives in the forest yet — for now the priestess brings it.',
+    zyneTooFar:'Too far from the priestess — step closer.',
+    fpsShow:'Show in corner', fpsHide:'Hide',
     goingTo:'Going to ', goingToEnd:'…', goingToMerchant:'Going to the merchant…',
     merchantGreet:'"Weapons and armor — take your pick."', gedvydasGreet:'"Welcome, traveler!"',
     merchantDrawCalls:' draw calls (detail high).',
@@ -1102,6 +1124,10 @@ function applyStaticLang(){
   setTt('mLod', LOD_ON?'ttLodOn':'ttLodOff'); setTt('mQual', CFG.quality==='high'?'ttQualHigh':'ttQualLow');
   document.querySelectorAll('.pClose').forEach(b=>b.title=T('ttClose'));
   setTx('pBagTitle','pBag'); setTx('pGearBagTitle','pGearBag'); setTx('pFishTitle','pFish'); setTx('pSetTitle','pSet');
+  setTx('pZyneTitle','pZyne');
+  { const fb=document.getElementById('oFpsBox');
+    if(fb) fb.textContent=T(fpsBoxOn?'fpsHide':'fpsShow'); }
+  if(typeof drawZyne==='function') drawZyne();
   setTx('craftTitle','craftTitle');
   setTx('tCharTravel','charTabTraveler'); setTx('tCharMastery','charTabMastery');
   setTx('tCharCombat','charTabCombat'); setTx('tCharGather','charTabGather'); setTx('tCharCraft','charTabCraft');
@@ -1176,6 +1202,7 @@ const CFG={ quality: isTouch?'low':'high', sound:true };
    (katalogo LOD + STRESS.lod) būseną tarp „kaip buvo anksčiau“ (be jokio
    LOD, viskas animuojama kas kadrą) ir „kaip dabar“ (LOD pagal atstumą). */
 let LOD_ON=true;
+let fpsBoxOn=false;                 // v210: kadrų dažnis ekrano kampe
 
 /* ---------- 1a. BIOMAI (v194) ----------
    Trys sritys, be jokių apskritimų akiai: skaičiuojama „biomo reikšmė" =
@@ -2382,7 +2409,11 @@ const WARRIORS=[
    bulk:1.16, scale:1.06, skirt:{y0:1.06,r0:.34,y1:.52,r1:.47,f:8,a:.09},  legs:'dark', chest:'plate'},
   {n:{lt:'Žynė Aušrinė',en:'Priestess Aušrinė'},        item:'sidabras_grivna', body:'linen',   armor:'linen', metal:'gold',
    head:'circlet',weapon:'staff',    shield:null,   shine:18, era:{lt:'sidabro',en:'silver'},
-   bulk:.88,  scale:.97, skirt:{y0:1.10,r0:.28,y1:.02,r1:.60,f:12,a:.09},  legs:'clothD', chest:'robe'}
+   bulk:.88,  scale:.97, skirt:{y0:1.10,r0:.28,y1:.02,r1:.60,f:12,a:.09},  legs:'clothD', chest:'robe',
+   /* v210: iki šiol medaus girioje niekur nebuvo, tad aštuoni Žiniuonystės
+      receptai iš penkiolikos likdavo nepagaminami. Kol drevės ar avilio
+      žaidime nėra, medų parduoda žynė — žolininkė prie laužo. */
+   zyne:true}
 ];
 const dummies=[];
 
@@ -2584,8 +2615,10 @@ function buildWarriors(){
     const it=CATALOG[cfg.item];
     addBody({x,z},.45);                          // v154: pro karius nebepraeisi
     dummies.push({obj,cfg,pos:obj.position.clone(),
-      tag:makeTag(Lx(cfg.n)+' <span style="color:#9fb39c">'+(cfg.vendor?T('weaponsMerchantLbl'):(it?it.n:Lx(cfg.era)))+'</span>',
-        cfg.vendor?'#e0c060':'#cfe0c8',false)});
+      tag:makeTag(Lx(cfg.n)+' <span style="color:#9fb39c">'+
+          (cfg.vendor?T('weaponsMerchantLbl'):cfg.zyne?T('zyneSellerLbl'):(it?it.n:Lx(cfg.era)))+'</span>',
+        (cfg.vendor||cfg.zyne)?'#e0c060':'#cfe0c8',false)});
+    if(cfg.zyne) zyneNPC=dummies[dummies.length-1];
   });
 }
 
@@ -6761,10 +6794,11 @@ function worldClick(sx,sy){
   if(typeof editClick==='function'&&editClick()) return;   // v202: redagavimo režimas
 
   for(const d of dummies){
-    if(!d.cfg.vendor) continue;
+    if(!d.cfg.vendor&&!d.cfg.zyne) continue;
     if(!ray.intersectObject(d.obj,true)[0]) continue;
     const dist=Math.hypot(player.pos.x-d.pos.x,player.pos.z-d.pos.z);
     if(dist>9){ player.moveTo={x:d.pos.x*.72,z:d.pos.z*.72}; log(T('goingTo')+Lx(d.cfg.n)+T('goingToEnd'),'lg-s'); }
+    else if(d.cfg.zyne){ openZyne(); log(Lx(d.cfg.n)+': '+T('zyneGreet'),'lg-a'); }
     else { openShop(); log(Lx(d.cfg.n)+': '+T('merchantGreet'),'lg-a'); }
     return;
   }
@@ -7105,7 +7139,53 @@ function buyItem(i){
   const n=n0+Math.round(D.pirklioAkis);
   if(Math.hypot(player.pos.x,player.pos.z)>8){ log(T('merchantFireOnly'),'lg-s'); return; }
   if((bag.moneta||0)<price){ log(T('notEnoughCoinsN')+price+T('notEnoughCoinsEnd'),'lg-h'); return; }
+  /* v210: ta pati klaida kaip v206 eliksyruose — pinigai nurašomi, o give()
+     su pilnu krepšiu nieko nededa ir tik parašo „krepšys pilnas". */
+  if(bagFree()<=0){ log(T('bagFull')+bagCap()+T('bagFullEnd'),'lg-h'); return; }
   bag.moneta-=price; give(k,n); refreshUI();
+}
+
+/* ============ ŽYNĖ AUŠRINĖ: MEDUS (v210) ============
+   Medus yra aštuonių Žiniuonystės receptų sudėtinė dalis, o girioje jo iki
+   šiol nebuvo iš viso. Tikra vieta (drevės medžiuose ar avilys) bus vėliau —
+   kol kas jį parduoda žynė, stovinti prie laužo. Kainos ir nuolaidos tokios
+   pat kaip pirklio: „derybos" pigina, „pirklio akis" prideda vienetų. */
+let zyneNPC=null;
+const ZYNE_SHOP=[['medus',3,9]];
+function openZyne(){ togglePanel('pZyne',null); drawZyne(); }
+function zyneArti(){
+  if(!zyneNPC) return false;
+  return Math.hypot(player.pos.x-zyneNPC.pos.x,player.pos.z-zyneNPC.pos.z)<=9;
+}
+function drawZyne(){
+  const p=document.getElementById('pZyne');
+  if(!p||!p.classList.contains('open')) return;
+  const arti=zyneArti();
+  const cfg=WARRIORS.find(w=>w.zyne);
+  let h='<div class="hint" style="margin-bottom:8px">'+T('zyneHint')+'</div>';
+  h+='<div class="row" style="border-bottom:1px solid rgba(217,152,47,.28)"><span style="font-family:Fraunces,serif;color:#d9a06a">'+
+     (cfg?Lx(cfg.n):'')+'</span><span style="font-size:11px;color:'+(arti?'#8fd07a':'#c4462f')+'">'+
+     (arti?T('nearYou'):T('byTheFire'))+'</span></div>';
+  h+='<div class="row" style="padding:2px 0;border:0"><span>🪙 '+T('coinsLabel')+'</span><span class="lv">'+(bag.moneta||0)+'</span></div>';
+  ZYNE_SHOP.forEach((it,i)=>{
+    const n=it[1]+Math.round(D.pirklioAkis);
+    h+='<div class="row" style="padding:3px 0;border:0;opacity:'+(arti?1:.45)+'">'+
+      '<span>'+ITEMS[it[0]].i+' '+Lx(ITEMS[it[0]].n)+' ×'+n+'</span>'+
+      '<span class="lv">'+Math.max(1,Math.round(it[2]*(1-D.derybos)))+' 🪙 <button class="tbtn zbuy" data-i="'+i+'" style="width:22px;height:19px;font-size:11px;border-radius:5px;display:inline-grid">+</button></span></div>';
+  });
+  const box=document.getElementById('zyneBody');
+  box.innerHTML=h;
+  if(box.querySelectorAll) box.querySelectorAll('.zbuy').forEach(b=>b.onclick=()=>buyZyne(+b.dataset.i));
+}
+function buyZyne(i){
+  const [k,n0,price0]=ZYNE_SHOP[i];
+  if(!zyneArti()){ log(T('zyneTooFar'),'lg-s'); return; }
+  const price=Math.max(1,Math.round(price0*(1-D.derybos)));
+  const n=n0+Math.round(D.pirklioAkis);
+  if((bag.moneta||0)<price){ log(T('notEnoughCoinsN')+price+T('notEnoughCoinsEnd'),'lg-h'); return; }
+  if(bagFree()<=0){ log(T('bagFull')+bagCap()+T('bagFullEnd'),'lg-h'); return; }
+  addXp('derybos',3);
+  bag.moneta-=price; give(k,n); refreshUI(); drawZyne();
 }
 
 /* ===================== VEIKSMAI: KIRČIAI IR BURTAI =====================
@@ -8393,7 +8473,7 @@ const WIN_SEL='.panel,#playerCard,#mapWrap,#timeBadge';
    visos aplinkos, o getElementById kai kur grąžina kitą objektą nei
    querySelectorAll — tad imam abu, dvigubą prijungimą stabdo el._winBound. */
 const WIN_IDS=['playerCard','mapWrap','timeBadge',
-               'pBag','pChar','pSkills','pGearBag','pShop','pFish','pSet'];
+               'pBag','pChar','pSkills','pGearBag','pShop','pFish','pZyne','pSet'];
 function winEls(){
   const out=[];
   const add=el=>{ if(el&&out.indexOf(el)<0) out.push(el); };
@@ -8701,6 +8781,11 @@ document.getElementById('oTags').onclick=e=>{
   const n=STRESS.n; if(n){ stressClear(); stressAdd(n); }
 };
 document.getElementById('oQual').onclick=()=>{CFG.quality=CFG.quality==='high'?'low':'high';applyQuality();};
+document.getElementById('oFpsBox').onclick=e=>{
+  fpsBoxOn=!fpsBoxOn;
+  document.getElementById('fpsBox').style.display=fpsBoxOn?'block':'none';
+  e.target.textContent=T(fpsBoxOn?'fpsHide':'fpsShow');
+};
 document.getElementById('oSnd').onclick=e=>{
   SND.sfxOn=!SND.sfxOn; CFG.sound=SND.sfxOn;
   e.target.textContent=SND.sfxOn?T('onB'):T('offB');
@@ -12054,6 +12139,15 @@ function frame(now){
   if(fpsAcc>1){
     const fps=Math.round(fpsN/fpsAcc); lastFps=fps;
     document.getElementById('oFps').textContent=fps;
+    /* v210: tas pats skaičius kampe — kad nereikėtų atsidaryti lango.
+       Šalia jo — piešimo iškvietimai ir trikampiai: iš jų matyti, ar kadrų
+       kritimą lemia geometrija, ar kas kita. */
+    if(fpsBoxOn){
+      const ri=renderer.info.render;
+      txtIf(document.getElementById('fpsBox'),
+        fps+' fps · '+ri.calls+' iškv.'+String.fromCharCode(10)+
+        (ri.triangles/1e6).toFixed(2).replace('.',',')+' mln. △');
+    }
     document.getElementById('oTrack').textContent=SND.ctx?(SND.musOn?Lx(TRACKS[MUS.key].name):'—'):'—';
     const npcBtn=document.getElementById('oNpc');
     if(npcBtn&&merchant) npcBtn.textContent=(merchant.hi?T('valHighM'):T('valLowM'))+' ('+merchant.calls+')';
@@ -12063,6 +12157,7 @@ function frame(now){
     }
     fpsAcc=0; fpsN=0;
   }
+  cullUpdate();                  // v210: piešiam tik tai, kas matoma
   drawTags();                    // v193: visos vardų juostos — vienu piešimu
   renderer.render(scene,camera);
 }
@@ -12770,6 +12865,113 @@ function turtasMargink(geo){
   if(!geo.userData) geo.userData={};
   geo.userData.margintas=true;
 }
+/* ================= MATOMUMO ATRANKA (v210) =================
+   Iki v209 kiekvienas instancuotas tinklelis buvo piešiamas VISAS: visi 1100
+   medžių telpa į vieną piešimo iškvietimą, tad vaizdo plokštė apdorodavo ir
+   tuos, kurie už nugaros arba už rūko. Išmatuota (irankiai/matuok-nasuma.js):
+   4 496 784 trikampiai kadre, o į kameros piramidę pateko tik 71 604 — 97 %
+   darbo veltui. Čia kiekvienam tinkleliui perrenkamos TIK matomos instancijos
+   ir nustatomas im.count. VAIZDAS NEPAKINTA: išmetama tik tai, ko ekrane nėra,
+   tad tai nėra nei grafikos, nei matymo nuotolio mažinimas.
+
+   ŠEŠĖLIAI: objektas UŽ kadro ribų vis tiek gali mesti šešėlį į vaizdą, tad
+   šešėlį metantys tikrinami DAR IR pagal pačią saulės šešėlių kamerą — tą
+   pačią, pagal kurią sprendžia three.js. Spėti spinduliu neužtenka: šešėlių
+   dėžė yra 92x92 skersai, bet ~170 m gilyn saulės kryptimi, tad medis už 100 m
+   prieš saulę dar meta šešėlį į vaizdą (išmatuota: su vien 74 m spinduliu
+   vaizdas skyrėsi 1,4 % taškų, su tikra kamera — triukšmo lygyje).
+
+   PERSKAIČIUOJAMA tik kamerai pajudėjus ar pasisukus — stovint tai nemokama.
+   Instancijos nejuda (medžiai, akmenys, pomiškis), tad centrai ir spinduliai
+   suskaičiuojami vieną kartą. Išjungiama tuo pačiu 🚀 jungikliu (LOD_ON), tad
+   skirtumą galima pamatyti iškart. */
+const CULL_INST=[];
+const CULL_MARZA=2.5;
+/* Atskiras jungiklis nuo LOD_ON: 🚀 mygtukas keičia ir mikserių biudžetą, tad
+   juo lyginant vaizdą keistųsi ir tolimų personažų pozos. Norint patikrinti
+   TIK atranką (irankiai/tikrinti-atranka.js), jungiama šita. */
+let CULL_ON=true;
+function cullRegister(im,sesely){
+  const g=im.geometry;
+  if(!g) return im;
+  if(!g.boundingSphere&&g.computeBoundingSphere) g.computeBoundingSphere();
+  if(!g.boundingSphere||!im.instanceMatrix||!im.instanceMatrix.array) return im;
+  const n=im.count;
+  const src=new Float32Array(n*16);
+  for(let i=0;i<n*16;i++) src[i]=im.instanceMatrix.array[i];
+  const cx=new Float32Array(n),cy=new Float32Array(n),cz=new Float32Array(n),cr=new Float32Array(n);
+  const m=new THREE.Matrix4(),p=new THREE.Vector3(),q=new THREE.Quaternion(),
+        sk=new THREE.Vector3(),c=new THREE.Vector3();
+  for(let i=0;i<n;i++){
+    m.fromArray(src,i*16); m.decompose(p,q,sk);
+    c.copy(g.boundingSphere.center).multiply(sk).applyQuaternion(q).add(p);
+    cx[i]=c.x; cy[i]=c.y; cz[i]=c.z;
+    cr[i]=g.boundingSphere.radius*Math.max(Math.abs(sk.x),Math.abs(sk.y),Math.abs(sk.z))+CULL_MARZA;
+  }
+  im.frustumCulled=false;            // atranką darom patys, po vieną instanciją
+  CULL_INST.push({im,n,src,cx,cy,cz,cr,sesely:!!sesely});
+  /* Medžiai registruojami VĖLIAU (kai užsikrauna .glb), o atranka
+     perskaičiuojama tik kamerai pajudėjus — stovint vietoje naujas tinklelis
+     būtų likęs nefiltruotas amžinai. Todėl kiekviena registracija priverčia
+     perskaičiuoti kitame kadre. */
+  cullVeikia=false;
+  return im;
+}
+const cullFr=new THREE.Frustum(), cullMv=new THREE.Matrix4(),
+      cullFrS=new THREE.Frustum(), cullMvS=new THREE.Matrix4(),
+      cullSp=new THREE.Sphere(), cullQ=new THREE.Quaternion();
+const cullPos=new THREE.Vector3(1e9,1e9,1e9);
+let cullVeikia=false, cullMatoma=0, cullViso=0;
+function cullVisosAtgal(){
+  for(const c of CULL_INST){
+    for(let i=0;i<c.n*16;i++) c.im.instanceMatrix.array[i]=c.src[i];
+    c.im.count=c.n; c.im.instanceMatrix.needsUpdate=true;
+    if(c.im.instanceMatrix.updateRange) c.im.instanceMatrix.updateRange.count=-1;
+  }
+  cullVeikia=false; cullMatoma=cullViso; cullPos.set(1e9,1e9,1e9);
+}
+function cullUpdate(){
+  if(!CULL_INST.length) return;
+  if(!LOD_ON||!CULL_ON){ if(cullVeikia) cullVisosAtgal(); return; }
+  const cp=camera.position;
+  if(cullVeikia&&cp.distanceToSquared(cullPos)<0.36&&cullQ.angleTo(camera.quaternion)<0.006) return;
+  cullPos.copy(cp); cullQ.copy(camera.quaternion); cullVeikia=true;
+  camera.updateMatrixWorld();
+  cullMv.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
+  cullFr.setFromProjectionMatrix(cullMv);
+  /* šešėlių kamera — ta pati, pagal kurią three.js sprendžia, ką piešti į
+     šešėlių žemėlapį; jos matricos atnaujinamos prieš skaitant */
+  let ses=false;
+  if(renderer.shadowMap.enabled&&sun.castShadow&&sun.shadow.updateMatrices){
+    sun.updateMatrixWorld(); sun.target.updateMatrixWorld();
+    sun.shadow.updateMatrices(sun);
+    cullMvS.multiplyMatrices(sun.shadow.camera.projectionMatrix,sun.shadow.camera.matrixWorldInverse);
+    cullFrS.setFromProjectionMatrix(cullMvS);
+    ses=true;
+  }
+  let mat=0, vis=0;
+  for(const c of CULL_INST){
+    const dst=c.im.instanceMatrix.array;
+    let k=0;
+    for(let i=0;i<c.n;i++){
+      cullSp.center.set(c.cx[i],c.cy[i],c.cz[i]); cullSp.radius=c.cr[i];
+      let ok=cullFr.intersectsSphere(cullSp);
+      if(!ok&&ses&&c.sesely) ok=cullFrS.intersectsSphere(cullSp);
+      if(!ok) continue;
+      const a=i*16, b=k*16;
+      for(let j=0;j<16;j++) dst[b+j]=c.src[a+j];
+      k++;
+    }
+    c.im.count=k; mat+=k; vis+=c.n;
+    c.im.instanceMatrix.needsUpdate=true;
+    if(c.im.instanceMatrix.updateRange){
+      c.im.instanceMatrix.updateRange.offset=0;
+      c.im.instanceMatrix.updateRange.count=k*16;
+    }
+  }
+  cullMatoma=mat; cullViso=vis;
+}
+
 /* ===================== TEKSTŪRUOTI MEDŽIAI (v209) =====================
    GIRIA_TURTAS.glb medžiai UV NETURI (tik POSITION, NORMAL, COLOR_0), tad ant
    jų jokia tekstūra neatsigultų — v202 dėl to raštas buvo įrašytas į viršūnių
@@ -12797,6 +12999,7 @@ function medzInst(dalys,sarasas,sesely){
       m.compose(v,q,s); im.setMatrixAt(i,m);
     });
     im.instanceMatrix.needsUpdate=true;
+    cullRegister(im,sesely);                 // v210: matomumo atranka
     scene.add(im); OVERWORLD_HIDE.push(im);
     isejo.push(im);
   }
@@ -12819,6 +13022,7 @@ function turtasInst(vardas,sarasas,sesely){
     m.compose(v,q,s); im.setMatrixAt(i,m);
   });
   im.instanceMatrix.needsUpdate=true;
+  cullRegister(im,sesely);        // v210: matomumo atranka
   scene.add(im);
   OVERWORLD_HIDE.push(im);        // v194: požemyje paslepiam (žr. komentarą)
   return im;
@@ -13375,8 +13579,10 @@ function daiktInst(vardas,sarasas,tevas,sesely){
       m.compose(v,q,s); im.setMatrixAt(i,m);
     });
     im.instanceMatrix.needsUpdate=true;
+    /* v210: matoma atranka tik tiems, kurie dedami tiesiai į sceną — po tėvu
+       instancijų matricos yra VIETINĖS, tad pasaulio centrai netiktų. */
     if(tevas) tevas.add(im);
-    else { scene.add(im); OVERWORLD_HIDE.push(im); }
+    else { cullRegister(im,sesely); scene.add(im); OVERWORLD_HIDE.push(im); }
     isejo.push(im);
   }
   return isejo;

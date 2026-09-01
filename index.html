@@ -241,8 +241,10 @@ body.touch #log{bottom:200px}
   font:10px/1.35 ui-monospace,Consolas,monospace;color:#9fb39c;pointer-events:none;
   background:rgba(12,18,14,.55);border:1px solid rgba(217,152,47,.22);
   border-radius:6px;padding:3px 6px;white-space:pre}
-#tools2{position:absolute;right:12px;bottom:64px;z-index:14}
-#tools2 .tbtn{font-size:13px;font-weight:600}
+#grafGrupe{display:flex;flex-direction:column;align-items:center;gap:8px}
+#grafEilNull{}
+#grafGrupe .grafEil{display:flex;gap:8px}
+#mPix{font-size:13px;font-weight:600}
 #tools{position:absolute;right:12px;bottom:12px;display:flex;gap:8px;align-items:flex-end;z-index:14}
 #menuWrap{display:flex;flex-direction:column;align-items:center;gap:8px}
 /* v203: išskleistas meniu nebeišlipa pro ekrano viršų. Telefone paguldytu
@@ -623,10 +625,6 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 
   <div id="castBar"><div id="castFill"></div><span id="castTxt"></span></div>
   <div id="skillBar"></div>
-  <!-- v216: taškų tankis — atskiras mygtukas VIRŠ mygtukų eilutės (vartotojo
-       prašymu). Eilutėje vietos nebėra: 390 px lange septyni mygtukai
-       prasideda ties x=8, tad aštuntas nebetilptų. -->
-  <div id="tools2"><button class="tbtn" id="mPix" title="Taškų tankis">2×</button></div>
   <div id="tools">
     <!-- v105: krepšio, žvejybos ir nustatymų mygtukai pakeisti vienu meniu,
          kuris išskleidžia mygtukus Į VIRŠŲ (paspausto mygtuko neuždengia). -->
@@ -636,8 +634,16 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
          grafikos mygtukų (vartotojo prašymu — meniu viduje jų nerasdavo). -->
     <button class="tbtn" id="mEdit" title="Redagavimas (objektų stumdymas)">✎</button>
     <button class="tbtn" id="mKat" title="Objektų katalogas">🧱</button>
-    <button class="tbtn" id="mLod" title="Optimizacijos">🚀</button>
-    <button class="tbtn" id="mQual" title="Grafikos kokybė">🖼</button>
+    <!-- v217: taškų tankis stovi VIRŠ grafikos mygtukų (🚀 ir 🖼), o ne
+         eilutės gale — vartotojo prašymu. Grupė yra stulpelis, tad mygtukas
+         lieka virš jų bet kokiame lango plotyje, nieko nereikia skaičiuoti. -->
+    <div id="grafGrupe">
+      <button class="tbtn" id="mPix" title="Taškų tankis">2×</button>
+      <div class="grafEil">
+        <button class="tbtn" id="mLod" title="Optimizacijos">🚀</button>
+        <button class="tbtn" id="mQual" title="Grafikos kokybė">🖼</button>
+      </div>
+    </div>
     <div id="menuWrap">
       <div id="menuStack">
         <button class="tbtn mItem" id="mSet" title="Nustatymai">⚙</button>
@@ -707,6 +713,7 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
     <div class="row"><span id="sTimeOfDay">Paros metas</span><button class="tbtn" id="oPhase" style="width:auto;height:26px;padding:0 12px;font-size:12px">Keisti ⇄</button></div>
     <div class="row"><span id="sLoadTest">Apkrovos testas</span><button class="tbtn" id="oStress" style="width:auto;height:26px;padding:0 12px;font-size:12px">Išjungtas</button></div>
     <div class="row"><span id="sAutoLimit">Auto riba</span><button class="tbtn" id="oAuto" style="width:auto;height:26px;padding:0 12px;font-size:12px">Paleisti</button></div>
+    <div class="row"><span id="sBench">Našumo matavimas</span><button class="tbtn" id="oBench" style="width:auto;height:26px;padding:0 12px;font-size:12px">Paleisti</button></div>
     <div class="row"><span id="sLod">LOD</span><button class="tbtn" id="oLod" style="width:auto;height:26px;padding:0 12px;font-size:12px">Įjungtas</button></div>
     <div class="row"><span id="sCatalog">Animacijų katalogas</span><button class="tbtn" id="oCatalog" style="width:auto;height:26px;padding:0 12px;font-size:12px">Rodomas</button></div>
     <div class="row"><span id="sShadow">Šešėliai</span><button class="tbtn" id="oShadow" style="width:auto;height:26px;padding:0 12px;font-size:12px">Minkšti</button></div>
@@ -789,8 +796,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v216';
-const GAME_CHANGES='v216: kadrų dažnis rodomas ekrano kampe visą laiką (nebereikia įjungti). Beržai nebe stori kaip ąžuolai: pakaitalo modelis buvo didinamas visomis ašimis vienodai, tad kartu su ūgiu storėjo ir kamienas (išmatuota: 0,131 vietoj 0,080 — 1,64 karto), o dabar aukštis ir plotis taisomi atskirai. Taškų tankis liko tik 1x ir 2x ir perkeltas į atskirą mygtuką virš mygtukų eilutės. Nustatymų „Vardų juostos" dabar tikrai išjungia visą vardų sluoksnį — tai atskira, per visą ekraną ištempta drobė virš vaizdo, kurios kaina priklauso NUO EKRANO DYDŽIO, o ne nuo žaidimo turinio; jos nekeičia nei taškų tankis, nei LOD, tad jei niekas kitas kadrų dažnio nekeičia, verta patikrinti būtent ją. Kai nė vienos juostos nesimato, ta drobė paslepiama savaime. v215: personažų LOD — būtent taip minias piešia MMO. Manekenas yra du skeletiniai tinkleliai: kūnas (5 732 trikampiai) ir violetiniai sąnarių žiedai (8 012 trikampių, t. y. 58 % viso modelio). Iš 15 m tie žiedai ekrane yra keli taškai, tad toliau jie nebepiešiami — nei vaizde, nei šešėliuose, o kartu sustoja ir jų skeletas. Išmatuota stovint 20 m nuo katalogo: 529 -> 444 piešimo iškvietimai, 4,06 -> 3,38 mln. trikampių. Vaizde skirtumo nesimato: iš tokio atstumo violetiniai žiedai buvo mažesni už tašką. v214: rasta tikroji lėtumo priežastis. VISI personažai — žaidėjas, šimtas priešų ir 86 katalogo manekenai — buvo piešiami MeshStandardMaterial, t. y. brangiausiu three.js turimu PBR šešėliuokliu, nors jie net neturi tekstūrų (viena spalva). Išmatuota: 374 skeletiniai tinkleliai su PBR ir 2,10 mln. trikampių, o VISAS likęs pasaulis — 1,30 mln. su pigiu Lambert. Dabar personažai irgi Lambert: vaizde dingsta tik silpnas blizgesys, kurio ant vienspalvio manekeno nesimatė. Nustatymuose atsirado du jungikliai tam, kas plokštei kainuoja daugiausia: TAŠKŲ TANKIS (2x / 1,5x / 1x — 4K ekrane tankis 2 reiškia keturis kartus daugiau taškų) ir ŠEŠĖLIAI (minkšti / paprasti / išjungti). Ranka pastatytas kasamas akmuo ar gintaras pagaliau atrodo kaip sėtas: iki šiol atkurti iš atminties objektai gaudavo atsarginę figūrą, nes modeliai užsikraudavo vėliau. v213: dar kadrų dažnio. Personažų modeliai (86 katalogo manekenai ir priešai) iki šiol buvo rodomi vien pagal atstumą, tad stovint jų būryje visi likdavo „matomi" ir už nugaros — 23 000 kaulų matricų kas kadrą; dabar tikrinama ir kadro riba, o už jos likusiųjų kaulai sustoja (išmatuota: matricų skaičiavimas 3,3 -> 1,55 ms). ŠEŠĖLIŲ dėžė buvo 92x92 aplink žaidėją, tad pusė jos gulėjo už nugaros ir į šešėlių žemėlapį veltui buvo piešiami medžiai bei kūnai, kurių šešėlių niekas nemato — dabar ji mažesnė ir pastumta pirmyn pagal kamerą; šalia to šešėlio kraštas tapo aiškesnis, nes tas pats žemėlapis tenka mažesniam plotui. FPS langelis nuo šiol rodo TIKRUS skaičius: three.js jų neskaičiuodavo šešėlių praėjimo, tad trečdalis darbo buvo nematomas (manekenų būryje rodė 300 iškvietimų, o iš tikrųjų buvo 466). Nustatymuose atsirado „Animacijų katalogas" — jį paslėpus prie kaimavietės iškart sumažėja penktadalis viso piešimo; pats žaidimas nuo to nepasikeičia. v212: BERŽAI pagaliau su žieve — jiems paimtas tekstūruoto lapuočio modelis, o žievė nupiešta sava: balta su juodais brūkšniais ir šakų randais (pakete beržų nebuvo, todėl iki šiol jie ir liko pliki šalia tekstūruotų pušų); aukštis nepakito. REDAKTORIUS: pastatytas kasamas akmuo ar gintaras dabar atrodo lygiai taip pat kaip sėtas girioje — riedulio modelis su uolos tekstūra ir rūdos kristalais, o ne senoji figūra; ranka įdėtas medis gauna tekstūras; ĮDĖTAS ŽVĖRIS DABAR GYVAS IR VAIKŠTO (anksčiau tai buvo nejudanti statulėlė); kiekvienas modelis statomas TOKIO dydžio, kokį naudoja pats žaidimas (arklys buvo trigubai per didelis); pasirinkus modelį katalogas nebenušoka į viršų, o pažymėtą objektą ištrina Delete klavišas. Pomiškio dydis nebe atsitiktinis — kiekvienai rūšiai nurodytas tikslinis aukštis, tad gėlės ir žolė nebe aukštesnės už žaidėją (Flower_4_Group siekdavo 2,9 m). v211: kasami akmenys ir rūdos pagaliau atrodo kaip rūda. Rasta trys tikros priežastys, kodėl po v209 jie vis dar buvo „daugiakampis blynas": riedulys KABOJO 0,42 m virš žemės (aukštis buvo parinktas senajai figūrai, ne modeliui); uolos tekstūra buvo ištempta per visą akmenį, tad viena gysla užimdavo trečdalį jo ir riedulys nusidažydavo vienu tonu; o plikas riedulys niekuo nesiskyrė nuo dekoratyvinio akmens. Dabar akmuo stovi ant žemės, matyti uolos grūdas ir gyslos, o ant jo auga tos rūdos kristalai — titnago skeltės, geležies gumbai, sidabro adatos ir gintaro lašai (šie dar ir švyti). Beržinė čaga nebeauga ant kelmo — ji, kaip ir gyvenime, auga ant gyvo BERŽO kamieno, maždaug metro aukštyje, atsukta nuo medžio. v210: kadrų dažnis grąžintas — dabar piešiama tik tai, kas iš tikrųjų matoma. Iki šiol vaizdo plokštė kas kadrą apdorodavo VISUS 1100 medžių, akmenis ir pomiškį, nors į ekraną telpa vos keliolika procentų jų: išmatuota 4,5 mln. trikampių kadre, iš kurių į kamerą pateko 0,07 mln. Dabar medžiai, akmenys ir augalai, esantys už kadro ribų, praleidžiami (šešėlį metantys dar patikrinami pagal pačią šešėlių kamerą, tad nė vienas šešėlis nedingsta) — 4,5 mln. trikampių virto 0,45 mln., o vaizdas liko toks pat, taškas į tašką. Nei grafikos kokybė, nei matymo nuotolis nesumažinti. Kadrų dažnį dabar galima matyti ir ekrano kampe: Nustatymai → FPS → „Rodyti kampe" (šalia rodomi piešimo iškvietimai ir trikampiai). Žynė Aušrinė prie laužo pradėjo pardavinėti MEDŲ — be jo nepagaminami aštuoni Žiniuonystės receptai iš penkiolikos. v209: kasami akmenys ir rūdos nebe geometrinės figūros — dabar tai tikri riedulių modeliai su uolos tekstūra, o geležis, sidabras ir gintaras turi savo spalvos gyslas ir žibančius grūdelius; tikri akmenys nebesisuka. Medžiai kompiuteryje gavo TIKRAS žievės ir lapų tekstūras (naujas failas gamta/GIRIA_MEDZIAI.glb) — beržai lieka senieji, nes tekstūruotų beržų pakete nėra; telefone medžiai lieka pigūs, kad kadrų dažnis nenukristų. v208: redaktoriaus kataloge (🧱) kiekvienas langelis dabar rodo patį modelį — nupieštą paveiksliuką, o ne techninį vardą; pavadinimas pasirodo užvedus pele arba bakstelėjus. v207: dirbtuvės vaistinė dabar vadinasi ŽINIUONYSTE ir turi dvi skiltis: „Nuovirai" — tai, kas padeda tau, „Nuodai" — tai, kuo kenki priešui. Nuodai veikia dviem būdais: molinį indą sviedi į pažymėtą priešą (sudūžta ir aptaško visus aplinkui), o tepalu ištepi ašmenis, ir tada nuodus perduoda kiekvienas kirtis. Girioje atsirado aštuoni tikri Baltijos grybai su savo modeliais — baravykas, voveraitė, pievagrybis ir beržinė čaga valgomi, o musmirė, žalsvoji musmirė, šėtoniškas baravykas ir skalsė nuodingi: iš jų verdami nuodai, o suvalgius žalius jie kenkia ir pačiam. v206: iš vaistažolių verdami eliksyrai — dirbtuvėje atsirado ketvirta kortelė „Gydymas", o joje penkiolika receptų: ramunių arbata ramina, dilgėlių sultys prideda gyvybės, čiobrelio sirupas — kvapo, sidabražolės nuoviras nuplauna nuodus, vilkauogės lašai leidžia matyti tamsoje, bet nuodija, o pakalnutės lašai stiprina kirtį atimdami gyvybės; kiekvienas poveikis parinktas pagal tikrą tos žolės veikimą žmogui. Veikiantys eliksyrai su likusiu laiku rodomi po patirties juosta. Pridėtas medus (valgomas ir eliksyrų sudėtinė dalis) bei iš jo daromas midus. v205: redaktorius greitesnis — 🧱 iš karto įjungia redagavimą, o pasirinkus modelį kiekvienas paspaudimas ant žemės pastato dar vieną daiktą (nebereikia kiekvieno patvirtinti); telefone katalogas bestatant nebeužsiveria; augalai ir ranka pastatyti objektai nebesisuka. v204: vienuolika vaistažolių gavo savo modelius — ramunė žydi baltais žiedais su geltonu viduriu, kraujažolė skėčiu, pakalnutė kabančiais varpeliais, vilkauogė juodomis uogomis, ajeras kardo lapais; nuskintas augalas dabar traukiasi į žemę, o ne kabo ore. v203: žvėrių kojos nebeatsiskiria nuo pilvo — dabar jos pjaunamos ten, kur iš tikrųjų prasideda (išmatuota kiekvienam žvėriui atskirai), ir sukamos apie tą pačią vietą; einant priekinė koja aiškiai parlenkia riešą po krūtine (60°, kaip tikram arkliui), o užpakalinė lieka beveik tiesi; kūnas nebekyla, kai koja išskėsta, tad pėdos nebekabo ore; redagavimo mygtukai ✎ ir 🧱 iškelti iš ☰ meniu į mygtukų eilutę, į kairę nuo grafikos mygtukų. v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
+const GAME_VERSION='v217';
+const GAME_CHANGES='v217: taškų tankio mygtukas perkeltas ten, kur ir prašyta — VIRŠ grafikos mygtukų (🚀 ir 🖼), ne eilutės gale. Vardų sluoksnio jungiklis iš Nustatymų išimtas: išmatavai, kad vardai nieko nekainuoja, o laikiniems matavimams ten ne vieta. Vietoj spėlionių Nustatymuose atsirado NAŠUMO MATAVIMAS: per ~15 s jis nuosekliai išima po vieną sluoksnį (šešėlius, personažus, medžius, reljefą) ir kiekvienam pamatuoja kadrų dažnį, iškvietimus ir trikampius — iš to matyti, kas ką kainuoja, o jei skaičius nepakinta net tuščiame ekrane, vadinasi, riboja ne žaidimas, o naršyklė ar tvarkyklė. v216: kadrų dažnis rodomas ekrano kampe visą laiką (nebereikia įjungti). Beržai nebe stori kaip ąžuolai: pakaitalo modelis buvo didinamas visomis ašimis vienodai, tad kartu su ūgiu storėjo ir kamienas (išmatuota: 0,131 vietoj 0,080 — 1,64 karto), o dabar aukštis ir plotis taisomi atskirai. Taškų tankis liko tik 1x ir 2x ir perkeltas į atskirą mygtuką virš mygtukų eilutės. Nustatymų „Vardų juostos" dabar tikrai išjungia visą vardų sluoksnį — tai atskira, per visą ekraną ištempta drobė virš vaizdo, kurios kaina priklauso NUO EKRANO DYDŽIO, o ne nuo žaidimo turinio; jos nekeičia nei taškų tankis, nei LOD, tad jei niekas kitas kadrų dažnio nekeičia, verta patikrinti būtent ją. Kai nė vienos juostos nesimato, ta drobė paslepiama savaime. v215: personažų LOD — būtent taip minias piešia MMO. Manekenas yra du skeletiniai tinkleliai: kūnas (5 732 trikampiai) ir violetiniai sąnarių žiedai (8 012 trikampių, t. y. 58 % viso modelio). Iš 15 m tie žiedai ekrane yra keli taškai, tad toliau jie nebepiešiami — nei vaizde, nei šešėliuose, o kartu sustoja ir jų skeletas. Išmatuota stovint 20 m nuo katalogo: 529 -> 444 piešimo iškvietimai, 4,06 -> 3,38 mln. trikampių. Vaizde skirtumo nesimato: iš tokio atstumo violetiniai žiedai buvo mažesni už tašką. v214: rasta tikroji lėtumo priežastis. VISI personažai — žaidėjas, šimtas priešų ir 86 katalogo manekenai — buvo piešiami MeshStandardMaterial, t. y. brangiausiu three.js turimu PBR šešėliuokliu, nors jie net neturi tekstūrų (viena spalva). Išmatuota: 374 skeletiniai tinkleliai su PBR ir 2,10 mln. trikampių, o VISAS likęs pasaulis — 1,30 mln. su pigiu Lambert. Dabar personažai irgi Lambert: vaizde dingsta tik silpnas blizgesys, kurio ant vienspalvio manekeno nesimatė. Nustatymuose atsirado du jungikliai tam, kas plokštei kainuoja daugiausia: TAŠKŲ TANKIS (2x / 1,5x / 1x — 4K ekrane tankis 2 reiškia keturis kartus daugiau taškų) ir ŠEŠĖLIAI (minkšti / paprasti / išjungti). Ranka pastatytas kasamas akmuo ar gintaras pagaliau atrodo kaip sėtas: iki šiol atkurti iš atminties objektai gaudavo atsarginę figūrą, nes modeliai užsikraudavo vėliau. v213: dar kadrų dažnio. Personažų modeliai (86 katalogo manekenai ir priešai) iki šiol buvo rodomi vien pagal atstumą, tad stovint jų būryje visi likdavo „matomi" ir už nugaros — 23 000 kaulų matricų kas kadrą; dabar tikrinama ir kadro riba, o už jos likusiųjų kaulai sustoja (išmatuota: matricų skaičiavimas 3,3 -> 1,55 ms). ŠEŠĖLIŲ dėžė buvo 92x92 aplink žaidėją, tad pusė jos gulėjo už nugaros ir į šešėlių žemėlapį veltui buvo piešiami medžiai bei kūnai, kurių šešėlių niekas nemato — dabar ji mažesnė ir pastumta pirmyn pagal kamerą; šalia to šešėlio kraštas tapo aiškesnis, nes tas pats žemėlapis tenka mažesniam plotui. FPS langelis nuo šiol rodo TIKRUS skaičius: three.js jų neskaičiuodavo šešėlių praėjimo, tad trečdalis darbo buvo nematomas (manekenų būryje rodė 300 iškvietimų, o iš tikrųjų buvo 466). Nustatymuose atsirado „Animacijų katalogas" — jį paslėpus prie kaimavietės iškart sumažėja penktadalis viso piešimo; pats žaidimas nuo to nepasikeičia. v212: BERŽAI pagaliau su žieve — jiems paimtas tekstūruoto lapuočio modelis, o žievė nupiešta sava: balta su juodais brūkšniais ir šakų randais (pakete beržų nebuvo, todėl iki šiol jie ir liko pliki šalia tekstūruotų pušų); aukštis nepakito. REDAKTORIUS: pastatytas kasamas akmuo ar gintaras dabar atrodo lygiai taip pat kaip sėtas girioje — riedulio modelis su uolos tekstūra ir rūdos kristalais, o ne senoji figūra; ranka įdėtas medis gauna tekstūras; ĮDĖTAS ŽVĖRIS DABAR GYVAS IR VAIKŠTO (anksčiau tai buvo nejudanti statulėlė); kiekvienas modelis statomas TOKIO dydžio, kokį naudoja pats žaidimas (arklys buvo trigubai per didelis); pasirinkus modelį katalogas nebenušoka į viršų, o pažymėtą objektą ištrina Delete klavišas. Pomiškio dydis nebe atsitiktinis — kiekvienai rūšiai nurodytas tikslinis aukštis, tad gėlės ir žolė nebe aukštesnės už žaidėją (Flower_4_Group siekdavo 2,9 m). v211: kasami akmenys ir rūdos pagaliau atrodo kaip rūda. Rasta trys tikros priežastys, kodėl po v209 jie vis dar buvo „daugiakampis blynas": riedulys KABOJO 0,42 m virš žemės (aukštis buvo parinktas senajai figūrai, ne modeliui); uolos tekstūra buvo ištempta per visą akmenį, tad viena gysla užimdavo trečdalį jo ir riedulys nusidažydavo vienu tonu; o plikas riedulys niekuo nesiskyrė nuo dekoratyvinio akmens. Dabar akmuo stovi ant žemės, matyti uolos grūdas ir gyslos, o ant jo auga tos rūdos kristalai — titnago skeltės, geležies gumbai, sidabro adatos ir gintaro lašai (šie dar ir švyti). Beržinė čaga nebeauga ant kelmo — ji, kaip ir gyvenime, auga ant gyvo BERŽO kamieno, maždaug metro aukštyje, atsukta nuo medžio. v210: kadrų dažnis grąžintas — dabar piešiama tik tai, kas iš tikrųjų matoma. Iki šiol vaizdo plokštė kas kadrą apdorodavo VISUS 1100 medžių, akmenis ir pomiškį, nors į ekraną telpa vos keliolika procentų jų: išmatuota 4,5 mln. trikampių kadre, iš kurių į kamerą pateko 0,07 mln. Dabar medžiai, akmenys ir augalai, esantys už kadro ribų, praleidžiami (šešėlį metantys dar patikrinami pagal pačią šešėlių kamerą, tad nė vienas šešėlis nedingsta) — 4,5 mln. trikampių virto 0,45 mln., o vaizdas liko toks pat, taškas į tašką. Nei grafikos kokybė, nei matymo nuotolis nesumažinti. Kadrų dažnį dabar galima matyti ir ekrano kampe: Nustatymai → FPS → „Rodyti kampe" (šalia rodomi piešimo iškvietimai ir trikampiai). Žynė Aušrinė prie laužo pradėjo pardavinėti MEDŲ — be jo nepagaminami aštuoni Žiniuonystės receptai iš penkiolikos. v209: kasami akmenys ir rūdos nebe geometrinės figūros — dabar tai tikri riedulių modeliai su uolos tekstūra, o geležis, sidabras ir gintaras turi savo spalvos gyslas ir žibančius grūdelius; tikri akmenys nebesisuka. Medžiai kompiuteryje gavo TIKRAS žievės ir lapų tekstūras (naujas failas gamta/GIRIA_MEDZIAI.glb) — beržai lieka senieji, nes tekstūruotų beržų pakete nėra; telefone medžiai lieka pigūs, kad kadrų dažnis nenukristų. v208: redaktoriaus kataloge (🧱) kiekvienas langelis dabar rodo patį modelį — nupieštą paveiksliuką, o ne techninį vardą; pavadinimas pasirodo užvedus pele arba bakstelėjus. v207: dirbtuvės vaistinė dabar vadinasi ŽINIUONYSTE ir turi dvi skiltis: „Nuovirai" — tai, kas padeda tau, „Nuodai" — tai, kuo kenki priešui. Nuodai veikia dviem būdais: molinį indą sviedi į pažymėtą priešą (sudūžta ir aptaško visus aplinkui), o tepalu ištepi ašmenis, ir tada nuodus perduoda kiekvienas kirtis. Girioje atsirado aštuoni tikri Baltijos grybai su savo modeliais — baravykas, voveraitė, pievagrybis ir beržinė čaga valgomi, o musmirė, žalsvoji musmirė, šėtoniškas baravykas ir skalsė nuodingi: iš jų verdami nuodai, o suvalgius žalius jie kenkia ir pačiam. v206: iš vaistažolių verdami eliksyrai — dirbtuvėje atsirado ketvirta kortelė „Gydymas", o joje penkiolika receptų: ramunių arbata ramina, dilgėlių sultys prideda gyvybės, čiobrelio sirupas — kvapo, sidabražolės nuoviras nuplauna nuodus, vilkauogės lašai leidžia matyti tamsoje, bet nuodija, o pakalnutės lašai stiprina kirtį atimdami gyvybės; kiekvienas poveikis parinktas pagal tikrą tos žolės veikimą žmogui. Veikiantys eliksyrai su likusiu laiku rodomi po patirties juosta. Pridėtas medus (valgomas ir eliksyrų sudėtinė dalis) bei iš jo daromas midus. v205: redaktorius greitesnis — 🧱 iš karto įjungia redagavimą, o pasirinkus modelį kiekvienas paspaudimas ant žemės pastato dar vieną daiktą (nebereikia kiekvieno patvirtinti); telefone katalogas bestatant nebeužsiveria; augalai ir ranka pastatyti objektai nebesisuka. v204: vienuolika vaistažolių gavo savo modelius — ramunė žydi baltais žiedais su geltonu viduriu, kraujažolė skėčiu, pakalnutė kabančiais varpeliais, vilkauogė juodomis uogomis, ajeras kardo lapais; nuskintas augalas dabar traukiasi į žemę, o ne kabo ore. v203: žvėrių kojos nebeatsiskiria nuo pilvo — dabar jos pjaunamos ten, kur iš tikrųjų prasideda (išmatuota kiekvienam žvėriui atskirai), ir sukamos apie tą pačią vietą; einant priekinė koja aiškiai parlenkia riešą po krūtine (60°, kaip tikram arkliui), o užpakalinė lieka beveik tiesi; kūnas nebekyla, kai koja išskėsta, tad pėdos nebekabo ore; redagavimo mygtukai ✎ ir 🧱 iškelti iš ☰ meniu į mygtukų eilutę, į kairę nuo grafikos mygtukų. v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -922,7 +929,10 @@ const I18N={
     zyneTooFar:'Per toli nuo žynės — prieik arčiau.',
     fpsShow:'Rodyti kampe', fpsHide:'Slėpti',
     sCatalog:'Animacijų katalogas', valShown:'Rodomas', valHidden:'Paslėptas',
-    sShadow:'Šešėliai', ttPix:'Taškų tankis (1× arba 2×)', tagsNow:'Vardų sluoksnis: ',
+    sShadow:'Šešėliai', ttPix:'Taškų tankis (1× arba 2×)',
+    sBench:'Našumo matavimas',
+    benchStart:'Matuojama ~15 s — po vieną išimami sluoksniai, nejudink pelės.',
+    benchDone:'NAŠUMO MATAVIMAS:',
     sesSoft:'Minkšti', sesPlain:'Paprasti', sesOff:'Išjungti',
     pixNow:'Taškų tankis: ', sesNow:'Šešėliai: ',
     catalogOn:'Animacijų katalogas rodomas.',
@@ -1068,7 +1078,10 @@ const I18N={
     zyneTooFar:'Too far from the priestess — step closer.',
     fpsShow:'Show in corner', fpsHide:'Hide',
     sCatalog:'Animation catalog', valShown:'Shown', valHidden:'Hidden',
-    sShadow:'Shadows', ttPix:'Pixel density (1× or 2×)', tagsNow:'Name layer: ',
+    sShadow:'Shadows', ttPix:'Pixel density (1× or 2×)',
+    sBench:'Performance test',
+    benchStart:'Measuring ~15 s — layers are removed one by one, keep still.',
+    benchDone:'PERFORMANCE TEST:',
     sesSoft:'Soft', sesPlain:'Plain', sesOff:'Off',
     pixNow:'Pixel density: ', sesNow:'Shadows: ',
     catalogOn:'Animation catalog shown.',
@@ -1148,6 +1161,7 @@ function applyStaticLang(){
   { const fb=document.getElementById('oFpsBox');
     if(fb) fb.textContent=T(fpsBoxOn?'fpsHide':'fpsShow'); }
   setTx('sCatalog','sCatalog'); setTx('sShadow','sShadow'); setTt('mPix','ttPix');
+  setTx('sBench','sBench');
   { const kb=document.getElementById('oCatalog');
     if(kb) kb.textContent=T(katalogasOn?'valShown':'valHidden'); }
   { const pb=document.getElementById('mPix');
@@ -5696,9 +5710,10 @@ let tagCv=null, tagCtx=null, tagMeas=null, tagDpr=1, TAG_OK=false;
    ne nuo žaidimo turinio — jos nekeičia nei taškų tankis, nei LOD, nei
    trikampių skaičius. Vartotojas kaip tik ir pranešė, kad nė vienas nustatymas
    nieko nekeičia, tad tai vienintelis likęs įtariamasis, kurį galima
-   patikrinti: Nustatymuose „Vardų juostos" dabar tikrai IŠJUNGIA visą šį
-   sluoksnį (drobė paslepiama), o ne tik apkrovos testo žymes.
-   Be to, kai nė vienos juostos nesimato, drobė paslepiama savaime. */
+   v217: vartotojas tai IŠMATAVO — vardai nieko nekainuoja, hipotezė atmesta,
+   o laikiniems matavimams Nustatymuose ne vieta, tad jungiklis išimtas.
+   Liko tik nemokama dalis: kai nė vienos juostos nesimato, drobė paslepiama
+   savaime. */
 let TAGS_LAYER=true;
 let tagPiesta=-1;
 function tagCvRodyk(on){
@@ -8997,20 +9012,106 @@ document.getElementById('oAuto').onclick=e=>{
 document.getElementById('oLod').onclick=e=>{
   STRESS.lod=!STRESS.lod; e.target.textContent=STRESS.lod?T('onC'):T('offC');
 };
+/* v217: vardų sluoksnio jungiklis IŠIMTAS. v216 jį buvau prikabinęs prie šios
+   eilutės kaip laikiną matavimą — vartotojas išmatavo, kad vardai nieko
+   nekainuoja, ir teisingai pasakė, kad laikiniems dalykams Nustatymuose ne
+   vieta. Liko tik tai, kas nemokama ir nematoma: drobė pasislepia savaime,
+   kai nė vienos juostos nesimato (žr. drawTags). */
 document.getElementById('oTags').onclick=e=>{
   STRESS.tags=!STRESS.tags; e.target.textContent=STRESS.tags?T('onD'):T('offD');
-  /* v216: išjungiam ir patį vardų SLUOKSNĮ — jo kaina nepriklauso nuo jokio
-     kito nustatymo, tad tai atskiras matavimas (žr. TAGS_LAYER). */
-  TAGS_LAYER=STRESS.tags;
-  if(!TAGS_LAYER){ tagPiesta=0; tagCvRodyk(false); }
-  log(T('tagsNow')+(TAGS_LAYER?T('onD'):T('offD')),'lg-s');
   const n=STRESS.n; if(n){ stressClear(); stressAdd(n); }
 };
 document.getElementById('oQual').onclick=()=>{CFG.quality=CFG.quality==='high'?'low':'high';applyQuality();};
+/* ============ NAŠUMO MATAVIMAS (v217) ============
+   Vartotojas išmatavo: 1x/2x duoda tik 4–5 kadrus, LOD nieko nekeičia, vardai
+   nieko nekainuoja — o kadrų vis tiek 29 (su modeliais) arba 41 (su pieštais
+   žmogeliukais). Vadinasi, didžiąją laiko dalį valgo kažkas, kas nepriklauso
+   nei nuo taškų, nei nuo trikampių, ir spėlioti nebeverta.
+   Šis matavimas per ~15 s nuosekliai IŠIMA po vieną sluoksnį ir kiekvienam
+   pamatuoja kadrų dažnį. Iš skirtumų matyti, kas ką kainuoja; o jei skaičius
+   nepakinta net tuščiame ekrane — kaltas ne žaidimo turinys, o naršyklė,
+   vaizdo plokštės tvarkyklė arba lango dydis, ir tolesnės optimizacijos
+   žaidime būtų tuščias darbas. */
+let BENCH=null;
+const BENCH_ZINGSNIAI=[
+  ['viskas kaip yra',    ()=>{}],
+  ['be šešėlių',         ()=>{ renderer.shadowMap.enabled=false; }],
+  ['be personažų',       ()=>{
+      for(const m of CATALOG_MODELS) m.visible=false;
+      if(typeof ENEMY_GLB!=='undefined') for(const A of ENEMY_GLB) if(A.model) A.model.visible=false;
+      if(typeof playerGltfModel!=='undefined'&&playerGltfModel) playerGltfModel.visible=false;
+      for(const e of enemies) if(e.obj) e.obj.visible=false;
+      for(const d of dummies) d.obj.visible=false;
+      if(typeof merchant!=='undefined'&&merchant) merchant.obj.visible=false;
+      if(typeof FAUNA!=='undefined') for(const g of FAUNA) for(const im of g.meshes) im.visible=false;
+    }],
+  ['be medžių ir augalų',()=>{
+      for(const c of CULL_INST) c.im.visible=false;
+      for(const k in NODE_BATCH){ NODE_BATCH[k].mesh.visible=false; if(NODE_BATCH[k].krist) NODE_BATCH[k].krist.visible=false; }
+      if(typeof grassMesh!=='undefined'&&grassMesh) grassMesh.visible=false;
+      if(typeof CONE_TREES!=='undefined') for(const m of CONE_TREES) m.visible=false;
+    }],
+  ['be reljefo ir dangaus',()=>{
+      if(typeof ground!=='undefined'&&ground) ground.visible=false;
+      if(typeof water!=='undefined'&&water) water.visible=false;
+      if(typeof sky!=='undefined'&&sky) sky.visible=false;
+      if(typeof mist!=='undefined'&&mist) mist.visible=false;
+      if(typeof flies!=='undefined'&&flies) flies.visible=false;
+    }],
+  ['tuščias ekranas',    ()=>{ scene.traverse(o=>{ if(o.isMesh||o.isInstancedMesh||o.isPoints||o.isSprite) o.visible=false; }); }]
+];
+function benchStart(){
+  if(BENCH) return;
+  BENCH={i:-1,n:0,t0:0,rez:[]};
+  log(T('benchStart'),'lg-a');
+  benchKitas();
+}
+function benchKitas(){
+  BENCH.i++;
+  if(BENCH.i>=BENCH_ZINGSNIAI.length){ benchBaiga(); return; }
+  try{ BENCH_ZINGSNIAI[BENCH.i][1](); }catch(e){ console.warn('bench',e); }
+  BENCH.n=0; BENCH.t0=performance.now();
+}
+function benchTick(){
+  if(!BENCH||!BENCH.t0) return;
+  BENCH.n++;
+  const dt=performance.now()-BENCH.t0;
+  if(dt<2500) return;
+  const fps=Math.round(BENCH.n*1000/dt);
+  BENCH.rez.push([BENCH_ZINGSNIAI[BENCH.i][0],fps,renderer.info.render.calls,
+                  Math.round(renderer.info.render.triangles/1000)]);
+  log(BENCH_ZINGSNIAI[BENCH.i][0]+': '+fps+' fps · '+renderer.info.render.calls+' iškv. · '+
+      Math.round(renderer.info.render.triangles/1000)+' tūkst. △','lg-s');
+  benchKitas();
+}
+function benchBaiga(){
+  const r=BENCH.rez; BENCH=null;
+  let t=T('benchDone')+'\n';
+  for(const [v,f,c,tr] of r) t+='  '+v+': '+f+' fps ('+c+' iškv., '+tr+'k △)\n';
+  log(t,'lg-g');
+  /* viską grąžinam */
+  applyQuality();
+  if(typeof ground!=='undefined'&&ground) ground.visible=true;
+  if(typeof water!=='undefined'&&water) water.visible=true;
+  if(typeof sky!=='undefined'&&sky) sky.visible=true;
+  if(typeof mist!=='undefined'&&mist) mist.visible=true;
+  if(typeof flies!=='undefined'&&flies) flies.visible=true;
+  if(typeof grassMesh!=='undefined'&&grassMesh) grassMesh.visible=true;
+  for(const c of CULL_INST) c.im.visible=true;
+  for(const k in NODE_BATCH){ NODE_BATCH[k].mesh.visible=true; if(NODE_BATCH[k].krist) NODE_BATCH[k].krist.visible=true; }
+  if(typeof FAUNA!=='undefined') for(const g of FAUNA) for(const im of g.meshes) im.visible=true;
+  for(const d of dummies) d.obj.visible=true;
+  if(typeof merchant!=='undefined'&&merchant) merchant.obj.visible=true;
+  for(const e of enemies) if(e.obj) e.obj.visible=(CFG.quality!=='high');
+  if(typeof playerGltfModel!=='undefined'&&playerGltfModel) applyModelQuality();
+  if(typeof CONE_TREES!=='undefined'&&turtasOn) for(const m of CONE_TREES) m.visible=false;
+  cullVeikia=false;
+}
 /* v214: šešėlių filtro keitimas reikalauja perkompiliuoti šešėliuoklius */
 function sesTekstas(){ return SES_KOK>1?T('sesSoft'):SES_KOK>0?T('sesPlain'):T('sesOff'); }
 /* v216: liko tik 1x ir 2x — 1,5x vartotojui nieko nereiškė */
 function pixTekstas(){ return PIX_MAX===2?'2×':'1×'; }
+document.getElementById('oBench').onclick=()=>{ closePanels(); benchStart(); };
 document.getElementById('mPix').onclick=()=>{
   PIX_MAX=PIX_MAX===2?1:2;
   applyQuality();
@@ -12444,6 +12545,7 @@ function frame(now){
      dažnį riboja procesorius (žaidimo skaičiavimai) ar vaizdo plokštė: jei
      „kodas" beveik lygus kadro trukmei — kaltas kodas, jei gerokai mažesnis —
      laukiama plokštės. Rodoma FPS langelyje. */
+  if(BENCH) benchTick();
   { const kaina=performance.now()-_t0;
     /* pavieniai šuoliai (naršyklė stabdo koretelę, GC) iškreiptų vidurkį —
      jie praleidžiami; tikras kadras niekada netrunka 200 ms */

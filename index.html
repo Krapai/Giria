@@ -781,8 +781,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v210';
-const GAME_CHANGES='v210: kadrų dažnis grąžintas — dabar piešiama tik tai, kas iš tikrųjų matoma. Iki šiol vaizdo plokštė kas kadrą apdorodavo VISUS 1100 medžių, akmenis ir pomiškį, nors į ekraną telpa vos keliolika procentų jų: išmatuota 4,5 mln. trikampių kadre, iš kurių į kamerą pateko 0,07 mln. Dabar medžiai, akmenys ir augalai, esantys už kadro ribų, praleidžiami (šešėlį metantys dar patikrinami pagal pačią šešėlių kamerą, tad nė vienas šešėlis nedingsta) — 4,5 mln. trikampių virto 0,45 mln., o vaizdas liko toks pat, taškas į tašką. Nei grafikos kokybė, nei matymo nuotolis nesumažinti. Kadrų dažnį dabar galima matyti ir ekrano kampe: Nustatymai → FPS → „Rodyti kampe" (šalia rodomi piešimo iškvietimai ir trikampiai). Žynė Aušrinė prie laužo pradėjo pardavinėti MEDŲ — be jo nepagaminami aštuoni Žiniuonystės receptai iš penkiolikos. v209: kasami akmenys ir rūdos nebe geometrinės figūros — dabar tai tikri riedulių modeliai su uolos tekstūra, o geležis, sidabras ir gintaras turi savo spalvos gyslas ir žibančius grūdelius; tikri akmenys nebesisuka. Medžiai kompiuteryje gavo TIKRAS žievės ir lapų tekstūras (naujas failas gamta/GIRIA_MEDZIAI.glb) — beržai lieka senieji, nes tekstūruotų beržų pakete nėra; telefone medžiai lieka pigūs, kad kadrų dažnis nenukristų. v208: redaktoriaus kataloge (🧱) kiekvienas langelis dabar rodo patį modelį — nupieštą paveiksliuką, o ne techninį vardą; pavadinimas pasirodo užvedus pele arba bakstelėjus. v207: dirbtuvės vaistinė dabar vadinasi ŽINIUONYSTE ir turi dvi skiltis: „Nuovirai" — tai, kas padeda tau, „Nuodai" — tai, kuo kenki priešui. Nuodai veikia dviem būdais: molinį indą sviedi į pažymėtą priešą (sudūžta ir aptaško visus aplinkui), o tepalu ištepi ašmenis, ir tada nuodus perduoda kiekvienas kirtis. Girioje atsirado aštuoni tikri Baltijos grybai su savo modeliais — baravykas, voveraitė, pievagrybis ir beržinė čaga valgomi, o musmirė, žalsvoji musmirė, šėtoniškas baravykas ir skalsė nuodingi: iš jų verdami nuodai, o suvalgius žalius jie kenkia ir pačiam. v206: iš vaistažolių verdami eliksyrai — dirbtuvėje atsirado ketvirta kortelė „Gydymas", o joje penkiolika receptų: ramunių arbata ramina, dilgėlių sultys prideda gyvybės, čiobrelio sirupas — kvapo, sidabražolės nuoviras nuplauna nuodus, vilkauogės lašai leidžia matyti tamsoje, bet nuodija, o pakalnutės lašai stiprina kirtį atimdami gyvybės; kiekvienas poveikis parinktas pagal tikrą tos žolės veikimą žmogui. Veikiantys eliksyrai su likusiu laiku rodomi po patirties juosta. Pridėtas medus (valgomas ir eliksyrų sudėtinė dalis) bei iš jo daromas midus. v205: redaktorius greitesnis — 🧱 iš karto įjungia redagavimą, o pasirinkus modelį kiekvienas paspaudimas ant žemės pastato dar vieną daiktą (nebereikia kiekvieno patvirtinti); telefone katalogas bestatant nebeužsiveria; augalai ir ranka pastatyti objektai nebesisuka. v204: vienuolika vaistažolių gavo savo modelius — ramunė žydi baltais žiedais su geltonu viduriu, kraujažolė skėčiu, pakalnutė kabančiais varpeliais, vilkauogė juodomis uogomis, ajeras kardo lapais; nuskintas augalas dabar traukiasi į žemę, o ne kabo ore. v203: žvėrių kojos nebeatsiskiria nuo pilvo — dabar jos pjaunamos ten, kur iš tikrųjų prasideda (išmatuota kiekvienam žvėriui atskirai), ir sukamos apie tą pačią vietą; einant priekinė koja aiškiai parlenkia riešą po krūtine (60°, kaip tikram arkliui), o užpakalinė lieka beveik tiesi; kūnas nebekyla, kai koja išskėsta, tad pėdos nebekabo ore; redagavimo mygtukai ✎ ir 🧱 iškelti iš ☰ meniu į mygtukų eilutę, į kairę nuo grafikos mygtukų. v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
+const GAME_VERSION='v211';
+const GAME_CHANGES='v211: kasami akmenys ir rūdos pagaliau atrodo kaip rūda. Rasta trys tikros priežastys, kodėl po v209 jie vis dar buvo „daugiakampis blynas": riedulys KABOJO 0,42 m virš žemės (aukštis buvo parinktas senajai figūrai, ne modeliui); uolos tekstūra buvo ištempta per visą akmenį, tad viena gysla užimdavo trečdalį jo ir riedulys nusidažydavo vienu tonu; o plikas riedulys niekuo nesiskyrė nuo dekoratyvinio akmens. Dabar akmuo stovi ant žemės, matyti uolos grūdas ir gyslos, o ant jo auga tos rūdos kristalai — titnago skeltės, geležies gumbai, sidabro adatos ir gintaro lašai (šie dar ir švyti). Beržinė čaga nebeauga ant kelmo — ji, kaip ir gyvenime, auga ant gyvo BERŽO kamieno, maždaug metro aukštyje, atsukta nuo medžio. v210: kadrų dažnis grąžintas — dabar piešiama tik tai, kas iš tikrųjų matoma. Iki šiol vaizdo plokštė kas kadrą apdorodavo VISUS 1100 medžių, akmenis ir pomiškį, nors į ekraną telpa vos keliolika procentų jų: išmatuota 4,5 mln. trikampių kadre, iš kurių į kamerą pateko 0,07 mln. Dabar medžiai, akmenys ir augalai, esantys už kadro ribų, praleidžiami (šešėlį metantys dar patikrinami pagal pačią šešėlių kamerą, tad nė vienas šešėlis nedingsta) — 4,5 mln. trikampių virto 0,45 mln., o vaizdas liko toks pat, taškas į tašką. Nei grafikos kokybė, nei matymo nuotolis nesumažinti. Kadrų dažnį dabar galima matyti ir ekrano kampe: Nustatymai → FPS → „Rodyti kampe" (šalia rodomi piešimo iškvietimai ir trikampiai). Žynė Aušrinė prie laužo pradėjo pardavinėti MEDŲ — be jo nepagaminami aštuoni Žiniuonystės receptai iš penkiolikos. v209: kasami akmenys ir rūdos nebe geometrinės figūros — dabar tai tikri riedulių modeliai su uolos tekstūra, o geležis, sidabras ir gintaras turi savo spalvos gyslas ir žibančius grūdelius; tikri akmenys nebesisuka. Medžiai kompiuteryje gavo TIKRAS žievės ir lapų tekstūras (naujas failas gamta/GIRIA_MEDZIAI.glb) — beržai lieka senieji, nes tekstūruotų beržų pakete nėra; telefone medžiai lieka pigūs, kad kadrų dažnis nenukristų. v208: redaktoriaus kataloge (🧱) kiekvienas langelis dabar rodo patį modelį — nupieštą paveiksliuką, o ne techninį vardą; pavadinimas pasirodo užvedus pele arba bakstelėjus. v207: dirbtuvės vaistinė dabar vadinasi ŽINIUONYSTE ir turi dvi skiltis: „Nuovirai" — tai, kas padeda tau, „Nuodai" — tai, kuo kenki priešui. Nuodai veikia dviem būdais: molinį indą sviedi į pažymėtą priešą (sudūžta ir aptaško visus aplinkui), o tepalu ištepi ašmenis, ir tada nuodus perduoda kiekvienas kirtis. Girioje atsirado aštuoni tikri Baltijos grybai su savo modeliais — baravykas, voveraitė, pievagrybis ir beržinė čaga valgomi, o musmirė, žalsvoji musmirė, šėtoniškas baravykas ir skalsė nuodingi: iš jų verdami nuodai, o suvalgius žalius jie kenkia ir pačiam. v206: iš vaistažolių verdami eliksyrai — dirbtuvėje atsirado ketvirta kortelė „Gydymas", o joje penkiolika receptų: ramunių arbata ramina, dilgėlių sultys prideda gyvybės, čiobrelio sirupas — kvapo, sidabražolės nuoviras nuplauna nuodus, vilkauogės lašai leidžia matyti tamsoje, bet nuodija, o pakalnutės lašai stiprina kirtį atimdami gyvybės; kiekvienas poveikis parinktas pagal tikrą tos žolės veikimą žmogui. Veikiantys eliksyrai su likusiu laiku rodomi po patirties juosta. Pridėtas medus (valgomas ir eliksyrų sudėtinė dalis) bei iš jo daromas midus. v205: redaktorius greitesnis — 🧱 iš karto įjungia redagavimą, o pasirinkus modelį kiekvienas paspaudimas ant žemės pastato dar vieną daiktą (nebereikia kiekvieno patvirtinti); telefone katalogas bestatant nebeužsiveria; augalai ir ranka pastatyti objektai nebesisuka. v204: vienuolika vaistažolių gavo savo modelius — ramunė žydi baltais žiedais su geltonu viduriu, kraujažolė skėčiu, pakalnutė kabančiais varpeliais, vilkauogė juodomis uogomis, ajeras kardo lapais; nuskintas augalas dabar traukiasi į žemę, o ne kabo ore. v203: žvėrių kojos nebeatsiskiria nuo pilvo — dabar jos pjaunamos ten, kur iš tikrųjų prasideda (išmatuota kiekvienam žvėriui atskirai), ir sukamos apie tą pačią vietą; einant priekinė koja aiškiai parlenkia riešą po krūtine (60°, kaip tikram arkliui), o užpakalinė lieka beveik tiesi; kūnas nebekyla, kai koja išskėsta, tad pėdos nebekabo ore; redagavimo mygtukai ✎ ir 🧱 iškelti iš ☰ meniu į mygtukų eilutę, į kairę nuo grafikos mygtukų. v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -5764,20 +5764,20 @@ const NODE_KINDS=[
      geležimi, sidabru ar gintaro gysla; texS — mastelis (modelis 2–3 m).
      Jei .glb neatkeliauja, lieka senoji figūra — žaidimas nesugriūva. */
   {key:'gintaras',color:0xd9982f,geo:()=>new THREE.OctahedronGeometry(.4,0),h:.5,r:.40,label:'Gintaro sakai',xp:24,
-   tex:'Rock_Medium_1',texS:.34,tint:0xc6c2b6,gysla:0xd9982f},
+   tex:'Rock_Medium_1',texS:.34,tint:0xc6c2b6,gysla:0xd9982f,krist:0xe8a72c,zvilga:true},
   {key:'akmuo',  color:0x6e6b62,geo:()=>new THREE.DodecahedronGeometry(.52,0),h:.45,r:.52,label:'Titnago luitas',xp:20,
-   tex:'Rock_Medium_2',texS:.40,tint:0x9a978e},
+   tex:'Rock_Medium_2',texS:.40,tint:0x9a978e,krist:0x2b2723},
   {key:'uogos',  color:0x4a5fa0,geo:()=>new THREE.SphereGeometry(.42,8,6),h:.4,label:'Uogienojai',xp:13},
   {key:'zole',   color:0x6f9257,geo:()=>new THREE.ConeGeometry(.36,.7,5),h:.4,label:'Vaistažolės',xp:14},
   /* v194: POŽEMIŲ RŪDOS. mine:true — kasama kirtikliu (ta pati poza kaip
      titnago luito, žr. gather()). Paviršiuje jų nėra: spawnNodes jas
      praleidžia, o į požemius sodina dunSpawnNodes(). */
   {key:'gelezis',  color:0x8a7a68,geo:()=>new THREE.DodecahedronGeometry(.58,0),h:.5,r:.58,label:'Geležies rūda',xp:30,mine:true,dun:true,
-   tex:'Rock_Medium_3',texS:.42,tint:0xc9c2b4,gysla:0x9a5a2a},
+   tex:'Rock_Medium_3',texS:.42,tint:0xc9c2b4,gysla:0x9a5a2a,krist:0x8a4a1e},
   {key:'sidabras', color:0xb6c0cb,geo:()=>new THREE.OctahedronGeometry(.55,0),h:.5,r:.55,label:'Sidabro gysla',xp:44,mine:true,dun:true,
-   tex:'Rock_Medium_1',texS:.40,tint:0xcfd4da,gysla:0xe8eef4},
+   tex:'Rock_Medium_1',texS:.40,tint:0xcfd4da,gysla:0xe8eef4,krist:0xeef3f8},
   {key:'gintaras2',color:0xd9982f,geo:()=>new THREE.OctahedronGeometry(.46,0),h:.5,r:.46,label:'Gintaro gysla',xp:38,mine:true,dun:true,gives:'gintaras',
-   tex:'Rock_Medium_2',texS:.38,tint:0xc6c2b6,gysla:0xe0a838}
+   tex:'Rock_Medium_2',texS:.38,tint:0xc6c2b6,gysla:0xe0a838,krist:0xe8a72c,zvilga:true}
 ];
 /* v201: VAISTAŽOLĖS. Kiekviena — savas šaltinis (sava spalva, forma ir
    pavadinimas), tad ir renkasi kaip atskiras daiktas. herb:true — dėl jo
@@ -6200,22 +6200,25 @@ const GRYBAI_GEO={
       gKepure(B,[x,h,z],rk,rk*.52,0xece6da,9,'plokscia');
     }
     return zGeo(B); },
-  /* ČAGA: ne kepurė, o juoda suskilusi gumbas ant beržo. Todėl piešiamas ir
-     beržo kelmas — kitaip gumbas ant žemės neatpažįstamas. */
+  /* ČAGA (v211): auga ANT GYVO BERŽO, ne ant kelmo. Iki v211 kartu su gumbu
+     buvo piešiamas ir beržo kelmas — kitaip gumbas ant žemės neatpažįstamas;
+     vartotojas teisingai pasakė, kad taip nedera: čaga turi būti prie beržo.
+     Dabar mazgas pastatomas prie tikro beržo kamieno (cagaAntBerzu), tad
+     kelmo nebereikia — lieka tik gumbas, auganti puse į +Z (nuo kamieno),
+     o mazgo rotation.y jį atsuka į lauką. Centras — ties kamieno paviršiumi,
+     tad dalis gumbo lieka medyje. */
   caga:()=>{ const B=zNew(), R=zRnd(229);
-    zStiebas(B,[0,0,0],[0,.46,0],.112,.098,0xece6d8,9);          // beržo kelmas
-    zDiskas(B,[0,.46,0],.098,0xd6cbb6,9);                        // nupjautas viršus
-    for(const y of [.09,.21,.33,.41]){                           // beržo juostos
-      const pl=.018+R()*.014;
-      zStiebas(B,[0,y,0],[0,y+pl,0],.114,.113,0x2a2522,9);
+    for(let i=0;i<14;i++){                                       // juodas suskilęs gumbas
+      const a=R()*TAU, u=R();
+      /* v211: padidinta 1,35 karto — kaip v207 grybams, tikroviškas dydis
+         (gumbas ~20 cm) žaidimo kameroje virsta taškeliu ant kamieno. */
+      const y=(u-.5)*.40, d=.040+R()*.100;
+      zUoga(B,[Math.cos(a)*d*.8, y, .070+Math.sin(a)*d*.5+R()*.100],
+            .070+R()*.054, 0x241c18);
     }
-    for(let i=0;i<12;i++){                                       // juodas suskilęs gumbas
-      const a=R()*TAU, y=.11+R()*.24, d=.100+R()*.045;
-      zUoga(B,[Math.cos(a)*d,y,Math.sin(a)*d],.058+R()*.036,0x241c18);
-    }
-    for(let i=0;i<8;i++){                                        // rusvas vidus plyšiuose
-      const a=R()*TAU, y=.13+R()*.20, d=.150+R()*.030;
-      zDiskas(B,[Math.cos(a)*d,y,Math.sin(a)*d],.026+R()*.014,0x8a4f22,4);
+    for(let i=0;i<9;i++){                                        // rusvas vidus plyšiuose
+      const a=R()*TAU, y=(R()-.5)*.30, d=.060+R()*.074;
+      zDiskas(B,[Math.cos(a)*d*.8, y, .165+Math.sin(a)*d*.3], .034+R()*.024, 0x9c5a26, 4);
     }
     return zGeo(B); },
   /* MUSMIRĖ: ryškiai raudona kepurė su baltomis karpomis, baltas kotas su
@@ -6323,7 +6326,45 @@ function nodeMat(k){
 const NODE_BATCH={}, NODE_BATCH_MAX=256;
 /* v209: kiek reikia sumažinti tekstūruotą modelį (riedulys yra 2–3 m, o
    šaltinis — pusmetrinis). Laikoma pagal raktą, nes nodeBatchSync mato tik jį. */
-const NODE_TEX_S={};
+const NODE_TEX_S={}, NODE_TEX_DY={};
+/* ============ RŪDOS KRISTALAI (v211) ============
+   v209 kasami šaltiniai gavo tikrą riedulio modelį, bet vartotojas ir po to
+   pasakė, kad jie „atrodo kaip daugiakampis blynas". Trys tikros priežastys,
+   visos išmatuotos:
+     1) riedulys KABOJO 0,42 m virš žemės — k.h (0,45/0,5) buvo parinktas
+        senajam dodekaedrui, o modelio apačia yra visai kitur (NODE_TEX_DY);
+     2) tekstūra buvo dedama repeat=1, tad viena gysla užimdavo trečdalį
+        akmens ir visas riedulys nusidažydavo vienu tonu — iš arti nesimatė
+        nei grūdelių, nei uolos (patikrinta: su repeat=4 gyslos matomos);
+     3) plikas riedulys NIEKAIP nesiskiria nuo dekoratyvinio akmens, tad
+        „kasama rūda" neatpažįstama. Todėl ant jo dabar auga tos rūdos
+        kristalai — titnago skeltės, geležies gumbai, sidabro adatos,
+        gintaro lašai (jie dar ir švyti).
+   Kristalai — atskiras InstancedMesh (po vieną rūšiai, +5 piešimo iškvietimai),
+   nes riedulys piešiamas TEKSTŪRA, o kristalai — viršūnių spalvomis. */
+const NODE_KRIST_GEO={}, NODE_KRIST_MAT={};
+function kristGeo(k){
+  if(NODE_KRIST_GEO[k.key]) return NODE_KRIST_GEO[k.key];
+  const B=zNew(), R=zRnd(k.key.length*7919+k.krist);
+  const sp=k.krist;
+  const n=5+Math.floor(R()*3);
+  for(let i=0;i<n;i++){
+    const a=(i/n)*TAU+R()*.6, d=.08+R()*.26;
+    const x=Math.cos(a)*d, z=Math.sin(a)*d;
+    const y0=.12+R()*.30;                       // iš riedulio viršaus ir šonų
+    const h=.10+R()*.17, r=.030+R()*.038;
+    const tx=x+Math.cos(a)*(.05+R()*.10), tz=z+Math.sin(a)*(.05+R()*.10);
+    zStiebas(B,[x,y0,z],[tx,y0+h,tz],r,r*.30,sp,4);   // smaili kristalai
+    zUoga(B,[tx,y0+h,tz],r*.42,sp);                   // smaigalys
+  }
+  return (NODE_KRIST_GEO[k.key]=zGeo(B));
+}
+function kristMat(k){
+  if(NODE_KRIST_MAT[k.key]) return NODE_KRIST_MAT[k.key];
+  const m=new THREE.MeshLambertMaterial({color:0xffffff,vertexColors:true});
+  if(k.zvilga) m.emissive.setHex(0x4a2f06);          // gintaras švyti kaip iki v209
+  return (NODE_KRIST_MAT[k.key]=m);
+}
 const NODE_TEX_MAT={};
 /* Kuo piešiamas šaltinis: jei tekstūruotas modelis jau įkeltas — juo, jei ne —
    senąja figūra. VIENA vieta, kad nodeBatchAdd ir dressNodes nesiskirtų. */
@@ -6375,7 +6416,7 @@ function rudosTekstura(sp){
 function kindGeoMat(k){
   let d=null;
   try{ d=k.tex&&DAIKTAI[k.tex]&&DAIKTAI[k.tex][0]; }catch(e){ d=null; }
-  if(!d) return {geo:k.geo(),mat:nodeMat(k),s:1};
+  if(!d) return {geo:k.geo(),mat:nodeMat(k),s:1,dy:0};
   let mat=NODE_TEX_MAT[k.key];
   if(!mat){
     let map=null;
@@ -6383,13 +6424,22 @@ function kindGeoMat(k){
       map=k.gysla?rudosTekstura(k.gysla):dunTex('siena').clone();
       map.needsUpdate=true;
       map.wrapS=map.wrapT=THREE.RepeatWrapping;
-      map.repeat.set(k.gysla?1:2,k.gysla?1:2);
+      /* v211: buvo 1 ir 2 — per stambu. Modelio UV apima beveik visą lakštą,
+         tad viena gysla išeidavo trečdalio akmens dydžio ir riedulys
+         nusidažydavo vienu tonu. Su 4/5 matyti ir uola, ir gyslos. */
+      map.repeat.set(k.gysla?4:5,k.gysla?4:5);
     }catch(e){ map=d.mat.map||null; }
     mat=new THREE.MeshLambertMaterial({map,color:k.tint||0xffffff});
     if(k.key==='gintaras'||k.key==='gintaras2') mat.emissive.setHex(0x1c1204);
     NODE_TEX_MAT[k.key]=mat;
   }
-  return {geo:d.geo,mat,s:k.texS||1};
+  /* v211: modelio apačia nesutampa su senosios figūros h — be šito riedulys
+     kabo ore (išmatuota: 0,42 m). dy nuslenka PIEŠIAMĄ instanciją, o pats
+     n.obj.position lieka nepaliestas (juo remiasi rinkimas, žymės, žemėlapis). */
+  const ts=k.texS||1;
+  if(!d.geo.boundingBox&&d.geo.computeBoundingBox) d.geo.computeBoundingBox();
+  const dy=d.geo.boundingBox?(-d.geo.boundingBox.min.y*ts-(k.h||0)-.04):0;
+  return {geo:d.geo,mat,s:ts,dy};
 }
 const nbM=new THREE.Matrix4(), nbQ=new THREE.Quaternion(),
       nbV=new THREE.Vector3(), nbS=new THREE.Vector3(), nbUp=new THREE.Vector3(0,1,0);
@@ -6397,30 +6447,48 @@ function nodeBatchAdd(k,obj){
   let B=NODE_BATCH[k.key];
   if(!B){
     const gm=kindGeoMat(k);
-    NODE_TEX_S[k.key]=gm.s;
+    NODE_TEX_S[k.key]=gm.s; NODE_TEX_DY[k.key]=gm.dy||0;
     const im=new THREE.InstancedMesh(gm.geo,gm.mat,NODE_BATCH_MAX);
     im.castShadow=true; im.userData.shad=true; im.raycast=()=>{};
     im.frustumCulled=false; im.count=0;
     B={mesh:im,list:[]}; NODE_BATCH[k.key]=B; scene.add(im);
+    if(k.krist){                                   // v211: rūdos kristalai
+      const km=new THREE.InstancedMesh(kristGeo(k),kristMat(k),NODE_BATCH_MAX);
+      km.castShadow=true; km.userData.shad=true; km.raycast=()=>{};
+      km.frustumCulled=false; km.count=0;
+      /* kitos zonos šaltinius nodeBatchSync suspaudžia į nulį, tad
+         OVERWORLD_HIDE čia nereikia (ir jis dar nepaskelbtas). */
+      B.krist=km; scene.add(km);
+    }
   }
   if(B.list.length>=NODE_BATCH_MAX) return B;
   B.list.push(obj); B.mesh.count=B.list.length;
+  if(B.krist) B.krist.count=B.list.length;   // v211: kartu su rieduliu
   return B;
 }
 function nodeBatchSync(){
   for(const key in NODE_BATCH){
     const B=NODE_BATCH[key];
+    const ts=NODE_TEX_S[key]||1, dy=NODE_TEX_DY[key]||0;
     for(let i=0;i<B.list.length;i++){
       const o=B.list[i];
-      const ts=NODE_TEX_S[key]||1;
-      if(o.visible===false) nbS.set(0,0,0);
+      const nera=(o.visible===false);
+      if(nera) nbS.set(0,0,0);
       else nbS.set(o.scale.x*ts,o.scale.y*ts,o.scale.z*ts);
       nbQ.setFromAxisAngle(nbUp,o.rotation.y);
-      nbV.set(o.position.x,o.position.y,o.position.z);
+      nbV.set(o.position.x,o.position.y+dy,o.position.z);
       nbM.compose(nbV,nbQ,nbS);
       B.mesh.setMatrixAt(i,nbM);
+      if(B.krist){
+        /* kristalai nesitraukia su modelio masteliu — jie savo dydžio,
+           bet stovi ant to paties riedulio (tas pats dy) */
+        if(nera) nbS.set(0,0,0); else nbS.set(o.scale.x,o.scale.y,o.scale.z);
+        nbM.compose(nbV,nbQ,nbS);
+        B.krist.setMatrixAt(i,nbM);
+      }
     }
     if(B.mesh.instanceMatrix) B.mesh.instanceMatrix.needsUpdate=true;
+    if(B.krist) B.krist.instanceMatrix.needsUpdate=true;
   }
 }
 function spawnNodes(){
@@ -13042,11 +13110,72 @@ function dressForest(){
     const sar=lengvai?MED_LENGVI:
       (t.bio===BIO_LAUKAI?MED_LAUKAI:t.bio===BIO_MISKAS?MED_MISKAS:MED_TAMSUS);
     const v=sar[(k++)%sar.length];
-    (grupes[v]=grupes[v]||[]).push({x:t.x,y:t.y,z:t.z,rot:t.rot,s:t.sc*0.8,sy:t.sc*rnd(.78,.95)});
+    t.med=v; t.medS=t.sc*0.8;          // v211: kuris modelis — reikia čagai
+    (grupes[v]=grupes[v]||[]).push({x:t.x,y:t.y,z:t.z,rot:t.rot,s:t.medS,sy:t.sc*rnd(.78,.95)});
   }
   let ok=false;
   for(const v in grupes) if(turtasInst(v,grupes[v],true)) ok=true;
   if(ok) for(const m of CONE_TREES) m.visible=false;
+  cagaAntBerzu();                       // v211: čagą perkeliam ant beržų
+}
+
+/* ============ ČAGA ANT BERŽO (v211) ============
+   Beržinė čaga gyvenime auga ant GYVO beržo kamieno, o ne ant kelmo ant žemės.
+   Medžių modeliai paaiškėja tik užsikrovus .glb (dressForest), tad mazgai
+   perkeliami po sėjos: kiekvienai čagai ieškom artimiausio beržo ir statom ją
+   ant kamieno, ~1,05 m aukštyje, atsuktą nuo medžio.
+   KAMIENO STORIS MATUOJAMAS iš pačios geometrijos, ne spėjamas: imamas
+   MAŽIAUSIAS atstumas nuo ašies apatinėje medžio dalyje — tai ir yra kamienas,
+   viskas, kas toliau, jau šakos ir lapija.
+   DVI PAMOKOS (pirmi du variantai abu klydo, ir abu buvo matomi nuotraukoje):
+     1) „artimiausio šeštadalio" mediana su ±0,30 langu pagaudavo šakas;
+     2) matuojant TIK ties čagos aukščiu paaiškėjo, kad kamienas viršūnių tame
+        aukštyje išvis neturi — jis yra tik kelių žiedų vamzdis (Birch_3: ties
+        1,0 kamienas 0,10, o ties 1,3 artimiausia viršūnė jau 0,46, ir tai
+        šaka). Todėl imama VISA apatinė juosta, o ne vienas aukštis.
+   Kešuojama pagal modelio vardą (vietiniai vienetai), nes rezultatas nuo
+   medžio mastelio nepriklauso. */
+const KAM_R={};
+function kamienoR(vardas,s){
+  let r=KAM_R[vardas];
+  if(r===undefined){
+    const g=TURTAS&&TURTAS[vardas];
+    r=0;
+    if(g&&g.attributes&&g.attributes.position){
+      const p=g.attributes.position;
+      let art=1e9;
+      for(let i=0;i<p.count;i++){
+        const y=p.getY(i);
+        if(y<.25||y>2.5) continue;              // apatinė kamieno juosta
+        const d=Math.hypot(p.getX(i),p.getZ(i));
+        if(d>.02&&d<art) art=d;
+      }
+      if(art<1e9) r=art;
+    }
+    r=Math.min(.45,Math.max(.06,r||.14));
+    KAM_R[vardas]=r;
+  }
+  return r*s;
+}
+function cagaAntBerzu(){
+  const berzai=trees.filter(t=>t.med&&/Birch/i.test(t.med));
+  if(!berzai.length) return 0;
+  let n=0;
+  for(const nd of nodes){
+    if(!nd.kind||nd.kind.key!=='caga'||nd.rankinis) continue;
+    let ger=null, gerD=1e9;
+    for(const t of berzai){
+      const d=(t.x-nd.pos.x)**2+(t.z-nd.pos.z)**2;
+      if(d<gerD){ gerD=d; ger=t; }
+    }
+    if(!ger) continue;
+    const a=Math.random()*TAU, dx=Math.cos(a), dz=Math.sin(a);
+    const rr=kamienoR(ger.med,ger.medS||1)+.02;
+    nd.obj.position.set(ger.x+dx*rr, heightAt(ger.x,ger.z)+1.05, ger.z+dz*rr);
+    nd.obj.rotation.y=Math.atan2(dx,dz);        // gumbas — nuo kamieno į lauką
+    nd.antBerzo=true; n++;
+  }
+  return n;
 }
 function dressRocks(){
   const vardai=['Rock_1','Rock_2','Rock_3','Rock_4','Rock_5'], grupes={};
@@ -13730,7 +13859,7 @@ function dressNodes(){
   for(const k of NODE_KINDS){
     if(!k.tex||!DAIKTAI[k.tex]) continue;
     const gm=kindGeoMat(k);
-    NODE_TEX_S[k.key]=gm.s;
+    NODE_TEX_S[k.key]=gm.s; NODE_TEX_DY[k.key]=gm.dy||0;
     const B=NODE_BATCH[k.key];
     if(B&&B.mesh){ B.mesh.geometry=gm.geo; B.mesh.material=gm.mat; }
     n++;

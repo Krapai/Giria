@@ -7003,6 +7003,13 @@ const TAP_RADIUS_PX=46;
    buvo, tai neturi įtakos" — tad spindulys vėl vienodas abiem. Pamoka: 4,5 %
    ekrano ploto skaičius buvo tikras, bet jo klaida ne ta. */
 const TAP_RADIUS_MOUSE=TAP_RADIUS_PX;
+/* v221: kiek METRŲ nuo parodytos vietos dar gali būti objektas, kurį pagauna
+   ekrano spindulys. IŠMATUOTA prie laužo: amžinasis Sausuolis stovi 1,27 m nuo
+   žaidėjo, o paspaudimas buvo į žemę už 8,4 m — 7,2 m nuo jo. Su 2,5 m langu
+   toks vagystės atvejis atkrenta, o netiksliai bakstelėjus šalia žolės ar
+   akmens (ten atstumas iki parodytos vietos < 1 m) pataisa toliau veikia. */
+const TAP_LANGAS=2.5;
+const MESKERE=14;                 // kiek toli numeta meškerę (v221: iškelta iš worldClick)
 /* Spindulio ir sferos sankirta — grąžina atstumą nuo kameros arba null.
    Reikalinga tam, kad mazgai ir medžiai duotų ATSTUMĄ ir galėtų sąžiningai
    varžytis su reljefu: taip nė vienas nebepavagia paspaudimo, nukreipto į už
@@ -7133,7 +7140,35 @@ function worldClick(sx,sy,tikslus){
       return;
     }
   }
-  const tapR=tikslus?TAP_RADIUS_MOUSE:TAP_RADIUS_PX;    // v221
+  const tapR=tikslus?TAP_RADIUS_MOUSE:TAP_RADIUS_PX;
+  /* v221: KUR IŠ TIKRŲJŲ RODOMA. Reljefo sankirtą skaičiuojam PIRMĄ, nes ji
+     yra atsakymas į klausimą „ką žmogus parodė". Ekrano spindulio (46 px)
+     kandidatai toliau tikrinami PAGAL JĄ — žr. arti(). */
+  const hitW=ray.intersectObject(water,false)[0];
+  let hitG=ray.intersectObject(ground,false)[0];
+  /* v220: POŽEMYJE PELE EITI BUVO NEĮMANOMA — grindys yra atskiras
+     instancuotas tinklelis su išjungtu raycast, tad sankirtą skaičiuojam su
+     plokštuma ties y=0 (heightAt požemyje grąžina 0). */
+  if(!hitG&&ZONE&&ray.ray&&ray.ray.intersectPlane){
+    const pp=new THREE.Vector3();
+    if(ray.ray.intersectPlane(DUN_GRINDYS,pp))
+      hitG={point:pp,distance:ray.ray.origin.distanceTo(pp)};
+  }
+  /* v221: ŠTAI KODĖL PASPAUDUS ANT ŽEMĖS PERSONAŽAS NEJUDĖDAVO PRIE LAUŽO.
+     nearestByScreen (46 px) buvo daromas BE JOKIO ryšio su tuo, kur žmogus
+     parodė: jis paima bet kurį objektą, kurio VIETA ekrane arti pelės, net jei
+     pasaulyje tas objektas visai kitur. IŠMATUOTA prie laužo: paspaudus žemę
+     už 8,4 m, 36 px atstumu ekrane pasitaikydavo amžinasis „Sausuolis",
+     stovintis vos 1,27 m nuo žaidėjo — t. y. 7,2 m nuo parodytos vietos.
+     Paspaudimas atitekdavo jam, o kadangi jis arčiau nei 2,3 m, personažas
+     niekur neidavo — imdavo jį kirsti vietoje. Žmogui tai atrodo lygiai taip:
+     „paspaudžiau ant žemės, o jis nereaguoja".
+     TAISYKLĖ: ekrano spindulys yra pataisa NETIKSLIAM PIRŠTUI, tad jis gali
+     gelbėti tik tai, kas TIKRAI yra prie parodytos vietos. Spindulys lieka
+     46 px (vartotojo prašymu, jis nieko nekeičia), bet kandidatas priimamas
+     tik jei pasaulyje jis ne toliau kaip TAP_LANGAS metrų nuo taško, į kurį
+     nukrito spindulys. */
+  const arti=(p)=>!hitG||Math.hypot(p.x-hitG.point.x,p.z-hitG.point.z)<=TAP_LANGAS;
   const alive=enemies.filter(e=>!e.dead);
   /* v193: taikom į TAI, KAS MATOMA — aukštoje kokybėje tai GLB modelis
      (anksčiau spindulys eidavo į nematomą procedūrinį kūną, o dabar jo gali
@@ -7146,9 +7181,12 @@ function worldClick(sx,sy,tikslus){
     const idx=eObjs.indexOf(o);
     e=idx>=0?alive[idx]:null;
   }
-  /* jei tiksliai nepataikė — imam artimiausią ekrane per TAP_RADIUS_PX */
-  if(!e) e=nearestByScreen(alive,
-    x=>new THREE.Vector3(x.pos.x,x.pos.y+1.2,x.pos.z),sx,sy,tapR);
+  /* jei tiksliai nepataikė — imam artimiausią ekrane per TAP_RADIUS_PX,
+     bet TIK jei jis ir pasaulyje yra ten, kur parodyta (v221) */
+  if(!e){
+    const q=nearestByScreen(alive,x=>new THREE.Vector3(x.pos.x,x.pos.y+1.2,x.pos.z),sx,sy,tapR);
+    if(q&&arti(q.pos)) e=q;
+  }
   if(e){
     if(player.targetId===e.id){
       /* antras paspaudimas ant jau pažymėto priešo — einam pulti */
@@ -7164,7 +7202,8 @@ function worldClick(sx,sy,tikslus){
   }
   /* v200: lavonas — bakstelėjus iš arti išdarinėjamas */
   if(LAVONAI.length){
-    const l=nearestByScreen(LAVONAI,x=>new THREE.Vector3(x.pos.x,x.pos.y+.5,x.pos.z),sx,sy,tapR);
+    const l0=nearestByScreen(LAVONAI,x=>new THREE.Vector3(x.pos.x,x.pos.y+.5,x.pos.z),sx,sy,tapR);
+    const l=(l0&&arti(l0.pos))?l0:null;                     // v221
     if(l){
       if(Math.hypot(l.pos.x-player.pos.x,l.pos.z-player.pos.z)<3.4) butcher(l);
       else { player.moveTo=new THREE.Vector3(l.pos.x,l.pos.y,l.pos.z);
@@ -7185,49 +7224,39 @@ function worldClick(sx,sy,tikslus){
     const d=raySphere(x.pos,(x.kind.r||.45)*1.15+(x.kind.tex?.25:0));
     if(d!==null&&d<dN){ dN=d; n=x; }
   }
-  if(!n){                       // pirštui — dar ir ekrano spindulys
+  if(!n){                       // ekrano pataisa — tik prie parodytos vietos
     const q=nearestByScreen(readyNodes,x=>x.pos.clone(),sx,sy,tapR);
-    if(q){ n=q; dN=camera.position.distanceTo(q.pos); }
+    if(q&&arti(q.pos)){ n=q; dN=camera.position.distanceTo(q.pos); }
   }
   /* v221: MEDŽIAI. Kiekvienas medis kertamas — jo vietoj spindulys tikrinamas
      su stačiu cilindru (žr. medzRayHit). */
   const mt=ZONE?null:medzRayHit();
   const dT=mt?mt.dist:Infinity;
-  const hitW=ray.intersectObject(water,false)[0];
-  let hitG=ray.intersectObject(ground,false)[0];
-  /* v220: POŽEMYJE PELE EITI BUVO NEĮMANOMA. Paspaudimas ieško sankirtos su
-     paviršiaus reljefu (ground), o požemio grindys yra atskiras instancuotas
-     tinklelis, kuriam dar ir išjungtas raycast (v194, dėl greičio). Todėl
-     spustelėjus grindis nieko neįvykdavo. Grindys yra plokščios ties y=0
-     (heightAt požemyje grąžina 0), tad sankirtą skaičiuojam su plokštuma —
-     be jokio raycast ir be kainos. Į sienas įeiti neleis collide(), lygiai
-     kaip paviršiuje neleidžia medžiai. */
-  if(!hitG&&ZONE&&ray.ray&&ray.ray.intersectPlane){
-    const p=new THREE.Vector3();
-    if(ray.ray.intersectPlane(DUN_GRINDYS,p))
-      hitG={point:p,distance:ray.ray.origin.distanceTo(p)};
-  }
   const wt=hitW?waterTypeAt(hitW.point.x,hitW.point.z):null;
   const dW=wt?hitW.distance:Infinity;
   const dG=hitG?hitG.distance:Infinity;
-  const arti=Math.min(dN,dT,dW,dG);
-  if(arti===Infinity) return;                 // dangus arba už pasaulio krašto
-  if(arti===dN){ player.gatherId=nodes.indexOf(n); player.targetId=null; player.moveTo=null; return; }
-  if(arti===dT){
+  const arciausias=Math.min(dN,dT,dW,dG);
+  if(arciausias===Infinity) return;           // dangus arba už pasaulio krašto
+  if(arciausias===dN){ player.gatherId=nodes.indexOf(n); player.targetId=null; player.moveTo=null; return; }
+  if(arciausias===dT){
     const nd=medzMazgas(mt.t);
     player.gatherId=nodes.indexOf(nd); player.targetId=null; player.moveTo=null; return;
   }
-  if(arti===dW){
-    const d=Math.hypot(hitW.point.x-player.pos.x,hitW.point.z-player.pos.z);
-    if(d<=14){ startFishing(hitW.point.x,hitW.point.z,wt); return; }
-    /* v221: iki šiol toliau nei meškerės metimas paspaudimas TIK įrašydavo
-       eilutę žurnale ir personažas likdavo stovėti — vartotojui tai atrodė
-       kaip „paspaudžiau, o jis nejuda". Dabar prie vandens einama (plaukti
-       žaidėjas moka), o užrašas lieka kaip paaiškinimas, kodėl nepradėta
-       žvejoti. */
-    player.moveTo=hitW.point.clone(); player.targetId=null; player.gatherId=null;
+  if(arciausias===dW){
+    const dx=hitW.point.x-player.pos.x, dz=hitW.point.z-player.pos.z;
+    const d=Math.hypot(dx,dz);
+    if(d<=MESKERE){ startFishing(hitW.point.x,hitW.point.z,wt); return; }
+    /* v221: toliau, nei meškerė pasiekia, anksčiau nebūdavo NIEKO — tik eilutė
+       žurnale. Vartotojo sprendimas: „tegu meškerė vis tiek meta max galimu
+       atstumu". Einam nuo ribos atgal, kol randam tikrą vandenį ta pačia
+       kryptimi (ties pačia riba gali būti jau krantas). */
+    const ux=dx/d, uz=dz/d;
+    for(let r=MESKERE;r>=1.5;r-=.5){
+      const x=player.pos.x+ux*r, z=player.pos.z+uz*r;
+      const t2=waterTypeAt(x,z);
+      if(t2){ startFishing(x,z,t2); return; }
+    }
     log(T('tooFarWater'),'lg-s');
-    burst(hitW.point.x,hitW.point.y+.1,hitW.point.z,5,0x8fe4ff,1.1,-3);
     return;
   }
   player.moveTo=hitG.point.clone(); player.targetId=null; player.gatherId=null;

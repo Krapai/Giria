@@ -100,7 +100,11 @@ canvas{display:block;touch-action:none}
 /* v202: redaktoriaus katalogas */
 #pEdit{width:320px}
 #editBody .ekat{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
-#editBody .ekat button{font-size:11px;padding:3px 7px}
+/* v250: vardai pailgėjo („Augalai ir medžiai"), o .tbtn duoda 46x46 —
+   IŠMATUOTA, kad tekstas buvo nukirstas (scrollWidth 51 prieš clientWidth 44).
+   Tas pats sprendimas, kaip tekstūrų lange: mygtukas pagal turinį. */
+#editBody .ekat button{font-size:11px;padding:3px 8px;width:auto;height:auto;
+  white-space:nowrap;line-height:1.5}
 /* v208: kataloge nebe vardai, o patys modeliai. Vardai kode techniniai
    (Barrel_A, Pine_03) — iš jų nesuprasi, ką statai, todėl kiekvienas langelis
    rodo nupieštą modelį, o vardas pasirodo užvedus arba bakstelėjus. */
@@ -141,6 +145,31 @@ canvas{display:block;touch-action:none}
   border:1px solid rgba(217,152,47,.4);border-radius:4px}
 /* v248: perėjimo mygtukai tarp dviejų redaktoriaus langų (katalogas ↔ tekstūros) */
 #editBody .ekit,#teksBody .ekit{width:100%;height:28px;font-size:12px;margin-bottom:6px}
+/* v250: numeriukai ant tekstūrų langelių — vartotojas: „kai kurios niekaip
+   nesirodo", tad reikia kuo pasakyti, KURI. Numeris = vieta ZTEKS sąraše. */
+#teksBody .elist button{position:relative}
+#teksBody .znum{position:absolute;left:2px;top:2px;font-style:normal;font-size:9px;line-height:1;
+  padding:1px 3px;border-radius:4px;background:rgba(8,12,10,.82);color:#ffc861;pointer-events:none}
+#teksBody .zpvnr{color:#ffc861;font-weight:600;font-size:10px}
+/* v250: atspalvio paletė. Ji NEGULI ant nieko — įsiterpia tarp antraštės ir
+   lango turinio, tad nieko neuždengia (v221 vartotojo taisyklė). */
+.pTint{position:absolute;top:7px;right:37px;width:24px;height:24px;border-radius:7px;
+  border:1px solid rgba(217,152,47,.5);background:rgba(30,24,9,.85);color:#ffc861;
+  font-size:12px;line-height:1;cursor:pointer;z-index:6;padding:0;pointer-events:auto;
+  display:grid;place-items:center;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.pTint:hover,.pTint.on{background:#6a4a12;color:#fff;border-color:#d9982f}
+#teksPal{display:none;margin:0 0 8px;padding:8px;border:1px solid rgba(217,152,47,.35);
+  border-radius:9px;background:rgba(13,21,18,.92);font-size:11px}
+#teksPal.on{display:block}
+#teksPal .pgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:6px 0}
+#teksPal .pgrid button{height:22px;width:auto;padding:0;border-radius:5px;
+  border:1px solid rgba(0,0,0,.55);cursor:pointer}
+#teksPal .pgrid button.on{outline:2px solid var(--amber);outline-offset:1px}
+#teksPal .prow{display:flex;align-items:center;gap:6px;margin:6px 0}
+#teksPal .prow input[type=range]{flex:1;min-width:50px}
+#teksPal .prow input[type=color]{width:34px;height:22px;padding:0;border:1px solid rgba(217,152,47,.4);
+  border-radius:4px;background:none;cursor:pointer}
+#teksPal .pmini{font-size:10px;opacity:.72;margin-top:4px}
 #editBar{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);display:none;gap:6px;
   background:rgba(12,20,16,.86);border:1px solid rgba(217,152,47,.45);border-radius:8px;
   padding:6px 8px;z-index:60}
@@ -781,7 +810,9 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
     <div id="editBody"></div>
   </div>
   <div class="panel card" id="pTeks"><button class="pClose" title="Uždaryti">✕</button>
+    <button class="pTint" id="teksSpalva" title="Atspalvis">🎨</button>
     <h3 id="teksTitle">Tekstūros</h3>
+    <div id="teksPal"></div>
     <div id="teksBody"></div>
   </div>
   <div class="panel card" id="pCraft"><button class="pClose" title="Uždaryti">✕</button>
@@ -899,8 +930,8 @@ body.touch #timeBadge{bottom:calc(12px + env(safe-area-inset-bottom))}
 "use strict";
 /* v109: VIENA vieta versijai. Rašoma tituliniame ekrane ir Nustatymuose —
    anksčiau abi eilutės buvo įrašytos ranka ir pasenusios (v95 ir v82). */
-const GAME_VERSION='v249';
-const GAME_CHANGES='v249: tekstūrų kataloge atsirado antras aplankas — tekstures/medziaga/ su juodu marmuru ir žaliu audeklu (iš vartotojo atsiųsto „marble ir fabric" rinkinio; paimtos tik Color tekstūros, nes Normal, Roughness ir Displacement žaidimo medžiagoms nereikalingi). Lange langeliai dabar sugrupuoti pagal aplanką. v248: ŽEMĖ GAVO TIKRAS TEKSTŪRAS. Vartotojo atsiųstos 12 tekstūrų (4096², 194 MB) sumažintos iki 1024² (3,9 MB) ir uždėtos ant žemės pagal biomą: laukuose žolė, miške miško paklotė, tamsiame miške purvas su lapais, prie vandens pakrantės akmenys, ant šlaitų uoliena. Tekstūra pasaulio NEPERDAŽO — kiekvienas taškas dalinamas iš savo tekstūros vidurkio, tad biomo spalva lieka ta pati, o atsiranda tik grūdas. Naujas 🎨 langas (virš ✎ ir 🧱): kiekvienam paviršiui gali pasirinkti bet kurią iš 12 tekstūrų, pareguliuoti stiprumą ir rašto dydį, o pasirinkimą išsaugoti kaip eilutę. Ten pat — ir požemio grindys su sienomis. Žemoje kokybėje (telefonas) maišomi tik trys sluoksniai. v247: SĄNARIŲ MOVOS PERDARYTOS IŠ PAGRINDŲ — pagaliau IŠMATUOTOS, ne parinktos. Vartotojas: „pasiimk normaliai ismatuok kaklo stori VISUOSE GALUOSE, VISOSE PUSESE IS VISU SONU kur yra tas tarpas ir atitinkamai TAME tarpe idek materijos". Rastos TRYS savarankiškos klaidos, kiekviena atskirai darė movą „padanga". PIRMA: galvos pjūvis buvo daromas ties pastoviu 30% kūno ilgio, ir tai VISOMS šešioms rūšims pataikydavo ne į kaklą, o į krūtinę — skerspjūvis ten 2,9–8,3 karto storesnis (karvei 0,322 vietoj 0,112 m2). Dabar kaklas SURANDAMAS kaip siauriausia vieta priekinėje kūno dalyje, lygiai taip pat, kaip nuo seno matuojama pilvo linija kojoms. ANTRA: sukimo ašis gulėjo ne pjūvio viduryje, o šalia jo (pjūvio kraštas nutolęs 0,388 m, nors visas kaklas tik 0,3x0,38 m), o plyšys auga tiesiai proporcingai atstumui nuo ašies — tad nuošali ašis pati ir buvo plyšio šaltinis. TREČIA ir svarbiausia: mova buvo statoma kaip vamzdis išilgai sukimo ašies su APSKRITU skerspjūviu, o pjūvio kilpa guli PJŪVIO PLOKŠTUMOJE ir jos projekcija į tą vamzdį yra atkarpa, ne žiedas — todėl vienas skaičius (atstumas iki žemiausio taško, karvės pagurklio) išpūsdavo movą į visas puses, kad ir kaip tiksliai jį matuočiau. Dabar mova statoma iš PAČIŲ pjūvio kilpos taškų: jie surikiuojami kampu ir iš jų daromas tikslus daugiakampis, ištemptas per plyšį išilgai pjūvio normalės. Karvės kaklo mova: 0,628 -> 0,296x0,34 m, t. y. tiksliai tokia, koks yra tikras kaklas (0,296x0,377). PO PIRMO varianto vartotojas pastebėjo, kad „dar truksta keleto papildomu kvadrateliu" — kilpa buvo jungiama tiesiai per tuos kelis (karvės kaklui vos 5) tikrus taškus, tad daugiakampio stygos ėjo kūno vidumi, o tarp jų oda išsipučia; be to pjūvio siūlė nėra plokštuma, o dantyta (trikampiai daliai priskiriami pagal centrą). Dabar kryptys dalinamos į 12 sektorių ir kiekvienam imamas tolimiausias taškas (kilpa APIBRĖŽIAMA, ne įrašoma į ją), įleidimas 4% -> 1%, o kamščio storis siekia už dantytos siūlės į abi puses. ŽINOMA IR NEIŠSPRĘSTA: galinių kojų klubuose kilpa nesusidaro — ten tinklelis turi vos 2 viršūnes ties pjūviu, tad ta mova lieka tuščia; kaklas, priekiniai klubai ir visi keturi keliai movas turi. v246: GALVIJO KAKLO VAMZDIS SUMAŽINTAS. Vartotojas po v245: „o kad galvijas atrodo kaip prarijes padanga nematei?" — teisingai, karvės kaklo vamzdis siekė 0,665 m skersmens 1,51 m ūgio karvei (44% viso ūgio), aiškiai matomas kaip svetimas žiedas ties pečiais. Priežastis: spindulio matavimas ėmė DIDŽIAUSIĄ atstumą nuo ašies tarp visų galvai priklausančių taškų — o ragas ar ausies galiukas, būdami geometriškai „galva", bet fiziškai toli nuo kaklo paviršiaus, vieninteliu tolimu tašku išpūsdavo visą vamzdį. Dabar imamas 90-as procentilis (dauguma taškų), o ne kraštutinis — atsparu tokiems pavieniams išsikišimams; kaklo skersmuo sumažėjo iki 0,516 m (34% ūgio). Saugiklio priedas sumažintas 1,15→1,06, o vamzdžio segmentai 8→6 (blokiškesnis, artimesnis likusio kūno kampuotam stiliui, mažiau primena lygų „padangos" žiedą). Patikrinta tiesiogiai — nauja nuotrauka rodo sklandžią kaklo–peties liniją be atskiro žiedo. v245: v244 VAMZDŽIŲ DYDŽIO KLAIDA IŠTAISYTA IR TIKRAI PATIKRINTA VIZUALIAI. Prieš atiduodant v244 kaip baigtą, pats prisijungiau prie gyvo žaidimo per CDP (headless Chrome, tas pats būdas, kurį naudoja irankiai/) ir tiesiogiai išmatavau bei nufotografavau laukinį arklį — RADAU, kad vamzdžiai vis tiek buvo per dideli (kaklo skersmuo siekė 2/3 viso arklio ūgio). Priežastis: spindulio filtras leido ir k=0 (KŪNO) taškus, o kūno klasifikacija neapribota nei X, nei Z aplink patį sąnarį — „kūno taškas ties ta pačia aukšta juosta" galėjo būti bet kur aplink visą liemenį. Ištaisyta: filtras dabar renka TIK vaiko (galvos/šlaunies) taškus, kurie jau tvirtai ir siaurai klasifikuoti — kūno pusė nebeimama. Po pataisos tiesiogiai išmatuota per CDP: kaklo skersmuo ~0,67 m, klubų ~0,3-0,5 m (buvusio 1,69 m ūgio arkliui) — protingo dydžio; ekrano nuotraukose arklys atrodo kaip arklys, ne rutulių krūva. v244: SFEROS PAKEISTOS VAMZDŽIAIS. Vartotojas po v243 nuotraukos su per dideliais kamuoliukais: „tie rutuliai PER DIDELI ir jie NEISSPRES PROBLEMOS nes vistiek durnai atrodys... TEN I TA TARPA IDEK VAMZDI AR KANORS, TIK NE SUPISTA RUTULI". Teisingai — pati sferos IDĖJA turėjo trūkumą: sfera dengia vienodai VISOMIS kryptimis, taip pat ir IŠILGAI sukimosi ašies, kur tos apimties visai nereikia (rotacija apie ašį taškų IŠILGAI jos nejudina), tad atrodė kaip pripūstas rutulys, ne kaip sąnario movа. Dabar kiekviename sąnaryje — VAMZDIS (cilindras), kurio AŠIS sutampa su pačia sukimosi ašimi (visada lokalus X): skersai ašies jis dengia plyšį TA PAČIA matematine garantija, kaip ir sfera, bet IŠILGAI ašies apkarpytas iki tikro kojos/kaklo pločio toje vietoje (išmatuota), tad nebelieka pripūsto tūrio jokia kryptimi. v243: v242 GUMINIŲ KAMUOLIUKŲ SPINDULIO KLAIDA IŠTAISYTA — vartotojas atsiuntė nuotrauką: vietoj laukinio arklio buvo krūva didžiulių rutulių, praryjančių visą žvėrį. Priežastis: klubo/kelio spindulio matavimas filtravo pagal LAISVĄ pėdų-stulpo artumą (tą patį, kurį naudoja trikampių dalyba PRIE PAT ŽEMĖS) — bet klubo/kelio aukštyje (arti liemens) tas pats horizontalus spindulys aprėpia gerokai daugiau nei vieną koją, tad išmatuotas spindulys išpūsdavo iki beveik viso kūno dydžio. Dabar filtras remiasi TIKSLIA klasifikacija (imami TIK taškai, priklausantys BŪTENT tam sąnariui besiribojančioms dalims) IR siaura (6% atitinkamo ilgio) juosta ties pjūviu, o papildomai pridėtas KIETAS saugiklis — kamuoliukas fiziškai negali viršyti pusantro numatyto kojos pločio, kad ir kas nutiktų filtrui ateityje. v242: Žvėrių sąnarių (kaklo, klubo, kelio) plyšys UŽPILDYTAS — vartotojas: „uzpildyk guma ar bbz kuo kad to tarpo nebutu ir nebutu jobanu nereikalingu detaliu". Ankstesni bandymai (v236-v238) dubliuodavo PLOKŠČIĄ juostą, priklijuotą prie besisukančios dalies — kadangi ji NĖRA vienodo atstumo nuo sukimosi taško į visas puses, besisukdama ji pati atsiverdavo į šoną ir atrodė kaip svetimas lopas/ataugą (v241 juos visus pašalino). Dabar kiekviename sąnaryje (9 iš viso: kaklas, 4 klubai, 4 keliai) — mažas, guminis KAMUOLIUKAS (sfera), kurio spindulys IŠMATUOTAS iš gretimų viršūnių ir kuris SUKTIS neprivalo (sfera vienodai toli nuo savo centro į visas puses), tad MATEMATIŠKAI dengia pjūvio plyšį BET KOKIU kampu — ne tik išmatuotu atveju, skirtingai nuo ankstesnės plokščios juostos. Spalva imama iš gretimos odos vidurkio, kad neišsiskirtų. v241: VISAS „dengiantis kolteris" mechanizmas (v236–v240, kaklo/klubo/kelio pjūvių tarpams slėpti) PAŠALINTAS. Vartotojas po v240: „po galvijo nugara yra kazkoks kaklo prailginimas kuri nihuja nieko nedaro tik dar labiau viska sugadina, ji pasalink. visos kitos klaidos vis dar egzistuoja- judant kaklui atsiveria skyle, spiriant kojomis skyle". Trys skirtingi šio mechanizmo variantai (v236 juosta priklijuota prie vaiko, v237 atskiras kaklo tiltas, v238 tas pats klubui/keliui) buvo išbandyti ir visi atmesti — jis NEIŠSPRENDŽIA sąnario tarpo IR papildomai atrodo blogai (kaip svetima, plevenanti ataugą). Dabar žvėries kūno dalys (liemuo, 4 šlaunys, 4 blauzdos, galva) tiesiog pjaunamos be jokio dengimo — sąnarių tarpas LIEKA MATOMAS, bet nebėra papildomo vizualinio artefakto. Tikram sprendimui reikėtų arba topologinės ribos tarp dalių, arba tikro svorinio sukibimo (skinning) per kelis kaulus — abu žymiai didesnis darbas, kurio NEPRADĖSIU be aiškaus vartotojo prašymo. v240: v237 (kaklo tiltas) ATŠAUKTA — ANKSTESNIS v239 taisymas atšaukė ne tą dalyką. Vartotojas patikslino: „kur cia kalbama apie klubus arba kelius?" — jo v239 pranešimas („is glavijo istrink ta papildoma nugaros lopa") kalbėjo apie GALVIJĄ ir NUGAROS LOPĄ, ne apie kojas; vienintelis kitas mano pridėtas „lopas" buvo v237 kaklo tiltas. Dabar jis irgi grąžintas prie v236: kaklo kolteris VĖL DUBLIUOJAMAS ir PRIKLIJUOJAMAS tiesiai į galvos dalį, sukasi kartu su galva pilnu kampu — atskiro, savo tinklelio kaklo tilto NEBĖRA. Visi trys sąnariai (kaklas, klubas, kelias) dabar VĖL v236 metodu, kaip prieš v237. v239: v238 (klubo/kelio tiltai) ATŠAUKTA — vartotojas: „niekas nepasikeitė... papildoma nugaros lopa... viską tik pablogina". Grąžinta prie v236 metodo (kolteris DUBLIUOJAMAS ir PRIKLIJUOJAMAS tiesiai į koją, sukasi kartu su ja) — kojų spyrio tarpas VĖL toks pat, koks buvo iki v238; kaklo tiltas (v237) nepaliestas, lieka. Kojų kolteris yra platus (35% kojos ilgio, iš esmės pilvo/šono odos gabalas), ne siaura kaklo juosta — atskirtas nuo kūno ir sukamas savo ašimi jis, matyt, atrodo kaip atskirai plevenanti plokštė ant nugaros, o ne kaip pjūvį dengianti juosta. Kito karto pamoka: TOKS PAT sprendimas dviejose skirtingo pločio/formos vietose nebūtinai atrodo taip pat — prieš kartojant kaklo tilto metodą kitam pjūviui, PAKLAUSTI arba prašyti nuotraukos PRIEŠ pilną atidavimą, ne po. v238: Vartotojas po kaklo pataisos — „arklio kojos irgi plysta spyrio metu". Ta pati priežastis kaip kaklui: klubo ir kelio pjūvių dengiantis kolteris (v236) buvo PRIKLIJUOTAS prie kojos ir sukdavosi PILNU kampu, o spyris suka klubą iki 2,25 rad — daugiau nei bet kuris kitas kampas žvėryje, tad ten plyšys matėsi labiausiai. Dabar, kaip ir kaklui (v237), klubo ir kelio kolteriai tapo SAVO, atskiromis dalimis, kurios sukasi TIK PUSE atitinkamo kojos kampo aplink TĄ PATĮ tašką, apie kurį sukasi pati koja — vietoj vieno pilno tarpo dabar du perpus mažesni (kūnas↔tiltas ir tiltas↔šlaunis; šlaunis↔tiltas ir tiltas↔blauzda). NEPATIKRINTA vizualiai (headless nuotraukos ankstesnėje sesijoje nepavyko) — tikrinti tikrai žaidžiant, ypač spyrio metu. v237: Arklys spirdamas galinėm kojom dabar stovi NUGARA į žaidėją TIK kai jau pakankamai arti smūgiui — bebėgdamas iš toli link žaidėjo jis sukasi VEIDU į judėjimo kryptį kaip bet kuris kitas žvėris (pirma versija sukdavo nugara VISADA, tad atrodė, kad amžinai bėga atbulas). Sužeistas ir toliau nei 7,5 m bėgantis žvėris persekioja pastebimai greičiau. Kaklo pjūvis gavo NAUJĄ „tiltą" — atskirą, plonesnę juostą tarp kūno ir galvos, kuri sukasi TIK PUSE galvos kampo (kaip guma, o ne bandymas paslėpti pjūvį po kūnu, kaip v236). Tiesioginis matavimas rodo nuoseklų ~45% tarpo sumažėjimą visais kampais — geriau ir patikimiau už v236, bet VIS DAR NE PILNAI uždaro; tikslus sprendimas reikalautų kelių juostų arba tikro sukibimo (skinning). v236: Kaklo (ir dabar taip pat klubo bei kelio) pjūvio tarpas — sukurtas DENGIANTIS ŽIEDAS: plona kūno (ar šlaunies) paviršiaus juosta prie pat pjūvio dubliuojama į besisukančią dalį (kaklą, šlaunį, blauzdą), pastumus vidun paviršiaus normale, tad besisukdama ji visada neša su savimi gabalėlį, kuris užpildo bet kokį plyšį. Raguočių įsibėgėjimo metu kūnas nebesileidžia vertikaliai žemyn — dabar traukiasi šiek tiek ATGAL horizontaliai, ta pačia formule, kuria vėliau juda pirmyn smūgiuodamas. v235: Keturios pataisos vartotojo prašymu. Raguočių (elnias, briedis, karvė) VISOS keturios kojos daugiau nebeturi savo atskiros kreivės — jos yra standžios atramos tarp fiksuotos žemėje pėdos ir judančio kūno, kampas visada tiksliai atitinka kūno poslinkį (asin(lunge/svirtis)), tad fiziškai negali slysti. Arklys dabar puola TIK galinėmis kojomis (priekinis rearimasis pašalintas iš pasirinkimo, kodas paliktas, bet nebenaudojamas). Visi ginantys žvėrys, artėdami prie žaidėjo ar laukdami savo eilės kautis, dabar juda TIKRA eisenos animacija (ta pati, kurią naudoja įprastas klaidžiojimas) pilnu greičiu, o ne sustingusiomis kojomis lėtai slysdami; smūgis daugiau neprasideda, kol žvėris nėra pakankamai arti. v234: Dvi tolesnės pataisos vartotojo prašymu. Raguočių (elnias, briedis, karvė) priekinė kanopa badant ragais nebeslidinėja žeme — dabar tikra IK: per įsibėgėjimą koja tiesiasi pirmyn per orą (kūnas dar nejuda), o smūgio metu kanopa lieka TIKSLIAI tame taške, kuriame nusileido, ir kūnas prie jos artėja — koja grįžta iš ištiestos į normalią padėtį lygiai tiek, kiek kūnas pajuda, ne savo atskira kreive. Arklio priekinis rearimasis palėtintas: rearimasis liko 0,1 s, bet visi keturi smūgiai dabar 0,9 s (buvo 0,2 s) — po dviejų pirmų smūgių arklys 0,3 s vėl atsilošia, tada dar du smūgiai, taip pat 0,3 s. v233: Dvi pataisos vartotojo prašymu. Raguočių (elnias, briedis, karvė) badymo metu kūno šuolis pirmyn ir priekinių kojų kampas dabar SUSIETI viena formule, ne dvi nepriklausomos kreivės — anksčiau, kai jos nesutapdavo, ties kaklo/liemens sandūra pasilenkus atsiverdavo tarpas. Arklio rearimasis pagreitintas: dabar atsistoja ant galinių kojų per 0,1 s, visus keturis kanopų smūgius atlieka per 0,2 s (buvo 0,55 s + 0,88 s), o priekinių kojų kelio lenkimas pakeltas iki tokio paties dydžio, koks jis yra einant, kad kojos neatrodytų kaip ištiesti pagaliai. v232: Trys pataisos žvėrių kovoje. Paspaudimas ant žvėries (laukinio ar redaktoriumi įdėto) nebepereina kiaurai — taikymasis dabar tikrina TIKRĄ sferą aplink žvėrį, ne vien ekrano artumą. Sužeistas ginantis žvėris (elnias, briedis, karvė, arklys) daugiau nenustoja pulti, kai atsitolini į šoną — jis persekioja, kol pats ar tu nemirštate. v231: Patikslintas žvėrių priešpuolis. Laukinis arklys prieš priešais stovintį žaidėją nebespiria ištiestom kojom kaip pagaliais — dabar lieka ant galinių kojų ir kerta priekinėm pakaitomis, kairė-dešinė-kairė-dešinė (truputį pasvirdamas į priekį kiekvieno kirčio metu ir vėl atsilošdamas tarp jų), kojos visą laiką lenktos, ne tiesios. Raguočiams (elnias, briedis, karvė) nebesvyra visas kūnas — dabar žemyn linksta TIK galva ir kaklas (nauja, atskira kūno dalis), o galinės kojos įsispiria į žemę ir stumia kūną tik pirmyn; pačio smūgio metu galva kyla iš apačios į viršų, badydama ragais. v230: Žvėrys dabar kerta atgal — bet TIK kol juos tikrai puoli, ne iš anksto: elnias, briedis ir karvė (raguočiai) nuleidžia galvą ir šuoliuoja pirmyn ragais, o laukinis arklys reariasi ir kerta priekinėm kanopom, jei stovi priešais, arba spiria abiem galinėm atgal, jei esi už nugaros — ta kryptis parenkama pagal tai, kur tu tikrai stovi. Lapė ir vilkas kaip anksčiau tik bėga. v229: Tituliniame puslapyje penkių pavadinimo stilių rinkiklis (Gintaras/Akmuo/Sakmė/Rasa/Ugnis) pašalintas — liko tik „Sakmė", kurį vartotojas pasirinko palikti; pats pavadinimas pakeltas 20 px į viršų. Versijų sąrašo langelis padidintas nuo 36 iki 80 px — pašalinus rinkiklį atsirado tam vietos. v228: Tituliniame puslapyje pašalintas „…" mygtukas — net neišskleistas jis su savimi atsinešdavo tokį aukštą sąrašą, kad kalbos ir „Susikurti personažą" mygtukai mažame ekrane atsidurdavo už matomos srities ir jų nebuvo galima pasiekti. Dabar versijų sąrašas visada yra tas pats mažas, nekintamo aukščio langelis su savo slinktimi (scroll bar) — jis niekada neauga ir niekada nieko nestumia žemyn, o senesnes versijas tiesiog paslenki. v227: Vėlės — iš penkių paliktos dvi (Vaikas, Klajūnė), o abi perdarytos: sąnariai (pečiai, alkūnės, klubai, keliai) nebeturi matomų tarpų — juos dabar dengia tie patys žiedai, kurie anksčiau buvo paslėpti, tik su ta pačia vaiduokliška medžiaga; be jų ties kiekvienu sąnariu buvo tikra sprogsi, dėl kurios vėlė atrodė kaip standus manekenas. Kairė ranka nebesitrūkčioja: pati UAL animacija turi greitą natūralų gestą, kuris lėtai plevenančiai vėlei atrodė kaip glitchas, tad dabar rankų kampą liemens atžvilgiu valdo tik pati vėlė (poza ir banga), o ne šaltinio klipas — liemuo ir galva toliau kvėpuoja kaip anksčiau. Miško (sutartinės) muzikos takelyje išimtas medinis pukštelėjimas, skambėjęs kaip tolimi kirvio dūžiai. v226: Prie Vilkų olų įėjimo atsirado PENKIOS VĖLĖS — Senolė, Karys, Vaikas, Verpėja ir Klajūnė. Kiekviena kitokio dydžio, laikysenos, spalvos ir būdo: viena vos linguoja vietoje, kita klaidžioja plačiu ratu, trečia lėtai sukasi. Jos švyti kraštais, apačioje ištirpsta ore ir plaukia — nė viena nevaikšto. Judesys sudėtas iš penkių nesutampančių svyravimų, tad kelias niekada nesikartoja, o kūnu kyla banga nuo dubens iki galvos. Iš jų lėtai kyla kibirkštėlės. Naujų failų nereikėjo: vėlė yra tas pats žmogeliuko modelis su kita medžiaga. v225: Personažas nebepasvyra į šoną ant nelygios žemės — dabar nelygumą suvalgo KOJOS, o ne visas kūnas. Kiekviena pėda pastatoma ant tikros žemės (dviejų kaulų IK), o dubuo nuleidžiamas tiek, kad žemesnioji koja pasiektų žemę; liemuo lieka status, kaip ir tikram žmogui. Kartu ištaisyta ir pati pakrypimo formulė: iki šiol ji ėmė ne šlaito kampą, o aukščių skirtumą per 1,1 m, todėl pakrypimas priklausė nuo matavimo pločio ir prie upelių krantų buvo per didelis (išmatuota: 19,4 % vaikštomų girios vietų kūnas atsiremdavo į 18,3° ribą). Priekinis linkis liko — kopiant į kalną žmogus tikrai linksta. v224: Laikant „:" ir paspaudus ant žemės, į žurnalą įrašoma TA VIETA, į kurią parodei — ne ta, kur stovi. Eilutėje yra ir langelio numeris („173x424"), ir metrai („x -63, z 187"); ją galima pažymėti ir nusikopijuoti. Kol „:" laikomas, paspaudimas nieko kito nedaro: personažas nejuda, prekyba neatsidaro. v223: Viršutiniame dešiniajame kampe, laisvame žemėlapio kvadrato kampe (žemėlapis apvalus, tad kampas stovėjo tuščias), atsirado langelis su tavo koordinatėmis. Rodomas langelio numeris 1x1 ... 472x472, skaičiuojamas nuo pasaulio krašto — visada teigiamas, be minusų, tad telpa į tą siaurą kampą (išmatuota: ten laisva 40x13 px, ir nė vienas taškas neuždengia žemėlapio). Požemyje skaičiuojama nuo to požemio pradžios. v222: Medžiui nukirsti dabar reikia 10-15 kirčių (kiekvienam savo skaičius), o sausuoliui — 3-5. Sausuolis nebe plikas cilindras: tai nulūžęs, palinkęs kamienas su suskilusia viršūne, dviem nulaužtų šakų kelmais ir tikra žievės tekstūra — įtrūkiais, šakų randais ir kerpėmis. Prie laužo išimti besimėtantys daiktai: dėžės, skrynia, kibiras, katilas ir atskira statinė buvo grynos dekoracijos be paskirties, o dar ir trukdė vaikščioti — liko kalvė, stalas su suolais ir turgus (kartu vieną kartą išvalomi ir prie laužo ranka sudėlioti daiktai). Našumo matavimo (📊) ir taškų tankio (2×) mygtukai nebeuždengia langų: jie liko toje pačioje vietoje, bet dabar guli PO langais, tad atidarytas ar pertemptas langas juos uždengia, o ne atvirkščiai. Lygio pakėlimo eilutės žurnale rašomos pilkai. Tituliniame puslapyje rodomi tik penki paskutiniai pakeitimai, o visus galima perskaityti paspaudus mažą mygtuką šalia. v221: VISI MEDŽIAI DABAR KERTAMI. Paspaudus į bet kurį girios medį personažas prieina ir kerta kirviu, kaip iki šiol kirto sausuolį; penki kirčiai — ir medis krinta. Kiekvienas kirtis turi 2 % rasti gintaro gabalėlį: jis nukrenta ant žemės ir, jei per minutę jo nepakelsi (užeisi ant jo), dingsta. Nukirsta giria ATAUGA PILNAI prieš pat aušrą — po nakties visi medžiai vėl stovi ten pat. IŠTAISYTA IR TAI, KODĖL PASPAUDUS ANT ŽEMĖS PERSONAŽAS KARTAIS NEJUDĖDAVO: paspaudimu buvo laikomas tik toks, per kurį pelė pajuda ne daugiau kaip 7 taškus, o pastūmus 8 — jis dingdavo be pėdsako (išmatuota tikroje naršyklėje: 6 px veikia, 8 px ne). Aštuoni taškai yra paprastas rankos krustelėjimas, todėl atrodė, kad „kartais neveikia". Ta riba buvo reikalinga, kol kairysis mygtukas suko kamerą; nuo v220 jis nebesuka, tad dabar jos nebėra — kiekvienas kairysis paspaudimas veikia ten, kur jį atleidi. Pirštui ir dešiniajam riba lieka: ten vilkimas suka kamerą. v220: kamerą dabar suka DEŠINYSIS pelės mygtukas — laikant kairį ji nebesisuka (kairysis lieka veiksmams); pirštu viskas kaip buvo. POŽEMYJE pagaliau veikia ėjimas pele: paspaudimas ieškodavo tik paviršiaus reljefo, o požemio grindys yra atskiras tinklelis, tad nieko neįvykdavo — dabar sankirta skaičiuojama su grindų plokštuma. Atidarius pokalbį (Enter) žurnalo tekstą galima pažymėti ir nusikopijuoti. v219: žurnalas (pokalbis) gavo foną — mažas mygtukas šalia jo perjungia penkis tamsumo lygius: 1 skaidrus kaip iki šiol, 5 nepermatomai juodas, pro kurį matyti tik tekstas. Eilutės dabar skiriasi spalva pagal tai, kas kalba: raudona — klaidos ir nesėkmės, gintaro — žaidimo pranešimai, žalia — pavyko, pilka — smulkmenos, šviesiai mėlyna — ką rašo žaidėjai. Iš Nustatymų išimtos „Vardų juostos" ir „FPS" eilutės: juostų jungiklio nebereikia, o kadrų dažnis ir taip rodomas visą laiką. v218: našumo matavimas iškeltas iš Nustatymų į mygtuką EKRANE (📊, virš taškų tankio ir grafikos mygtukų) — derinimo dalykams Nustatymuose ne vieta. v217: taškų tankio mygtukas perkeltas ten, kur ir prašyta — VIRŠ grafikos mygtukų (🚀 ir 🖼), ne eilutės gale. Vardų sluoksnio jungiklis iš Nustatymų išimtas: išmatavai, kad vardai nieko nekainuoja, o laikiniems matavimams ten ne vieta. Vietoj spėlionių Nustatymuose atsirado NAŠUMO MATAVIMAS: per ~15 s jis nuosekliai išima po vieną sluoksnį (šešėlius, personažus, medžius, reljefą) ir kiekvienam pamatuoja kadrų dažnį, iškvietimus ir trikampius — iš to matyti, kas ką kainuoja, o jei skaičius nepakinta net tuščiame ekrane, vadinasi, riboja ne žaidimas, o naršyklė ar tvarkyklė. v216: kadrų dažnis rodomas ekrano kampe visą laiką (nebereikia įjungti). Beržai nebe stori kaip ąžuolai: pakaitalo modelis buvo didinamas visomis ašimis vienodai, tad kartu su ūgiu storėjo ir kamienas (išmatuota: 0,131 vietoj 0,080 — 1,64 karto), o dabar aukštis ir plotis taisomi atskirai. Taškų tankis liko tik 1x ir 2x ir perkeltas į atskirą mygtuką virš mygtukų eilutės. Nustatymų „Vardų juostos" dabar tikrai išjungia visą vardų sluoksnį — tai atskira, per visą ekraną ištempta drobė virš vaizdo, kurios kaina priklauso NUO EKRANO DYDŽIO, o ne nuo žaidimo turinio; jos nekeičia nei taškų tankis, nei LOD, tad jei niekas kitas kadrų dažnio nekeičia, verta patikrinti būtent ją. Kai nė vienos juostos nesimato, ta drobė paslepiama savaime. v215: personažų LOD — būtent taip minias piešia MMO. Manekenas yra du skeletiniai tinkleliai: kūnas (5 732 trikampiai) ir violetiniai sąnarių žiedai (8 012 trikampių, t. y. 58 % viso modelio). Iš 15 m tie žiedai ekrane yra keli taškai, tad toliau jie nebepiešiami — nei vaizde, nei šešėliuose, o kartu sustoja ir jų skeletas. Išmatuota stovint 20 m nuo katalogo: 529 -> 444 piešimo iškvietimai, 4,06 -> 3,38 mln. trikampių. Vaizde skirtumo nesimato: iš tokio atstumo violetiniai žiedai buvo mažesni už tašką. v214: rasta tikroji lėtumo priežastis. VISI personažai — žaidėjas, šimtas priešų ir 86 katalogo manekenai — buvo piešiami MeshStandardMaterial, t. y. brangiausiu three.js turimu PBR šešėliuokliu, nors jie net neturi tekstūrų (viena spalva). Išmatuota: 374 skeletiniai tinkleliai su PBR ir 2,10 mln. trikampių, o VISAS likęs pasaulis — 1,30 mln. su pigiu Lambert. Dabar personažai irgi Lambert: vaizde dingsta tik silpnas blizgesys, kurio ant vienspalvio manekeno nesimatė. Nustatymuose atsirado du jungikliai tam, kas plokštei kainuoja daugiausia: TAŠKŲ TANKIS (2x / 1,5x / 1x — 4K ekrane tankis 2 reiškia keturis kartus daugiau taškų) ir ŠEŠĖLIAI (minkšti / paprasti / išjungti). Ranka pastatytas kasamas akmuo ar gintaras pagaliau atrodo kaip sėtas: iki šiol atkurti iš atminties objektai gaudavo atsarginę figūrą, nes modeliai užsikraudavo vėliau. v213: dar kadrų dažnio. Personažų modeliai (86 katalogo manekenai ir priešai) iki šiol buvo rodomi vien pagal atstumą, tad stovint jų būryje visi likdavo „matomi" ir už nugaros — 23 000 kaulų matricų kas kadrą; dabar tikrinama ir kadro riba, o už jos likusiųjų kaulai sustoja (išmatuota: matricų skaičiavimas 3,3 -> 1,55 ms). ŠEŠĖLIŲ dėžė buvo 92x92 aplink žaidėją, tad pusė jos gulėjo už nugaros ir į šešėlių žemėlapį veltui buvo piešiami medžiai bei kūnai, kurių šešėlių niekas nemato — dabar ji mažesnė ir pastumta pirmyn pagal kamerą; šalia to šešėlio kraštas tapo aiškesnis, nes tas pats žemėlapis tenka mažesniam plotui. FPS langelis nuo šiol rodo TIKRUS skaičius: three.js jų neskaičiuodavo šešėlių praėjimo, tad trečdalis darbo buvo nematomas (manekenų būryje rodė 300 iškvietimų, o iš tikrųjų buvo 466). Nustatymuose atsirado „Animacijų katalogas" — jį paslėpus prie kaimavietės iškart sumažėja penktadalis viso piešimo; pats žaidimas nuo to nepasikeičia. v212: BERŽAI pagaliau su žieve — jiems paimtas tekstūruoto lapuočio modelis, o žievė nupiešta sava: balta su juodais brūkšniais ir šakų randais (pakete beržų nebuvo, todėl iki šiol jie ir liko pliki šalia tekstūruotų pušų); aukštis nepakito. REDAKTORIUS: pastatytas kasamas akmuo ar gintaras dabar atrodo lygiai taip pat kaip sėtas girioje — riedulio modelis su uolos tekstūra ir rūdos kristalais, o ne senoji figūra; ranka įdėtas medis gauna tekstūras; ĮDĖTAS ŽVĖRIS DABAR GYVAS IR VAIKŠTO (anksčiau tai buvo nejudanti statulėlė); kiekvienas modelis statomas TOKIO dydžio, kokį naudoja pats žaidimas (arklys buvo trigubai per didelis); pasirinkus modelį katalogas nebenušoka į viršų, o pažymėtą objektą ištrina Delete klavišas. Pomiškio dydis nebe atsitiktinis — kiekvienai rūšiai nurodytas tikslinis aukštis, tad gėlės ir žolė nebe aukštesnės už žaidėją (Flower_4_Group siekdavo 2,9 m). v211: kasami akmenys ir rūdos pagaliau atrodo kaip rūda. Rasta trys tikros priežastys, kodėl po v209 jie vis dar buvo „daugiakampis blynas": riedulys KABOJO 0,42 m virš žemės (aukštis buvo parinktas senajai figūrai, ne modeliui); uolos tekstūra buvo ištempta per visą akmenį, tad viena gysla užimdavo trečdalį jo ir riedulys nusidažydavo vienu tonu; o plikas riedulys niekuo nesiskyrė nuo dekoratyvinio akmens. Dabar akmuo stovi ant žemės, matyti uolos grūdas ir gyslos, o ant jo auga tos rūdos kristalai — titnago skeltės, geležies gumbai, sidabro adatos ir gintaro lašai (šie dar ir švyti). Beržinė čaga nebeauga ant kelmo — ji, kaip ir gyvenime, auga ant gyvo BERŽO kamieno, maždaug metro aukštyje, atsukta nuo medžio. v210: kadrų dažnis grąžintas — dabar piešiama tik tai, kas iš tikrųjų matoma. Iki šiol vaizdo plokštė kas kadrą apdorodavo VISUS 1100 medžių, akmenis ir pomiškį, nors į ekraną telpa vos keliolika procentų jų: išmatuota 4,5 mln. trikampių kadre, iš kurių į kamerą pateko 0,07 mln. Dabar medžiai, akmenys ir augalai, esantys už kadro ribų, praleidžiami (šešėlį metantys dar patikrinami pagal pačią šešėlių kamerą, tad nė vienas šešėlis nedingsta) — 4,5 mln. trikampių virto 0,45 mln., o vaizdas liko toks pat, taškas į tašką. Nei grafikos kokybė, nei matymo nuotolis nesumažinti. Kadrų dažnį dabar galima matyti ir ekrano kampe: Nustatymai → FPS → „Rodyti kampe" (šalia rodomi piešimo iškvietimai ir trikampiai). Žynė Aušrinė prie laužo pradėjo pardavinėti MEDŲ — be jo nepagaminami aštuoni Žiniuonystės receptai iš penkiolikos. v209: kasami akmenys ir rūdos nebe geometrinės figūros — dabar tai tikri riedulių modeliai su uolos tekstūra, o geležis, sidabras ir gintaras turi savo spalvos gyslas ir žibančius grūdelius; tikri akmenys nebesisuka. Medžiai kompiuteryje gavo TIKRAS žievės ir lapų tekstūras (naujas failas gamta/GIRIA_MEDZIAI.glb) — beržai lieka senieji, nes tekstūruotų beržų pakete nėra; telefone medžiai lieka pigūs, kad kadrų dažnis nenukristų. v208: redaktoriaus kataloge (🧱) kiekvienas langelis dabar rodo patį modelį — nupieštą paveiksliuką, o ne techninį vardą; pavadinimas pasirodo užvedus pele arba bakstelėjus. v207: dirbtuvės vaistinė dabar vadinasi ŽINIUONYSTE ir turi dvi skiltis: „Nuovirai" — tai, kas padeda tau, „Nuodai" — tai, kuo kenki priešui. Nuodai veikia dviem būdais: molinį indą sviedi į pažymėtą priešą (sudūžta ir aptaško visus aplinkui), o tepalu ištepi ašmenis, ir tada nuodus perduoda kiekvienas kirtis. Girioje atsirado aštuoni tikri Baltijos grybai su savo modeliais — baravykas, voveraitė, pievagrybis ir beržinė čaga valgomi, o musmirė, žalsvoji musmirė, šėtoniškas baravykas ir skalsė nuodingi: iš jų verdami nuodai, o suvalgius žalius jie kenkia ir pačiam. v206: iš vaistažolių verdami eliksyrai — dirbtuvėje atsirado ketvirta kortelė „Gydymas", o joje penkiolika receptų: ramunių arbata ramina, dilgėlių sultys prideda gyvybės, čiobrelio sirupas — kvapo, sidabražolės nuoviras nuplauna nuodus, vilkauogės lašai leidžia matyti tamsoje, bet nuodija, o pakalnutės lašai stiprina kirtį atimdami gyvybės; kiekvienas poveikis parinktas pagal tikrą tos žolės veikimą žmogui. Veikiantys eliksyrai su likusiu laiku rodomi po patirties juosta. Pridėtas medus (valgomas ir eliksyrų sudėtinė dalis) bei iš jo daromas midus. v205: redaktorius greitesnis — 🧱 iš karto įjungia redagavimą, o pasirinkus modelį kiekvienas paspaudimas ant žemės pastato dar vieną daiktą (nebereikia kiekvieno patvirtinti); telefone katalogas bestatant nebeužsiveria; augalai ir ranka pastatyti objektai nebesisuka. v204: vienuolika vaistažolių gavo savo modelius — ramunė žydi baltais žiedais su geltonu viduriu, kraujažolė skėčiu, pakalnutė kabančiais varpeliais, vilkauogė juodomis uogomis, ajeras kardo lapais; nuskintas augalas dabar traukiasi į žemę, o ne kabo ore. v203: žvėrių kojos nebeatsiskiria nuo pilvo — dabar jos pjaunamos ten, kur iš tikrųjų prasideda (išmatuota kiekvienam žvėriui atskirai), ir sukamos apie tą pačią vietą; einant priekinė koja aiškiai parlenkia riešą po krūtine (60°, kaip tikram arkliui), o užpakalinė lieka beveik tiesi; kūnas nebekyla, kai koja išskėsta, tad pėdos nebekabo ore; redagavimo mygtukai ✎ ir 🧱 iškelti iš ☰ meniu į mygtukų eilutę, į kairę nuo grafikos mygtukų. v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
+const GAME_VERSION='v252';
+const GAME_CHANGES='v252: išimtas pranešimas „Girioje matai kitus keliautojus" — jis pasirodydavo vien prisijungus prie kanalo, o ne pamačius ką nors gyvą. v251: PENKI TAISYMAI. 1) Tekstūrų stiprumas ir rašto dydis dabar galioja TIK pasirinktam paviršiui, o ne visai žemei iš karto — kiekvienas biomas turi savo (kaip ir atspalvis). 2) Užvedus ant objekto kataloge vardas rodomas TIK žaidimo burbule; naršyklės antras toks pat („title") pašalintas, o tekstūrų langeliai burbulą gavo pirmą kartą (numeris ir vardas). 3) IŠTAISYTA: bėgant su W ir pasukus vaizdą už žaidimo ribų personažas bėgdavo pats ir nereaguodavo nei į pelę, nei į klaviatūrą. Priežastis: klavišo ATLEIDIMAS buvo filtruojamas taip pat, kaip nuspaudimas — jei dėmesys tuo metu nukeliaudavo į laukelį arba langas prarasdavo sutelkimą, W likdavo „nuspaustas" amžinai, o savas judesys kiekvieną kadrą naikina paspaudimu nurodytą kelią. Dabar atleidimas atleidžia visada, o dingus lango sutelkimui atleidžiami visi klavišai. 4) Naršyklės meniu („Back, Forward, Reload") nebeiššoka niekur žaidime — anksčiau jis atsirasdavo atleidus dešinįjį pelės mygtuką virš lango. 5) LANGŲ DYDIS KAIP APLANKE: užvedus ant lango krašto atsiranda tempimo kursorius, ir paspaudus tempiama iš karto — iš tos pusės, kurią nutvėrei (iš kairės ar viršaus langas lieka prilipęs prie priešingo krašto, o ne bėga į šoną). Telefone paliktas laikymas, tik sutrumpintas nuo 3 iki 2 sekundžių. v250: REDAKTORIAUS KATALOGAS PERSKIRSTYTAS Į KETURIAS GRUPES — „Augalai ir medžiai", „Gyvūnai ir monstrai", „Daiktai ir akmenys" ir „Apranga" (pastaroji kol kas tuščia: šarvų modelių dar nėra). Kategorija nuo šiol yra RODYMO grupė, o statymo tipas gyvena prie kiekvieno įrašo, tad viename sąraše gali gulėti ir medis, ir papartis. Į „Gyvūnus ir monstrus" pridėti visi penki priešai (Kaukas, Laumė, Vilkolakis, Kipšas, Slogutis) — pastatyti jie atsiranda kaip TIKRI priešai, lygiai taip pat skerdžiami kaip žvėrys. TEKSTŪRŲ LANGAS: kiekvienas langelis gavo numerį (#1…#14), kad būtų lengva pasakyti, kuri būtent netinka; pasirinkus tekstūrą langas nebešoka į viršų (perpiešiamos tik klasės ir viena paviršiaus eilutė); šalia ✕ atsirado 🎨 mygtukas — jis atveria ATSPALVIO paletę. Kodėl iki šiol visos tekstūros atrodė žalsvos: nuo v248 tekstūra prideda tik grūdą, o spalvą duoda biomas, o giria yra žalia. Dabar kiekvienam paviršiui galima parinkti savo atspalvį (14 spalvų, sava spalva ir stiprumas), o šviesumo margumas lieka. v249: tekstūrų kataloge atsirado antras aplankas — tekstures/medziaga/ su juodu marmuru ir žaliu audeklu (iš vartotojo atsiųsto „marble ir fabric" rinkinio; paimtos tik Color tekstūros, nes Normal, Roughness ir Displacement žaidimo medžiagoms nereikalingi). Lange langeliai dabar sugrupuoti pagal aplanką. v248: ŽEMĖ GAVO TIKRAS TEKSTŪRAS. Vartotojo atsiųstos 12 tekstūrų (4096², 194 MB) sumažintos iki 1024² (3,9 MB) ir uždėtos ant žemės pagal biomą: laukuose žolė, miške miško paklotė, tamsiame miške purvas su lapais, prie vandens pakrantės akmenys, ant šlaitų uoliena. Tekstūra pasaulio NEPERDAŽO — kiekvienas taškas dalinamas iš savo tekstūros vidurkio, tad biomo spalva lieka ta pati, o atsiranda tik grūdas. Naujas 🎨 langas (virš ✎ ir 🧱): kiekvienam paviršiui gali pasirinkti bet kurią iš 12 tekstūrų, pareguliuoti stiprumą ir rašto dydį, o pasirinkimą išsaugoti kaip eilutę. Ten pat — ir požemio grindys su sienomis. Žemoje kokybėje (telefonas) maišomi tik trys sluoksniai. v247: SĄNARIŲ MOVOS PERDARYTOS IŠ PAGRINDŲ — pagaliau IŠMATUOTOS, ne parinktos. Vartotojas: „pasiimk normaliai ismatuok kaklo stori VISUOSE GALUOSE, VISOSE PUSESE IS VISU SONU kur yra tas tarpas ir atitinkamai TAME tarpe idek materijos". Rastos TRYS savarankiškos klaidos, kiekviena atskirai darė movą „padanga". PIRMA: galvos pjūvis buvo daromas ties pastoviu 30% kūno ilgio, ir tai VISOMS šešioms rūšims pataikydavo ne į kaklą, o į krūtinę — skerspjūvis ten 2,9–8,3 karto storesnis (karvei 0,322 vietoj 0,112 m2). Dabar kaklas SURANDAMAS kaip siauriausia vieta priekinėje kūno dalyje, lygiai taip pat, kaip nuo seno matuojama pilvo linija kojoms. ANTRA: sukimo ašis gulėjo ne pjūvio viduryje, o šalia jo (pjūvio kraštas nutolęs 0,388 m, nors visas kaklas tik 0,3x0,38 m), o plyšys auga tiesiai proporcingai atstumui nuo ašies — tad nuošali ašis pati ir buvo plyšio šaltinis. TREČIA ir svarbiausia: mova buvo statoma kaip vamzdis išilgai sukimo ašies su APSKRITU skerspjūviu, o pjūvio kilpa guli PJŪVIO PLOKŠTUMOJE ir jos projekcija į tą vamzdį yra atkarpa, ne žiedas — todėl vienas skaičius (atstumas iki žemiausio taško, karvės pagurklio) išpūsdavo movą į visas puses, kad ir kaip tiksliai jį matuočiau. Dabar mova statoma iš PAČIŲ pjūvio kilpos taškų: jie surikiuojami kampu ir iš jų daromas tikslus daugiakampis, ištemptas per plyšį išilgai pjūvio normalės. Karvės kaklo mova: 0,628 -> 0,296x0,34 m, t. y. tiksliai tokia, koks yra tikras kaklas (0,296x0,377). PO PIRMO varianto vartotojas pastebėjo, kad „dar truksta keleto papildomu kvadrateliu" — kilpa buvo jungiama tiesiai per tuos kelis (karvės kaklui vos 5) tikrus taškus, tad daugiakampio stygos ėjo kūno vidumi, o tarp jų oda išsipučia; be to pjūvio siūlė nėra plokštuma, o dantyta (trikampiai daliai priskiriami pagal centrą). Dabar kryptys dalinamos į 12 sektorių ir kiekvienam imamas tolimiausias taškas (kilpa APIBRĖŽIAMA, ne įrašoma į ją), įleidimas 4% -> 1%, o kamščio storis siekia už dantytos siūlės į abi puses. ŽINOMA IR NEIŠSPRĘSTA: galinių kojų klubuose kilpa nesusidaro — ten tinklelis turi vos 2 viršūnes ties pjūviu, tad ta mova lieka tuščia; kaklas, priekiniai klubai ir visi keturi keliai movas turi. v246: GALVIJO KAKLO VAMZDIS SUMAŽINTAS. Vartotojas po v245: „o kad galvijas atrodo kaip prarijes padanga nematei?" — teisingai, karvės kaklo vamzdis siekė 0,665 m skersmens 1,51 m ūgio karvei (44% viso ūgio), aiškiai matomas kaip svetimas žiedas ties pečiais. Priežastis: spindulio matavimas ėmė DIDŽIAUSIĄ atstumą nuo ašies tarp visų galvai priklausančių taškų — o ragas ar ausies galiukas, būdami geometriškai „galva", bet fiziškai toli nuo kaklo paviršiaus, vieninteliu tolimu tašku išpūsdavo visą vamzdį. Dabar imamas 90-as procentilis (dauguma taškų), o ne kraštutinis — atsparu tokiems pavieniams išsikišimams; kaklo skersmuo sumažėjo iki 0,516 m (34% ūgio). Saugiklio priedas sumažintas 1,15→1,06, o vamzdžio segmentai 8→6 (blokiškesnis, artimesnis likusio kūno kampuotam stiliui, mažiau primena lygų „padangos" žiedą). Patikrinta tiesiogiai — nauja nuotrauka rodo sklandžią kaklo–peties liniją be atskiro žiedo. v245: v244 VAMZDŽIŲ DYDŽIO KLAIDA IŠTAISYTA IR TIKRAI PATIKRINTA VIZUALIAI. Prieš atiduodant v244 kaip baigtą, pats prisijungiau prie gyvo žaidimo per CDP (headless Chrome, tas pats būdas, kurį naudoja irankiai/) ir tiesiogiai išmatavau bei nufotografavau laukinį arklį — RADAU, kad vamzdžiai vis tiek buvo per dideli (kaklo skersmuo siekė 2/3 viso arklio ūgio). Priežastis: spindulio filtras leido ir k=0 (KŪNO) taškus, o kūno klasifikacija neapribota nei X, nei Z aplink patį sąnarį — „kūno taškas ties ta pačia aukšta juosta" galėjo būti bet kur aplink visą liemenį. Ištaisyta: filtras dabar renka TIK vaiko (galvos/šlaunies) taškus, kurie jau tvirtai ir siaurai klasifikuoti — kūno pusė nebeimama. Po pataisos tiesiogiai išmatuota per CDP: kaklo skersmuo ~0,67 m, klubų ~0,3-0,5 m (buvusio 1,69 m ūgio arkliui) — protingo dydžio; ekrano nuotraukose arklys atrodo kaip arklys, ne rutulių krūva. v244: SFEROS PAKEISTOS VAMZDŽIAIS. Vartotojas po v243 nuotraukos su per dideliais kamuoliukais: „tie rutuliai PER DIDELI ir jie NEISSPRES PROBLEMOS nes vistiek durnai atrodys... TEN I TA TARPA IDEK VAMZDI AR KANORS, TIK NE SUPISTA RUTULI". Teisingai — pati sferos IDĖJA turėjo trūkumą: sfera dengia vienodai VISOMIS kryptimis, taip pat ir IŠILGAI sukimosi ašies, kur tos apimties visai nereikia (rotacija apie ašį taškų IŠILGAI jos nejudina), tad atrodė kaip pripūstas rutulys, ne kaip sąnario movа. Dabar kiekviename sąnaryje — VAMZDIS (cilindras), kurio AŠIS sutampa su pačia sukimosi ašimi (visada lokalus X): skersai ašies jis dengia plyšį TA PAČIA matematine garantija, kaip ir sfera, bet IŠILGAI ašies apkarpytas iki tikro kojos/kaklo pločio toje vietoje (išmatuota), tad nebelieka pripūsto tūrio jokia kryptimi. v243: v242 GUMINIŲ KAMUOLIUKŲ SPINDULIO KLAIDA IŠTAISYTA — vartotojas atsiuntė nuotrauką: vietoj laukinio arklio buvo krūva didžiulių rutulių, praryjančių visą žvėrį. Priežastis: klubo/kelio spindulio matavimas filtravo pagal LAISVĄ pėdų-stulpo artumą (tą patį, kurį naudoja trikampių dalyba PRIE PAT ŽEMĖS) — bet klubo/kelio aukštyje (arti liemens) tas pats horizontalus spindulys aprėpia gerokai daugiau nei vieną koją, tad išmatuotas spindulys išpūsdavo iki beveik viso kūno dydžio. Dabar filtras remiasi TIKSLIA klasifikacija (imami TIK taškai, priklausantys BŪTENT tam sąnariui besiribojančioms dalims) IR siaura (6% atitinkamo ilgio) juosta ties pjūviu, o papildomai pridėtas KIETAS saugiklis — kamuoliukas fiziškai negali viršyti pusantro numatyto kojos pločio, kad ir kas nutiktų filtrui ateityje. v242: Žvėrių sąnarių (kaklo, klubo, kelio) plyšys UŽPILDYTAS — vartotojas: „uzpildyk guma ar bbz kuo kad to tarpo nebutu ir nebutu jobanu nereikalingu detaliu". Ankstesni bandymai (v236-v238) dubliuodavo PLOKŠČIĄ juostą, priklijuotą prie besisukančios dalies — kadangi ji NĖRA vienodo atstumo nuo sukimosi taško į visas puses, besisukdama ji pati atsiverdavo į šoną ir atrodė kaip svetimas lopas/ataugą (v241 juos visus pašalino). Dabar kiekviename sąnaryje (9 iš viso: kaklas, 4 klubai, 4 keliai) — mažas, guminis KAMUOLIUKAS (sfera), kurio spindulys IŠMATUOTAS iš gretimų viršūnių ir kuris SUKTIS neprivalo (sfera vienodai toli nuo savo centro į visas puses), tad MATEMATIŠKAI dengia pjūvio plyšį BET KOKIU kampu — ne tik išmatuotu atveju, skirtingai nuo ankstesnės plokščios juostos. Spalva imama iš gretimos odos vidurkio, kad neišsiskirtų. v241: VISAS „dengiantis kolteris" mechanizmas (v236–v240, kaklo/klubo/kelio pjūvių tarpams slėpti) PAŠALINTAS. Vartotojas po v240: „po galvijo nugara yra kazkoks kaklo prailginimas kuri nihuja nieko nedaro tik dar labiau viska sugadina, ji pasalink. visos kitos klaidos vis dar egzistuoja- judant kaklui atsiveria skyle, spiriant kojomis skyle". Trys skirtingi šio mechanizmo variantai (v236 juosta priklijuota prie vaiko, v237 atskiras kaklo tiltas, v238 tas pats klubui/keliui) buvo išbandyti ir visi atmesti — jis NEIŠSPRENDŽIA sąnario tarpo IR papildomai atrodo blogai (kaip svetima, plevenanti ataugą). Dabar žvėries kūno dalys (liemuo, 4 šlaunys, 4 blauzdos, galva) tiesiog pjaunamos be jokio dengimo — sąnarių tarpas LIEKA MATOMAS, bet nebėra papildomo vizualinio artefakto. Tikram sprendimui reikėtų arba topologinės ribos tarp dalių, arba tikro svorinio sukibimo (skinning) per kelis kaulus — abu žymiai didesnis darbas, kurio NEPRADĖSIU be aiškaus vartotojo prašymo. v240: v237 (kaklo tiltas) ATŠAUKTA — ANKSTESNIS v239 taisymas atšaukė ne tą dalyką. Vartotojas patikslino: „kur cia kalbama apie klubus arba kelius?" — jo v239 pranešimas („is glavijo istrink ta papildoma nugaros lopa") kalbėjo apie GALVIJĄ ir NUGAROS LOPĄ, ne apie kojas; vienintelis kitas mano pridėtas „lopas" buvo v237 kaklo tiltas. Dabar jis irgi grąžintas prie v236: kaklo kolteris VĖL DUBLIUOJAMAS ir PRIKLIJUOJAMAS tiesiai į galvos dalį, sukasi kartu su galva pilnu kampu — atskiro, savo tinklelio kaklo tilto NEBĖRA. Visi trys sąnariai (kaklas, klubas, kelias) dabar VĖL v236 metodu, kaip prieš v237. v239: v238 (klubo/kelio tiltai) ATŠAUKTA — vartotojas: „niekas nepasikeitė... papildoma nugaros lopa... viską tik pablogina". Grąžinta prie v236 metodo (kolteris DUBLIUOJAMAS ir PRIKLIJUOJAMAS tiesiai į koją, sukasi kartu su ja) — kojų spyrio tarpas VĖL toks pat, koks buvo iki v238; kaklo tiltas (v237) nepaliestas, lieka. Kojų kolteris yra platus (35% kojos ilgio, iš esmės pilvo/šono odos gabalas), ne siaura kaklo juosta — atskirtas nuo kūno ir sukamas savo ašimi jis, matyt, atrodo kaip atskirai plevenanti plokštė ant nugaros, o ne kaip pjūvį dengianti juosta. Kito karto pamoka: TOKS PAT sprendimas dviejose skirtingo pločio/formos vietose nebūtinai atrodo taip pat — prieš kartojant kaklo tilto metodą kitam pjūviui, PAKLAUSTI arba prašyti nuotraukos PRIEŠ pilną atidavimą, ne po. v238: Vartotojas po kaklo pataisos — „arklio kojos irgi plysta spyrio metu". Ta pati priežastis kaip kaklui: klubo ir kelio pjūvių dengiantis kolteris (v236) buvo PRIKLIJUOTAS prie kojos ir sukdavosi PILNU kampu, o spyris suka klubą iki 2,25 rad — daugiau nei bet kuris kitas kampas žvėryje, tad ten plyšys matėsi labiausiai. Dabar, kaip ir kaklui (v237), klubo ir kelio kolteriai tapo SAVO, atskiromis dalimis, kurios sukasi TIK PUSE atitinkamo kojos kampo aplink TĄ PATĮ tašką, apie kurį sukasi pati koja — vietoj vieno pilno tarpo dabar du perpus mažesni (kūnas↔tiltas ir tiltas↔šlaunis; šlaunis↔tiltas ir tiltas↔blauzda). NEPATIKRINTA vizualiai (headless nuotraukos ankstesnėje sesijoje nepavyko) — tikrinti tikrai žaidžiant, ypač spyrio metu. v237: Arklys spirdamas galinėm kojom dabar stovi NUGARA į žaidėją TIK kai jau pakankamai arti smūgiui — bebėgdamas iš toli link žaidėjo jis sukasi VEIDU į judėjimo kryptį kaip bet kuris kitas žvėris (pirma versija sukdavo nugara VISADA, tad atrodė, kad amžinai bėga atbulas). Sužeistas ir toliau nei 7,5 m bėgantis žvėris persekioja pastebimai greičiau. Kaklo pjūvis gavo NAUJĄ „tiltą" — atskirą, plonesnę juostą tarp kūno ir galvos, kuri sukasi TIK PUSE galvos kampo (kaip guma, o ne bandymas paslėpti pjūvį po kūnu, kaip v236). Tiesioginis matavimas rodo nuoseklų ~45% tarpo sumažėjimą visais kampais — geriau ir patikimiau už v236, bet VIS DAR NE PILNAI uždaro; tikslus sprendimas reikalautų kelių juostų arba tikro sukibimo (skinning). v236: Kaklo (ir dabar taip pat klubo bei kelio) pjūvio tarpas — sukurtas DENGIANTIS ŽIEDAS: plona kūno (ar šlaunies) paviršiaus juosta prie pat pjūvio dubliuojama į besisukančią dalį (kaklą, šlaunį, blauzdą), pastumus vidun paviršiaus normale, tad besisukdama ji visada neša su savimi gabalėlį, kuris užpildo bet kokį plyšį. Raguočių įsibėgėjimo metu kūnas nebesileidžia vertikaliai žemyn — dabar traukiasi šiek tiek ATGAL horizontaliai, ta pačia formule, kuria vėliau juda pirmyn smūgiuodamas. v235: Keturios pataisos vartotojo prašymu. Raguočių (elnias, briedis, karvė) VISOS keturios kojos daugiau nebeturi savo atskiros kreivės — jos yra standžios atramos tarp fiksuotos žemėje pėdos ir judančio kūno, kampas visada tiksliai atitinka kūno poslinkį (asin(lunge/svirtis)), tad fiziškai negali slysti. Arklys dabar puola TIK galinėmis kojomis (priekinis rearimasis pašalintas iš pasirinkimo, kodas paliktas, bet nebenaudojamas). Visi ginantys žvėrys, artėdami prie žaidėjo ar laukdami savo eilės kautis, dabar juda TIKRA eisenos animacija (ta pati, kurią naudoja įprastas klaidžiojimas) pilnu greičiu, o ne sustingusiomis kojomis lėtai slysdami; smūgis daugiau neprasideda, kol žvėris nėra pakankamai arti. v234: Dvi tolesnės pataisos vartotojo prašymu. Raguočių (elnias, briedis, karvė) priekinė kanopa badant ragais nebeslidinėja žeme — dabar tikra IK: per įsibėgėjimą koja tiesiasi pirmyn per orą (kūnas dar nejuda), o smūgio metu kanopa lieka TIKSLIAI tame taške, kuriame nusileido, ir kūnas prie jos artėja — koja grįžta iš ištiestos į normalią padėtį lygiai tiek, kiek kūnas pajuda, ne savo atskira kreive. Arklio priekinis rearimasis palėtintas: rearimasis liko 0,1 s, bet visi keturi smūgiai dabar 0,9 s (buvo 0,2 s) — po dviejų pirmų smūgių arklys 0,3 s vėl atsilošia, tada dar du smūgiai, taip pat 0,3 s. v233: Dvi pataisos vartotojo prašymu. Raguočių (elnias, briedis, karvė) badymo metu kūno šuolis pirmyn ir priekinių kojų kampas dabar SUSIETI viena formule, ne dvi nepriklausomos kreivės — anksčiau, kai jos nesutapdavo, ties kaklo/liemens sandūra pasilenkus atsiverdavo tarpas. Arklio rearimasis pagreitintas: dabar atsistoja ant galinių kojų per 0,1 s, visus keturis kanopų smūgius atlieka per 0,2 s (buvo 0,55 s + 0,88 s), o priekinių kojų kelio lenkimas pakeltas iki tokio paties dydžio, koks jis yra einant, kad kojos neatrodytų kaip ištiesti pagaliai. v232: Trys pataisos žvėrių kovoje. Paspaudimas ant žvėries (laukinio ar redaktoriumi įdėto) nebepereina kiaurai — taikymasis dabar tikrina TIKRĄ sferą aplink žvėrį, ne vien ekrano artumą. Sužeistas ginantis žvėris (elnias, briedis, karvė, arklys) daugiau nenustoja pulti, kai atsitolini į šoną — jis persekioja, kol pats ar tu nemirštate. v231: Patikslintas žvėrių priešpuolis. Laukinis arklys prieš priešais stovintį žaidėją nebespiria ištiestom kojom kaip pagaliais — dabar lieka ant galinių kojų ir kerta priekinėm pakaitomis, kairė-dešinė-kairė-dešinė (truputį pasvirdamas į priekį kiekvieno kirčio metu ir vėl atsilošdamas tarp jų), kojos visą laiką lenktos, ne tiesios. Raguočiams (elnias, briedis, karvė) nebesvyra visas kūnas — dabar žemyn linksta TIK galva ir kaklas (nauja, atskira kūno dalis), o galinės kojos įsispiria į žemę ir stumia kūną tik pirmyn; pačio smūgio metu galva kyla iš apačios į viršų, badydama ragais. v230: Žvėrys dabar kerta atgal — bet TIK kol juos tikrai puoli, ne iš anksto: elnias, briedis ir karvė (raguočiai) nuleidžia galvą ir šuoliuoja pirmyn ragais, o laukinis arklys reariasi ir kerta priekinėm kanopom, jei stovi priešais, arba spiria abiem galinėm atgal, jei esi už nugaros — ta kryptis parenkama pagal tai, kur tu tikrai stovi. Lapė ir vilkas kaip anksčiau tik bėga. v229: Tituliniame puslapyje penkių pavadinimo stilių rinkiklis (Gintaras/Akmuo/Sakmė/Rasa/Ugnis) pašalintas — liko tik „Sakmė", kurį vartotojas pasirinko palikti; pats pavadinimas pakeltas 20 px į viršų. Versijų sąrašo langelis padidintas nuo 36 iki 80 px — pašalinus rinkiklį atsirado tam vietos. v228: Tituliniame puslapyje pašalintas „…" mygtukas — net neišskleistas jis su savimi atsinešdavo tokį aukštą sąrašą, kad kalbos ir „Susikurti personažą" mygtukai mažame ekrane atsidurdavo už matomos srities ir jų nebuvo galima pasiekti. Dabar versijų sąrašas visada yra tas pats mažas, nekintamo aukščio langelis su savo slinktimi (scroll bar) — jis niekada neauga ir niekada nieko nestumia žemyn, o senesnes versijas tiesiog paslenki. v227: Vėlės — iš penkių paliktos dvi (Vaikas, Klajūnė), o abi perdarytos: sąnariai (pečiai, alkūnės, klubai, keliai) nebeturi matomų tarpų — juos dabar dengia tie patys žiedai, kurie anksčiau buvo paslėpti, tik su ta pačia vaiduokliška medžiaga; be jų ties kiekvienu sąnariu buvo tikra sprogsi, dėl kurios vėlė atrodė kaip standus manekenas. Kairė ranka nebesitrūkčioja: pati UAL animacija turi greitą natūralų gestą, kuris lėtai plevenančiai vėlei atrodė kaip glitchas, tad dabar rankų kampą liemens atžvilgiu valdo tik pati vėlė (poza ir banga), o ne šaltinio klipas — liemuo ir galva toliau kvėpuoja kaip anksčiau. Miško (sutartinės) muzikos takelyje išimtas medinis pukštelėjimas, skambėjęs kaip tolimi kirvio dūžiai. v226: Prie Vilkų olų įėjimo atsirado PENKIOS VĖLĖS — Senolė, Karys, Vaikas, Verpėja ir Klajūnė. Kiekviena kitokio dydžio, laikysenos, spalvos ir būdo: viena vos linguoja vietoje, kita klaidžioja plačiu ratu, trečia lėtai sukasi. Jos švyti kraštais, apačioje ištirpsta ore ir plaukia — nė viena nevaikšto. Judesys sudėtas iš penkių nesutampančių svyravimų, tad kelias niekada nesikartoja, o kūnu kyla banga nuo dubens iki galvos. Iš jų lėtai kyla kibirkštėlės. Naujų failų nereikėjo: vėlė yra tas pats žmogeliuko modelis su kita medžiaga. v225: Personažas nebepasvyra į šoną ant nelygios žemės — dabar nelygumą suvalgo KOJOS, o ne visas kūnas. Kiekviena pėda pastatoma ant tikros žemės (dviejų kaulų IK), o dubuo nuleidžiamas tiek, kad žemesnioji koja pasiektų žemę; liemuo lieka status, kaip ir tikram žmogui. Kartu ištaisyta ir pati pakrypimo formulė: iki šiol ji ėmė ne šlaito kampą, o aukščių skirtumą per 1,1 m, todėl pakrypimas priklausė nuo matavimo pločio ir prie upelių krantų buvo per didelis (išmatuota: 19,4 % vaikštomų girios vietų kūnas atsiremdavo į 18,3° ribą). Priekinis linkis liko — kopiant į kalną žmogus tikrai linksta. v224: Laikant „:" ir paspaudus ant žemės, į žurnalą įrašoma TA VIETA, į kurią parodei — ne ta, kur stovi. Eilutėje yra ir langelio numeris („173x424"), ir metrai („x -63, z 187"); ją galima pažymėti ir nusikopijuoti. Kol „:" laikomas, paspaudimas nieko kito nedaro: personažas nejuda, prekyba neatsidaro. v223: Viršutiniame dešiniajame kampe, laisvame žemėlapio kvadrato kampe (žemėlapis apvalus, tad kampas stovėjo tuščias), atsirado langelis su tavo koordinatėmis. Rodomas langelio numeris 1x1 ... 472x472, skaičiuojamas nuo pasaulio krašto — visada teigiamas, be minusų, tad telpa į tą siaurą kampą (išmatuota: ten laisva 40x13 px, ir nė vienas taškas neuždengia žemėlapio). Požemyje skaičiuojama nuo to požemio pradžios. v222: Medžiui nukirsti dabar reikia 10-15 kirčių (kiekvienam savo skaičius), o sausuoliui — 3-5. Sausuolis nebe plikas cilindras: tai nulūžęs, palinkęs kamienas su suskilusia viršūne, dviem nulaužtų šakų kelmais ir tikra žievės tekstūra — įtrūkiais, šakų randais ir kerpėmis. Prie laužo išimti besimėtantys daiktai: dėžės, skrynia, kibiras, katilas ir atskira statinė buvo grynos dekoracijos be paskirties, o dar ir trukdė vaikščioti — liko kalvė, stalas su suolais ir turgus (kartu vieną kartą išvalomi ir prie laužo ranka sudėlioti daiktai). Našumo matavimo (📊) ir taškų tankio (2×) mygtukai nebeuždengia langų: jie liko toje pačioje vietoje, bet dabar guli PO langais, tad atidarytas ar pertemptas langas juos uždengia, o ne atvirkščiai. Lygio pakėlimo eilutės žurnale rašomos pilkai. Tituliniame puslapyje rodomi tik penki paskutiniai pakeitimai, o visus galima perskaityti paspaudus mažą mygtuką šalia. v221: VISI MEDŽIAI DABAR KERTAMI. Paspaudus į bet kurį girios medį personažas prieina ir kerta kirviu, kaip iki šiol kirto sausuolį; penki kirčiai — ir medis krinta. Kiekvienas kirtis turi 2 % rasti gintaro gabalėlį: jis nukrenta ant žemės ir, jei per minutę jo nepakelsi (užeisi ant jo), dingsta. Nukirsta giria ATAUGA PILNAI prieš pat aušrą — po nakties visi medžiai vėl stovi ten pat. IŠTAISYTA IR TAI, KODĖL PASPAUDUS ANT ŽEMĖS PERSONAŽAS KARTAIS NEJUDĖDAVO: paspaudimu buvo laikomas tik toks, per kurį pelė pajuda ne daugiau kaip 7 taškus, o pastūmus 8 — jis dingdavo be pėdsako (išmatuota tikroje naršyklėje: 6 px veikia, 8 px ne). Aštuoni taškai yra paprastas rankos krustelėjimas, todėl atrodė, kad „kartais neveikia". Ta riba buvo reikalinga, kol kairysis mygtukas suko kamerą; nuo v220 jis nebesuka, tad dabar jos nebėra — kiekvienas kairysis paspaudimas veikia ten, kur jį atleidi. Pirštui ir dešiniajam riba lieka: ten vilkimas suka kamerą. v220: kamerą dabar suka DEŠINYSIS pelės mygtukas — laikant kairį ji nebesisuka (kairysis lieka veiksmams); pirštu viskas kaip buvo. POŽEMYJE pagaliau veikia ėjimas pele: paspaudimas ieškodavo tik paviršiaus reljefo, o požemio grindys yra atskiras tinklelis, tad nieko neįvykdavo — dabar sankirta skaičiuojama su grindų plokštuma. Atidarius pokalbį (Enter) žurnalo tekstą galima pažymėti ir nusikopijuoti. v219: žurnalas (pokalbis) gavo foną — mažas mygtukas šalia jo perjungia penkis tamsumo lygius: 1 skaidrus kaip iki šiol, 5 nepermatomai juodas, pro kurį matyti tik tekstas. Eilutės dabar skiriasi spalva pagal tai, kas kalba: raudona — klaidos ir nesėkmės, gintaro — žaidimo pranešimai, žalia — pavyko, pilka — smulkmenos, šviesiai mėlyna — ką rašo žaidėjai. Iš Nustatymų išimtos „Vardų juostos" ir „FPS" eilutės: juostų jungiklio nebereikia, o kadrų dažnis ir taip rodomas visą laiką. v218: našumo matavimas iškeltas iš Nustatymų į mygtuką EKRANE (📊, virš taškų tankio ir grafikos mygtukų) — derinimo dalykams Nustatymuose ne vieta. v217: taškų tankio mygtukas perkeltas ten, kur ir prašyta — VIRŠ grafikos mygtukų (🚀 ir 🖼), ne eilutės gale. Vardų sluoksnio jungiklis iš Nustatymų išimtas: išmatavai, kad vardai nieko nekainuoja, o laikiniems matavimams ten ne vieta. Vietoj spėlionių Nustatymuose atsirado NAŠUMO MATAVIMAS: per ~15 s jis nuosekliai išima po vieną sluoksnį (šešėlius, personažus, medžius, reljefą) ir kiekvienam pamatuoja kadrų dažnį, iškvietimus ir trikampius — iš to matyti, kas ką kainuoja, o jei skaičius nepakinta net tuščiame ekrane, vadinasi, riboja ne žaidimas, o naršyklė ar tvarkyklė. v216: kadrų dažnis rodomas ekrano kampe visą laiką (nebereikia įjungti). Beržai nebe stori kaip ąžuolai: pakaitalo modelis buvo didinamas visomis ašimis vienodai, tad kartu su ūgiu storėjo ir kamienas (išmatuota: 0,131 vietoj 0,080 — 1,64 karto), o dabar aukštis ir plotis taisomi atskirai. Taškų tankis liko tik 1x ir 2x ir perkeltas į atskirą mygtuką virš mygtukų eilutės. Nustatymų „Vardų juostos" dabar tikrai išjungia visą vardų sluoksnį — tai atskira, per visą ekraną ištempta drobė virš vaizdo, kurios kaina priklauso NUO EKRANO DYDŽIO, o ne nuo žaidimo turinio; jos nekeičia nei taškų tankis, nei LOD, tad jei niekas kitas kadrų dažnio nekeičia, verta patikrinti būtent ją. Kai nė vienos juostos nesimato, ta drobė paslepiama savaime. v215: personažų LOD — būtent taip minias piešia MMO. Manekenas yra du skeletiniai tinkleliai: kūnas (5 732 trikampiai) ir violetiniai sąnarių žiedai (8 012 trikampių, t. y. 58 % viso modelio). Iš 15 m tie žiedai ekrane yra keli taškai, tad toliau jie nebepiešiami — nei vaizde, nei šešėliuose, o kartu sustoja ir jų skeletas. Išmatuota stovint 20 m nuo katalogo: 529 -> 444 piešimo iškvietimai, 4,06 -> 3,38 mln. trikampių. Vaizde skirtumo nesimato: iš tokio atstumo violetiniai žiedai buvo mažesni už tašką. v214: rasta tikroji lėtumo priežastis. VISI personažai — žaidėjas, šimtas priešų ir 86 katalogo manekenai — buvo piešiami MeshStandardMaterial, t. y. brangiausiu three.js turimu PBR šešėliuokliu, nors jie net neturi tekstūrų (viena spalva). Išmatuota: 374 skeletiniai tinkleliai su PBR ir 2,10 mln. trikampių, o VISAS likęs pasaulis — 1,30 mln. su pigiu Lambert. Dabar personažai irgi Lambert: vaizde dingsta tik silpnas blizgesys, kurio ant vienspalvio manekeno nesimatė. Nustatymuose atsirado du jungikliai tam, kas plokštei kainuoja daugiausia: TAŠKŲ TANKIS (2x / 1,5x / 1x — 4K ekrane tankis 2 reiškia keturis kartus daugiau taškų) ir ŠEŠĖLIAI (minkšti / paprasti / išjungti). Ranka pastatytas kasamas akmuo ar gintaras pagaliau atrodo kaip sėtas: iki šiol atkurti iš atminties objektai gaudavo atsarginę figūrą, nes modeliai užsikraudavo vėliau. v213: dar kadrų dažnio. Personažų modeliai (86 katalogo manekenai ir priešai) iki šiol buvo rodomi vien pagal atstumą, tad stovint jų būryje visi likdavo „matomi" ir už nugaros — 23 000 kaulų matricų kas kadrą; dabar tikrinama ir kadro riba, o už jos likusiųjų kaulai sustoja (išmatuota: matricų skaičiavimas 3,3 -> 1,55 ms). ŠEŠĖLIŲ dėžė buvo 92x92 aplink žaidėją, tad pusė jos gulėjo už nugaros ir į šešėlių žemėlapį veltui buvo piešiami medžiai bei kūnai, kurių šešėlių niekas nemato — dabar ji mažesnė ir pastumta pirmyn pagal kamerą; šalia to šešėlio kraštas tapo aiškesnis, nes tas pats žemėlapis tenka mažesniam plotui. FPS langelis nuo šiol rodo TIKRUS skaičius: three.js jų neskaičiuodavo šešėlių praėjimo, tad trečdalis darbo buvo nematomas (manekenų būryje rodė 300 iškvietimų, o iš tikrųjų buvo 466). Nustatymuose atsirado „Animacijų katalogas" — jį paslėpus prie kaimavietės iškart sumažėja penktadalis viso piešimo; pats žaidimas nuo to nepasikeičia. v212: BERŽAI pagaliau su žieve — jiems paimtas tekstūruoto lapuočio modelis, o žievė nupiešta sava: balta su juodais brūkšniais ir šakų randais (pakete beržų nebuvo, todėl iki šiol jie ir liko pliki šalia tekstūruotų pušų); aukštis nepakito. REDAKTORIUS: pastatytas kasamas akmuo ar gintaras dabar atrodo lygiai taip pat kaip sėtas girioje — riedulio modelis su uolos tekstūra ir rūdos kristalais, o ne senoji figūra; ranka įdėtas medis gauna tekstūras; ĮDĖTAS ŽVĖRIS DABAR GYVAS IR VAIKŠTO (anksčiau tai buvo nejudanti statulėlė); kiekvienas modelis statomas TOKIO dydžio, kokį naudoja pats žaidimas (arklys buvo trigubai per didelis); pasirinkus modelį katalogas nebenušoka į viršų, o pažymėtą objektą ištrina Delete klavišas. Pomiškio dydis nebe atsitiktinis — kiekvienai rūšiai nurodytas tikslinis aukštis, tad gėlės ir žolė nebe aukštesnės už žaidėją (Flower_4_Group siekdavo 2,9 m). v211: kasami akmenys ir rūdos pagaliau atrodo kaip rūda. Rasta trys tikros priežastys, kodėl po v209 jie vis dar buvo „daugiakampis blynas": riedulys KABOJO 0,42 m virš žemės (aukštis buvo parinktas senajai figūrai, ne modeliui); uolos tekstūra buvo ištempta per visą akmenį, tad viena gysla užimdavo trečdalį jo ir riedulys nusidažydavo vienu tonu; o plikas riedulys niekuo nesiskyrė nuo dekoratyvinio akmens. Dabar akmuo stovi ant žemės, matyti uolos grūdas ir gyslos, o ant jo auga tos rūdos kristalai — titnago skeltės, geležies gumbai, sidabro adatos ir gintaro lašai (šie dar ir švyti). Beržinė čaga nebeauga ant kelmo — ji, kaip ir gyvenime, auga ant gyvo BERŽO kamieno, maždaug metro aukštyje, atsukta nuo medžio. v210: kadrų dažnis grąžintas — dabar piešiama tik tai, kas iš tikrųjų matoma. Iki šiol vaizdo plokštė kas kadrą apdorodavo VISUS 1100 medžių, akmenis ir pomiškį, nors į ekraną telpa vos keliolika procentų jų: išmatuota 4,5 mln. trikampių kadre, iš kurių į kamerą pateko 0,07 mln. Dabar medžiai, akmenys ir augalai, esantys už kadro ribų, praleidžiami (šešėlį metantys dar patikrinami pagal pačią šešėlių kamerą, tad nė vienas šešėlis nedingsta) — 4,5 mln. trikampių virto 0,45 mln., o vaizdas liko toks pat, taškas į tašką. Nei grafikos kokybė, nei matymo nuotolis nesumažinti. Kadrų dažnį dabar galima matyti ir ekrano kampe: Nustatymai → FPS → „Rodyti kampe" (šalia rodomi piešimo iškvietimai ir trikampiai). Žynė Aušrinė prie laužo pradėjo pardavinėti MEDŲ — be jo nepagaminami aštuoni Žiniuonystės receptai iš penkiolikos. v209: kasami akmenys ir rūdos nebe geometrinės figūros — dabar tai tikri riedulių modeliai su uolos tekstūra, o geležis, sidabras ir gintaras turi savo spalvos gyslas ir žibančius grūdelius; tikri akmenys nebesisuka. Medžiai kompiuteryje gavo TIKRAS žievės ir lapų tekstūras (naujas failas gamta/GIRIA_MEDZIAI.glb) — beržai lieka senieji, nes tekstūruotų beržų pakete nėra; telefone medžiai lieka pigūs, kad kadrų dažnis nenukristų. v208: redaktoriaus kataloge (🧱) kiekvienas langelis dabar rodo patį modelį — nupieštą paveiksliuką, o ne techninį vardą; pavadinimas pasirodo užvedus pele arba bakstelėjus. v207: dirbtuvės vaistinė dabar vadinasi ŽINIUONYSTE ir turi dvi skiltis: „Nuovirai" — tai, kas padeda tau, „Nuodai" — tai, kuo kenki priešui. Nuodai veikia dviem būdais: molinį indą sviedi į pažymėtą priešą (sudūžta ir aptaško visus aplinkui), o tepalu ištepi ašmenis, ir tada nuodus perduoda kiekvienas kirtis. Girioje atsirado aštuoni tikri Baltijos grybai su savo modeliais — baravykas, voveraitė, pievagrybis ir beržinė čaga valgomi, o musmirė, žalsvoji musmirė, šėtoniškas baravykas ir skalsė nuodingi: iš jų verdami nuodai, o suvalgius žalius jie kenkia ir pačiam. v206: iš vaistažolių verdami eliksyrai — dirbtuvėje atsirado ketvirta kortelė „Gydymas", o joje penkiolika receptų: ramunių arbata ramina, dilgėlių sultys prideda gyvybės, čiobrelio sirupas — kvapo, sidabražolės nuoviras nuplauna nuodus, vilkauogės lašai leidžia matyti tamsoje, bet nuodija, o pakalnutės lašai stiprina kirtį atimdami gyvybės; kiekvienas poveikis parinktas pagal tikrą tos žolės veikimą žmogui. Veikiantys eliksyrai su likusiu laiku rodomi po patirties juosta. Pridėtas medus (valgomas ir eliksyrų sudėtinė dalis) bei iš jo daromas midus. v205: redaktorius greitesnis — 🧱 iš karto įjungia redagavimą, o pasirinkus modelį kiekvienas paspaudimas ant žemės pastato dar vieną daiktą (nebereikia kiekvieno patvirtinti); telefone katalogas bestatant nebeužsiveria; augalai ir ranka pastatyti objektai nebesisuka. v204: vienuolika vaistažolių gavo savo modelius — ramunė žydi baltais žiedais su geltonu viduriu, kraujažolė skėčiu, pakalnutė kabančiais varpeliais, vilkauogė juodomis uogomis, ajeras kardo lapais; nuskintas augalas dabar traukiasi į žemę, o ne kabo ore. v203: žvėrių kojos nebeatsiskiria nuo pilvo — dabar jos pjaunamos ten, kur iš tikrųjų prasideda (išmatuota kiekvienam žvėriui atskirai), ir sukamos apie tą pačią vietą; einant priekinė koja aiškiai parlenkia riešą po krūtine (60°, kaip tikram arkliui), o užpakalinė lieka beveik tiesi; kūnas nebekyla, kai koja išskėsta, tad pėdos nebekabo ore; redagavimo mygtukai ✎ ir 🧱 iškelti iš ☰ meniu į mygtukų eilutę, į kairę nuo grafikos mygtukų. v202: redagavimo režimas — objektus galima statyti, sukti ir trinti pačiame žaidime; kompasas pagaliau rodo tikrą šiaurę; medžiai nebe vienspalviai; žvėrių mostas eina iš peties, ne iš pilvo. v201: vienuolika tikrų Baltijos vaistažolių, augančių ten, kur ir tikrovėje, ir skinamų atskira animacija; mažiau gėlių; raguočiai duoda ragus; požemių uolos su nuskeltais kampais; žvėrių eisena pagal tikrus arklio matavimus. v200: žvėris galima medžioti — kailis, mėsa, kaulai ir tos rūšies nagai; kas penktas palieka lavoną, kurį galima išdarinėti; požemiuose žemės ir uolos tekstūros; kojos nebeslysta žemės atžvilgiu. v199: žvėrių kojos lankstosi per kelį ir atgavo spalvas; abu požemių įėjimai perkelti prie laužo; žemoje grafikoje tolimi priešai nebedingsta — rodomi siluetais. v198: žvėrys vaikšto, bėga risčia ir šuoliais (kojos juda); požemio deglo liepsna dega ant paties deglo, ne kambario viduryje; priešas be įsikrovusio modelio nebelieka nematomas. v197: našumas — nematomų personažų kaulai nebeperskaičiuojami kas kadrą (updateMatrixWorld buvo 32 % viso laiko), reljefo aukštis kešuojamas kadrui. v196: failai sutvarkyti į aplankus (judesiai, ginklai, gamta, daiktai, priesai) — žaidime pokyčių nėra. C lange daiktą nuima 2x kairiu arba dešiniu, o aprašymas prisegamas paspaudus; pasaulis 4x didesnis: laukai, miškas ir tamsus miškas; grąžintas reljefas su upe, upeliais ir ežerais; du dideli požemiai su rūdomis ir priešais; tikri medžiai, tekstūruotas pomiškis, žvėrys; kaimavietėje kalvė, stalas ir turgus; du nauji priešai — Kipšas ir Slogutis';
 /* =========================================================================
    GINTARO GIRIA — 3D RPG prototipas (Three.js r128)
    ========================================================================= */
@@ -935,9 +966,12 @@ const I18N={
     ztOn:'Tekstūros įjungtos', ztOff:'Tekstūros išjungtos',
     ztStipr:'Stiprumas', ztDydis:'Rašto dydis', ztNieko:'Be tekstūros',
     ztReset:'Numatytos', ztSave:'💾 Išsaugoti',
-    ztHint:'Pasirink paviršių, tada tekstūrą — ji uždedama iš karto. Tekstūra tik duoda grūdą: biomo spalva lieka ta pati.',
+    ztHint:'Pasirink paviršių, tada tekstūrą — ji uždedama iš karto. Stiprumas, rašto dydis ir atspalvis (🎨 viršuje) galioja TIK pasirinktam paviršiui. Langelio numeris (#) tinka pasakyti, kuri būtent netinka.',
     ztSaveHint:'Nukopijuok šitą eilutę ir atsiųsk — ji įrašoma į žaidimą:',
     ztPerTeks:'🎨 Tekstūros (žemė, požemis)', ztPerObj:'🧱 Atgal į objektų katalogą',
+    ztAtsp:'Atspalvis', ztAtspNieko:'Numatyta (biomo spalva)', ztAtspSavo:'Sava spalva',
+    ztAtspStipr:'Kiek keičia',
+    ztAtspHint:'Be atspalvio žemė lieka tokios spalvos, kokią duoda biomas (todėl visos tekstūros atrodo žalsvos) — tekstūra prideda tik grūdą. Atspalvis pakeičia patį toną, o šviesumo margumą palieka.',
     langQ:'Pasirink kalbą', deviceQ:'Kaip žaisi?', devicePc:'🖥 Kompiuteris', devicePhone:'📱 Telefonas', sDevice:'Įrenginys',
     startP:'Sengirė, kurioje gyvi kaukai, laumės ir vilkolakiai. Kirsk medžius, rink gintarą, kaukis ir kilk lygiais — visa tai tiesiog naršyklėje, be jokių diegimų.',
     goReg:'Susikurti personažą', goGuest:'Žaisti be registracijos', quickPlay:'Žaisti iškart',
@@ -1064,7 +1098,7 @@ const I18N={
     nothingNearby:'Nieko nėra netoliese.', flameHitNothing:'Liepsna nieko nepasiekė.',
     spellNeedsTarget:'Burtui reikia taikinio.', spellEcho:'Burtų aidas!',
     extraLoot:'Radai papildomą trofėjų!', knockedOut:'Netekai sąmonės. Atsibundi prie laužo…',
-    resizeHint:'Dydis: tempk į šoną — plotis, žemyn — mastelis.', barFullN:'Juosta pilna (',
+    resizeHint:'Dydis: tempk lango kraštą arba kampą — į šoną plotis, žemyn mastelis.', barFullN:'Juosta pilna (',
     staminaDepleted:'Ištvermė išsekusi — palauk, kol atsigaus.',
     workStaminaOut:'Darbo ištvermė išsekusi — palauk, kol atsigaus.',
     sprintStaminaOut:'Ištvermė išseko — sprintas išjungtas.',
@@ -1073,7 +1107,6 @@ const I18N={
     stressLimitReached:'Riba pasiekta ties ', stressLimitMid:' (fps ', stressLimitEnd:').',
     noSupabase:'Kitų žaidėjų nematysi — nepasikrovė supabase-js biblioteka.',
     mpConnectFail:'Nepavyko prisijungti prie bendros girios.',
-    mpOthersVisible:'Girioje matai kitus keliautojus. Enter arba bakstelėk žurnalą — pokalbis.',
     mpStatus:'Ryšys: ', mpConnectTimeout:'Prie bendros girios prisijungti nepavyko (', mpConnectTimeoutEnd:').',
     mpState:'Būklė: ', mpConnected:'prisijungta', mpNotConnected:'NEprisijungta',
     mpLib:', biblioteka: ', mpLibYes:'yra', mpLibNo:'NĖRA', mpVisible:', matomų: ', mpMyId:', mano id: ',
@@ -1095,9 +1128,12 @@ const I18N={
     ztOn:'Textures on', ztOff:'Textures off',
     ztStipr:'Strength', ztDydis:'Pattern size', ztNieko:'No texture',
     ztReset:'Defaults', ztSave:'💾 Save',
-    ztHint:'Pick a surface, then a texture — it is applied at once. The texture only adds grain: the biome colour stays the same.',
+    ztHint:'Pick a surface, then a texture — it is applied at once. Strength, pattern size and tint (🎨 above) apply ONLY to the selected surface. Each tile has a number (#) so it is easy to say which one is wrong.',
     ztSaveHint:'Copy this line and send it — it goes into the game:',
     ztPerTeks:'🎨 Textures (ground, dungeon)', ztPerObj:'🧱 Back to the object catalogue',
+    ztAtsp:'Tint', ztAtspNieko:'Default (biome colour)', ztAtspSavo:'Custom colour',
+    ztAtspStipr:'Amount',
+    ztAtspHint:'Without a tint the ground keeps the colour the biome gives it (which is why every texture looks greenish) — the texture only adds grain. A tint replaces the hue and keeps the brightness variation.',
     langQ:'Choose language', deviceQ:'How will you play?', devicePc:'🖥 Computer', devicePhone:'📱 Phone', sDevice:'Device',
     startP:'An ancient forest home to kaukai, laumės and werewolves. Chop trees, gather amber, fight and level up — all in your browser, no installs.',
     goReg:'Create a character', goGuest:'Play without an account', quickPlay:'Play now',
@@ -1223,7 +1259,7 @@ const I18N={
     nothingNearby:'Nothing nearby.', flameHitNothing:'The flame hit nothing.',
     spellNeedsTarget:'This spell needs a target.', spellEcho:'Spell echo!',
     extraLoot:'Found an extra trophy!', knockedOut:'You lost consciousness. You wake up by the fire…',
-    resizeHint:'Size: drag sideways for width, down for scale.', barFullN:'Bar full (',
+    resizeHint:'Size: drag an edge or corner — sideways for width, down for scale.', barFullN:'Bar full (',
     staminaDepleted:'Stamina depleted — wait for it to recover.',
     workStaminaOut:'Work stamina depleted — wait for it to recover.',
     sprintStaminaOut:'Stamina ran out — sprint disabled.',
@@ -1232,7 +1268,6 @@ const I18N={
     stressLimitReached:'Limit reached at ', stressLimitMid:' (fps ', stressLimitEnd:').',
     noSupabase:"You won't see other players — the supabase-js library failed to load.",
     mpConnectFail:'Could not connect to the shared forest.',
-    mpOthersVisible:'You can see other travelers in the forest. Press Enter or tap the log to chat.',
     mpStatus:'Connection: ', mpConnectTimeout:'Could not connect to the shared forest (', mpConnectTimeoutEnd:').',
     mpState:'Status: ', mpConnected:'connected', mpNotConnected:'NOT connected',
     mpLib:', library: ', mpLibYes:'present', mpLibNo:'MISSING', mpVisible:', visible: ', mpMyId:', my id: ',
@@ -1756,7 +1791,17 @@ const ZPAV=[
   {k:'pozSienos', kat:'pozemis', m:3, def:null,      n:{lt:'Požemio sienos',   en:'Dungeon walls'}}
 ];
 const ZEME_TEKS_DATA=null;        // v248: čia įrašomas išsaugotas pasirinkimas
-const ZT={on:true,stipr:.85,dydis:1,pav:{}};
+/* v250: tint — paviršiaus atspalvis (#rrggbb arba nėra rakto), tstipr — kiek
+   jis nustelbia biomo spalvą. Be jo VISKAS lieka žalsva, nes tekstūra tik
+   prideda grūdą prie biomo viršūnių spalvos (v248 sprendimas). */
+/* v251: stipr ir dydis nebe bendri visam pasauliui, o PAVIRŠIAUS lentelės —
+   vartotojas: „teksturu rasto dydis ir stiprumas turi koreguotis atskirai tam
+   tikrai vietovei, o ne visom vienu metu". Senos išsaugotos eilutės turi
+   skaičių — jis įkeliamas visiems paviršiams (žr. zemTeksIkelti). */
+const ZT={on:true,stipr:{},dydis:{},pav:{},tint:{},tstipr:.85};
+const ZT_STIPR=.85, ZT_DYDIS=1;
+const ztStipr=k=>{ const v=ZT.stipr[k]; return typeof v==='number'?v:ZT_STIPR; };
+const ztDydis=k=>{ const v=ZT.dydis[k]; return typeof v==='number'?v:ZT_DYDIS; };
 const ZT_LOAD=new Map();          // tekstūros raktas -> {tex, vid}
 const ZKOMP=['vZb1.x','vZb1.y','vZb1.z','vZb2.x','vZb2.y','vZb2.z'];
 
@@ -1820,23 +1865,44 @@ function zemMedziaga(){
   m.userData.ztSluoksniai=sl.length;
   if(!sl.length) return m;
   m.onBeforeCompile=sh=>{
-    let dek='', mais='';
+    let dek='', mais='', tin='';
     sl.forEach((s,n)=>{
       sh.uniforms['ztM'+n]={value:s.rec?s.rec.tex:null};
       sh.uniforms['ztV'+n]={value:s.rec?s.rec.vid:new THREE.Vector3(.5,.5,.5)};
-      sh.uniforms['ztS'+n]={value:1/Math.max(.5,s.pav.m*ZT.dydis)};
-      dek+='uniform sampler2D ztM'+n+';uniform vec3 ztV'+n+';uniform float ztS'+n+';\n';
+      sh.uniforms['ztS'+n]={value:1/Math.max(.5,s.pav.m*ztDydis(s.pav.k))};
+      sh.uniforms['ztP'+n]={value:ztStipr(s.pav.k)};      // v251: savas stiprumas
+      /* v250 atspalvis: spalva ir kiek jos. Vienformės deklaruojamos VISADA
+         (net kai atspalvio nėra), kad vėlesnis pasirinkimas nereikalautų
+         perkompiliuoti šešėliuoklio — kaip stiprumas ir rašto dydis. */
+      sh.uniforms['ztT'+n]={value:new THREE.Color(ZT.tint[s.pav.k]||'#ffffff')};
+      sh.uniforms['ztA'+n]={value:ZT.tint[s.pav.k]?ZT.tstipr:0};
+      dek+='uniform sampler2D ztM'+n+';uniform vec3 ztV'+n+';uniform float ztS'+n+';'+
+           'uniform vec3 ztT'+n+';uniform float ztA'+n+';uniform float ztP'+n+';\n';
+      /* v251: kiekvienas sluoksnis pats susilpninamas SAVO stiprumu, ir tik
+         tada sveriamas — kitaip vienas bendras ztStipr keistų visus paviršius
+         iš karto. */
       mais+='{vec3 zc=texture2D(ztM'+n+',vZxz*ztS'+n+').rgb; zc*=zc;'+
-            'ztSum+='+ZKOMP[s.i]+'*zc/ztV'+n+';ztW+='+ZKOMP[s.i]+';}\n';
+            'vec3 zm=mix(vec3(1.0),zc/ztV'+n+',ztP'+n+');'+
+            'ztSum+='+ZKOMP[s.i]+'*zm;ztW+='+ZKOMP[s.i]+';}\n';
+      tin +='{float ztw='+ZKOMP[s.i]+'*ztA'+n+';ztTs+=ztw*ztT'+n+';ztTa+=ztw;}\n';
     });
-    sh.uniforms.ztStipr={value:ZT.stipr};
     sh.vertexShader=sh.vertexShader
       .replace('#include <common>','#include <common>\nattribute vec3 zbio1;attribute vec3 zbio2;\nvarying vec3 vZb1;varying vec3 vZb2;varying vec2 vZxz;')
       .replace('#include <begin_vertex>','#include <begin_vertex>\nvZb1=zbio1;vZb2=zbio2;vZxz=position.xz;');
     sh.fragmentShader=sh.fragmentShader
-      .replace('#include <common>','#include <common>\n'+dek+'uniform float ztStipr;\nvarying vec3 vZb1;varying vec3 vZb2;varying vec2 vZxz;')
-      .replace('#include <color_fragment>','#include <color_fragment>\nvec3 ztSum=vec3(0.0);float ztW=0.0;\n'+mais+
-        'if(ztW>0.001){ ztSum/=ztW; } else { ztSum=vec3(1.0); }\ndiffuseColor.rgb*=mix(vec3(1.0),ztSum,ztStipr);');
+      .replace('#include <common>','#include <common>\n'+dek+'varying vec3 vZb1;varying vec3 vZb2;varying vec2 vZxz;')
+      .replace('#include <color_fragment>','#include <color_fragment>\n'+
+        /* v250: atspalvis uždedamas PRIEŠ tekstūrą — jis keičia toną, o
+           tekstūros grūdas po to dauginamas kaip ir anksčiau. Šviesumas
+           imamas iš pačios biomo spalvos (ztL/ztTl), kad nedingtų viršūnių
+           margumas ir žemė nevirstų vienspalve dėme. */
+        'vec3 ztTs=vec3(0.0);float ztTa=0.0;\n'+tin+
+        'if(ztTa>0.001){ ztTs/=ztTa;'+
+        'float ztL=dot(diffuseColor.rgb,vec3(0.299,0.587,0.114));'+
+        'float ztTl=max(0.02,dot(ztTs,vec3(0.299,0.587,0.114)));'+
+        'diffuseColor.rgb=mix(diffuseColor.rgb,ztTs*clamp(ztL/ztTl,0.0,2.5),min(1.0,ztTa)); }\n'+
+        'vec3 ztSum=vec3(0.0);float ztW=0.0;\n'+mais+
+        'if(ztW>0.001){ ztSum/=ztW; } else { ztSum=vec3(1.0); }\ndiffuseColor.rgb*=ztSum;');
     m.userData.sh=sh;
   };
   return m;
@@ -1859,7 +1925,10 @@ function pavAtnaujink(ir){
   const nauja=t||dunTex(ir.kind);
   if(ir.m.map!==nauja){ ir.m.map=nauja; ir.m.needsUpdate=true; }
   if(ir.m.color&&ir.m.color.copy){
-    ir.m.color.copy(ir.baze);
+    /* v250: atspalvis pakeičia patį toną; žemiau esantis šviesinimas pagal
+       nuotraukos vidurkį lieka nepakitęs. */
+    if(ZT.tint&&ZT.tint[ir.pav]&&ir.m.color.set) ir.m.color.set(ZT.tint[ir.pav]);
+    else ir.m.color.copy(ir.baze);
     if(t&&rec){
       const lum=Math.max(.03,rec.vid.x*.3+rec.vid.y*.6+rec.vid.z*.1);
       ir.m.color.multiplyScalar(Math.min(4,.5/lum+.5));
@@ -1883,29 +1952,59 @@ function zemTeksTaikyk(){
 /* stiprumas ir mastelis keičiami VIENIFORMOMIS — perkompiliuoti nereikia */
 function zemTeksStiprumas(){
   const m=ground&&ground.material, sh=m&&m.userData&&m.userData.sh;
-  if(sh&&sh.uniforms&&sh.uniforms.ztStipr) sh.uniforms.ztStipr.value=ZT.stipr;
+  if(!sh||!sh.uniforms) return;
+  zemSluoksniai().forEach((s,n)=>{
+    if(sh.uniforms['ztP'+n]) sh.uniforms['ztP'+n].value=ztStipr(s.pav.k);
+  });
 }
 function zemTeksMastelis(){
   const m=ground&&ground.material, sh=m&&m.userData&&m.userData.sh;
   if(!sh||!sh.uniforms) return;
   zemSluoksniai().forEach((s,n)=>{
-    if(sh.uniforms['ztS'+n]) sh.uniforms['ztS'+n].value=1/Math.max(.5,s.pav.m*ZT.dydis);
+    if(sh.uniforms['ztS'+n]) sh.uniforms['ztS'+n].value=1/Math.max(.5,s.pav.m*ztDydis(s.pav.k));
   });
 }
-function zemTeksNumatyti(){ ZT.pav={}; for(const p of ZPAV) ZT.pav[p.k]=p.def; }
+/* v250: atspalvis keičiamas VIENFORMĖMIS — perkompiliuoti nereikia (kaip
+   stiprumas ir mastelis). Požemio medžiagos savo spalvą gauna atskirai. */
+function zemTeksAtspalvis(){
+  const m=ground&&ground.material, sh=m&&m.userData&&m.userData.sh;
+  if(sh&&sh.uniforms) zemSluoksniai().forEach((s,n)=>{
+    const c=ZT.tint[s.pav.k];
+    const u=sh.uniforms['ztT'+n], a=sh.uniforms['ztA'+n];
+    if(u&&u.value&&u.value.set&&c) u.value.set(c);
+    if(a) a.value=c?ZT.tstipr:0;
+  });
+  for(const ir of DUN_MATS) pavAtnaujink(ir);
+}
+function zemTeksNumatyti(){ ZT.pav={}; ZT.tint={}; ZT.tstipr=.85;
+  ZT.stipr={}; ZT.dydis={};
+  for(const p of ZPAV) ZT.pav[p.k]=p.def; }
 function zemTeksIkelti(){
   zemTeksNumatyti();
   let d=ZEME_TEKS_DATA;
   try{ const js=localStorage.getItem('giriaZemTeks'); if(js) d=JSON.parse(js); }catch(e){}
   if(d&&typeof d==='object'){
     if(typeof d.on==='boolean') ZT.on=d.on;
-    if(typeof d.stipr==='number') ZT.stipr=clamp(d.stipr,0,1);
-    if(typeof d.dydis==='number') ZT.dydis=clamp(d.dydis,.4,2.5);
+    /* v251: skaičius senoje eilutėje reiškia „visiems paviršiams", objektas —
+       po vieną kiekvienam. Abu keliai palikti, kad senas išsaugojimas veiktų. */
+    const perimk=(sen,riba)=>{ const o={};
+      if(typeof sen==='number') for(const p of ZPAV) o[p.k]=clamp(sen,riba[0],riba[1]);
+      else if(sen&&typeof sen==='object')
+        for(const p of ZPAV) if(typeof sen[p.k]==='number') o[p.k]=clamp(sen[p.k],riba[0],riba[1]);
+      return o; };
+    if(d.stipr!==undefined) ZT.stipr=perimk(d.stipr,[0,1]);
+    if(d.dydis!==undefined) ZT.dydis=perimk(d.dydis,[.4,2.5]);
     if(d.pav) for(const k in ZT.pav) if(k in d.pav) ZT.pav[k]=d.pav[k]||null;
+    if(typeof d.tstipr==='number') ZT.tstipr=clamp(d.tstipr,0,1);
+    if(d.tint&&typeof d.tint==='object'){ ZT.tint={};
+      for(const p of ZPAV) if(typeof d.tint[p.k]==='string'&&/^#[0-9a-f]{6}$/i.test(d.tint[p.k]))
+        ZT.tint[p.k]=d.tint[p.k].toLowerCase(); }
   }
 }
 function zemTeksSaugoti(tyliai){
-  const d={on:ZT.on,stipr:+ZT.stipr.toFixed(2),dydis:+ZT.dydis.toFixed(2),pav:ZT.pav};
+  const apval=o=>{ const r={}; for(const k in o) if(typeof o[k]==='number') r[k]=+o[k].toFixed(2); return r; };
+  const d={on:ZT.on,stipr:apval(ZT.stipr),dydis:apval(ZT.dydis),pav:ZT.pav,
+           tint:ZT.tint,tstipr:+ZT.tstipr.toFixed(2)};
   const js=JSON.stringify(d);
   try{ localStorage.setItem('giriaZemTeks',js); }catch(e){}
   const el=document.getElementById('teksJson');
@@ -7803,6 +7902,7 @@ const typingInField=e=>{
    typingInField apsauga jau yra abiejuose klausytojuose, tad rašant žinutę
    dvitaškis žymės neįjungia. */
 let vietosKlav=false;
+let dragging, moved, lastX, lastY, pinch, sukam;   // v251, žr. žemiau
 addEventListener('blur',()=>{ vietosKlav=false; });   // nuėjus iš lango klavišas „neužstrigtų"
 addEventListener('keydown',e=>{
   if(typingInField(e)) return;
@@ -7834,10 +7934,29 @@ addEventListener('keydown',e=>{
 });
 addEventListener('keyup',e=>{
   if(e.key===':'||e.key===';'||e.code==='Semicolon') vietosKlav=false;   // v224
-  if(typingInField(e)) return;
+  /* v251: ATLEIDIMAS ATLEIDŽIA VISADA. Iki šiol typingInField grąžindavo
+     anksčiau NEI keys[...]=false — tad jei laikant W dėmesys nukeliaudavo į
+     laukelį (ar langas prarasdavo sutelkimą), klavišas likdavo „nuspaustas
+     amžinai": personažas bėgdavo pats, o KIEKVIENAS paspaudimas ant žemės
+     nueidavo niekais, nes updatePlayer prie kx||kz nustato player.moveTo=null.
+     Būtent tai vartotojas ir aprašė: „paspaudimo indikatorius rodo paspaudimą,
+     bet žmogeliukas nereaguoja... sureaguoja tik pradėjus spamminti WASD".
+     Nuspaudimą filtruoti reikia, atleidimo — niekada. */
   keys[e.code]=false;
   if(e.code==='ShiftLeft'||e.code==='ShiftRight'){ sprintHold=false; sprintOn=sprintToggle; }
 });
+/* v251: dingus lango sutelkimui (alt-tab, pelė nuvesta už naršyklės, kitas
+   langas) keyup NEATEINA IŠ VISO — tad viską atleidžiam patys. Ta pati
+   taisyklė, kaip v224 „:" klavišui, tik dabar visiems. */
+function klavisaiAtleisk(){
+  for(const k in keys) keys[k]=false;
+  vietosKlav=false; sprintHold=false; sprintOn=sprintToggle;
+  if(typeof pointers!=='undefined'&&pointers.clear) pointers.clear();
+  dragging=false; pinch=0; sukam=false;
+}
+addEventListener('blur',klavisaiAtleisk);
+if(document.addEventListener)
+  document.addEventListener('visibilitychange',()=>{ if(document.hidden) klavisaiAtleisk(); });
 
 const ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
 /* Didesnis taikymo spindulys — telefone sunku tiksliai pataikyti į siaurus
@@ -7892,7 +8011,10 @@ const pointers=new Map();
    mygtuką kamera nebesisuka (kairysis lieka tik veiksmams — eiti, rinkti,
    pulti), o sukama dešiniu arba viduriniu. Pirštu (touch) viskas kaip buvo:
    ten kito mygtuko nėra, tad vienas pirštas ir toliau suka. */
-let dragging=false, moved=0, lastX=0, lastY=0, pinch=0, sukam=false;
+/* v251: čia jau tik priskyrimas — patys kintamieji paskelbti anksčiau (prie
+   klavisaiAtleisk), nes ta funkcija juos nunulina, o const/let prieš
+   paskelbimą lūžtų (boottest). */
+dragging=false; moved=0; lastX=0; lastY=0; pinch=0; sukam=false;
 
 const cv=renderer.domElement;
 cv.addEventListener('pointerdown',e=>{
@@ -7951,6 +8073,12 @@ cv.addEventListener('pointerup',e=>{
 cv.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);dragging=false;pinch=0;});
 cv.addEventListener('wheel',e=>{e.preventDefault();cam.tDist=clamp(cam.tDist+e.deltaY*.012,4.5,26);},{passive:false});
 cv.addEventListener('contextmenu',e=>e.preventDefault());
+/* v251: kamerą suka DEŠINYSIS (v220), tad jo atleidimas dažnai įvyksta jau
+   virš lango — ir tada naršyklės meniu („Back, Forward, Reload") iššoka ant
+   žaidimo. Vartotojas: „o juk viskas žaidime — to neturi būti". Stabdom
+   visame puslapyje; langelių savi oncontextmenu (užsidėti/nusiimti daiktą)
+   kabinami ANT PAČIŲ elementų, tad suveikia anksčiau už šitą. */
+addEventListener('contextmenu',e=>{ if(e.preventDefault) e.preventDefault(); });
 function pinchDist(){
   const a=[...pointers.values()];
   return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
@@ -9746,12 +9874,16 @@ function updateSkillBar(){
    Vienodas visiems langams: skydeliui, visiems .panel langams, žemėlapiui ir
    laikrodžiui.
      paspaudi ir laikai 0,35 s → langas paimamas, seka pirštą      (VIETA)
-     laikai 3 s NEPAJUDINĘS    → pereina į dydžio keitimą          (DYDIS)
+     laikai 2 s NEPAJUDINĘS    → pereina į dydžio keitimą          (DYDIS)
+   v251: PELE dydžio laukti nebereikia — užvedus ant lango KRAŠTO atsiranda
+   tempimo kursorius (indikatorius), ir paspaudus tempiama IŠ KARTO, iš tos
+   pusės, kurią nutvėrei — kaip aplanko lange. Laikymas paliktas pirštui,
+   tik sutrumpintas iki 2 s (vartotojo prašymu).
      pajudini anksčiau 0,35 s  → tai slinkimas lange, ne vilkimas
    T. y. jei per tas 3 sekundes langą pajudinai — keiti vietą, ne dydį.
    Dydis: į šoną — plotis, žemyn — mastelis. Žemėlapiui — abu matmenys kartu.
    Laikrodis dydžio nekeičia (vartotojo sprendimu), tik vietą. */
-const HOLD_MOVE=350, HOLD_SIZE=3000;
+const HOLD_MOVE=350, HOLD_SIZE=2000;   // v251: 3 s -> 2 s
 const WIN_SEL='.panel,#playerCard,#mapWrap,#timeBadge';
 /* Renkam ir per klasę, ir per id: kablelinio selektorių sąrašo palaiko ne
    visos aplinkos, o getElementById kai kur grąžina kitą objektą nei
@@ -9807,20 +9939,57 @@ function winBounds(el){
   return el===pCard?{wMin:96,wMax:360,sMin:.65,sMax:2.4}
                    :{wMin:140,wMax:560,sMin:.6, sMax:2.6};
 }
-const WIN={el:null,mode:'',x:0,y:0,dx:0,dy:0,w:0,s:1,sz:0,t1:0,t2:0,moved:false};
+/* v251: LANGO KRAŠTAI. Vartotojas: „uzvedus ant krasto atsiranda indikatorius,
+   tada gali iskarto spaust ir didint... ir padaryk, kad didinti butu galima
+   nuo ten kur paspaudei, nes dabar didinasi tik slenkant i desine".
+   Juosta 9 px nuo krašto Į VIDŲ (ne į išorę — už lango guli vaizdas, ir
+   paspaudimas ten pasuktų kamerą arba nuvestų personažą). */
+const WIN_KRASTAS=9;
+const WIN_KURSORIAI={n:'ns-resize',s:'ns-resize',e:'ew-resize',w:'ew-resize',
+  ne:'nesw-resize',sw:'nesw-resize',nw:'nwse-resize',se:'nwse-resize'};
+/* harness rect neturi right/bottom — susiskaičiuojam patys */
+function winRect(el){
+  const r=el.getBoundingClientRect();
+  const w=r.width||0, h=r.height||0;
+  return {left:r.left,top:r.top,width:w,height:h,
+          right:(r.right!==undefined?r.right:r.left+w),
+          bottom:(r.bottom!==undefined?r.bottom:r.top+h)};
+}
+function winKrastas(el,x,y){
+  if(!el||!winSizeMode(el)) return '';
+  const r=winRect(el);
+  if(!(r.width>0&&r.height>0)) return '';
+  if(x<r.left||x>r.right||y<r.top||y>r.bottom) return '';
+  let k='';
+  if(y-r.top<=WIN_KRASTAS) k+='n'; else if(r.bottom-y<=WIN_KRASTAS) k+='s';
+  if(x-r.left<=WIN_KRASTAS) k+='w'; else if(r.right-x<=WIN_KRASTAS) k+='e';
+  /* GRYNĄ dešinį kraštą dažnai užima lango slinkties juosta — jei ten
+     pradėtume tempti dydį, slinkti sąrašo nebebūtų kaip. Kampai (ne/se)
+     lieka: jie ir yra įprastas tempimo kampas. */
+  if(k==='e'&&el.offsetWidth>el.clientWidth) return '';
+  return k;
+}
+const WIN={el:null,mode:'',kr:'',x:0,y:0,dx:0,dy:0,w:0,s:1,sz:0,t1:0,t2:0,moved:false};
 let winSuppress=0, winTold=false;
 function winClear(){
   clearTimeout(WIN.t1); clearTimeout(WIN.t2);
   if(WIN.el&&WIN.el.classList)
     ['uiDrag','uiSize','dragging','resizing'].forEach(c=>WIN.el.classList.remove(c));
-  WIN.el=null; WIN.mode=''; WIN.moved=false;
+  WIN.el=null; WIN.mode=''; WIN.kr=''; WIN.moved=false;
 }
 /* paimam langą: perkeliam į fixed koordinates, kad galėtų judėti bet kur */
-function winGrab(el){
-  const r=el.getBoundingClientRect();
+/* v251: fiksuotos koordinatės reikalingos ir vietai, ir kraštiniam dydžiui
+   (tempiant iš kairės ar viršaus langas turi likti prilipęs prie priešingo
+   krašto) — tad iškelta į atskirą funkciją. */
+function winFix(el,r){
+  r=r||winRect(el);
   el.style.position='fixed';
   el.style.left=r.left+'px'; el.style.top=r.top+'px';
   el.style.right='auto'; el.style.bottom='auto'; el.style.margin='0';
+  return r;
+}
+function winGrab(el){
+  const r=winFix(el);
   WIN.dx=WIN.x-r.left; WIN.dy=WIN.y-r.top;
   if(el.setPointerCapture&&WIN.pid!=null){ try{ el.setPointerCapture(WIN.pid); }catch(_){} }
   WIN.mode='move'; el.classList.add('uiDrag');
@@ -9845,6 +10014,27 @@ function winSizeArm(el){
     if(!winTold){ winTold=true; log(T('resizeHint'),'lg-s'); }
   },Math.max(0,HOLD_SIZE-HOLD_MOVE));
 }
+/* v251: dydžio keitimas, pradėtas nuo krašto — be jokio laukimo */
+function winKrastuPradek(el,kr){
+  const u=winState(el), r=winFix(el);
+  WIN.mode='edge'; WIN.kr=kr;
+  WIN.s=u.s||1;
+  WIN.w=u.w||(el===pCard?uiW:(parseFloat(el.style.width)||r.width/(u.s||1)));
+  WIN.sz=u.sz||r.width;
+  WIN.r0={right:r.right,bottom:r.bottom};
+  el.classList.add('uiSize');
+  if(el===pCard) el.classList.add('resizing');
+  if(el.setPointerCapture&&WIN.pid!=null){ try{ el.setPointerCapture(WIN.pid); }catch(_){} }
+  if(!winTold){ winTold=true; log(T('resizeHint'),'lg-s'); }
+}
+/* užvedus ant krašto — kursorius. Tai ir yra vartotojo prašytas „indikatorius". */
+function winKursorius(e){
+  if(e.pointerType&&e.pointerType!=='mouse') return;
+  const el=winOf(e.target);
+  if(!el||!el.style) return;
+  const k=winKrastas(el,e.clientX,e.clientY);
+  el.style.cursor=k?WIN_KURSORIAI[k]:'';
+}
 function winDown(e,self){
   if(winSeen(e)) return;
   const el=self||winOf(e.target);
@@ -9852,6 +10042,10 @@ function winDown(e,self){
   winClear();
   WIN.el=el; WIN.mode='wait'; WIN.x=e.clientX; WIN.y=e.clientY; WIN.moved=false;
   WIN.pid=(e.pointerId!=null?e.pointerId:null);
+  /* v251: PELE ant krašto — dydis iš karto, be 0,35 s ir be 2 s laukimo.
+     Pirštui paliktas senasis kelias: telefone kraštas siauresnis už pirštą. */
+  const kr=(e.pointerType==='mouse')?winKrastas(el,e.clientX,e.clientY):'';
+  if(kr){ winKrastuPradek(el,kr); if(e.preventDefault) e.preventDefault(); return; }
   WIN.t1=setTimeout(()=>{
     if(WIN.el!==el||WIN.mode!=='wait') return;
     winGrab(el);
@@ -9861,7 +10055,7 @@ function winDown(e,self){
 addEventListener('pointerdown',winDown);
 function winMove(e){
   if(winSeen(e)) return;
-  if(!WIN.el) return;
+  if(!WIN.el){ winKursorius(e); return; }
   const el=WIN.el;
   if(WIN.mode==='wait'){
     /* pajudėjo anksčiau laiko — tai slinkimas lange */
@@ -9869,6 +10063,29 @@ function winMove(e){
     return;
   }
   if(e.preventDefault) e.preventDefault();
+  if(WIN.mode==='edge'){
+    const u=winState(el), bd=winBounds(el), kr=WIN.kr;
+    const dx=e.clientX-WIN.x, dy=e.clientY-WIN.y;
+    if(winSizeMode(el)==='square'){
+      let d=0;
+      if(kr.indexOf('e')>=0) d+=dx; else if(kr.indexOf('w')>=0) d-=dx;
+      if(kr.indexOf('s')>=0) d+=dy; else if(kr.indexOf('n')>=0) d-=dy;
+      u.sz=clamp(WIN.sz+d,60,360);
+    }else{
+      if(kr.indexOf('e')>=0) u.w=clamp(WIN.w+dx,bd.wMin,bd.wMax);
+      if(kr.indexOf('w')>=0) u.w=clamp(WIN.w-dx,bd.wMin,bd.wMax);
+      if(kr.indexOf('s')>=0) u.s=clamp(WIN.s+dy*.005,bd.sMin,bd.sMax);
+      if(kr.indexOf('n')>=0) u.s=clamp(WIN.s-dy*.005,bd.sMin,bd.sMax);
+    }
+    winApply(el);
+    /* tempiant iš kairės ar viršaus langas lieka prilipęs prie PRIEŠINGO
+       krašto — kitaip augtų ne ten, kur tempi (vartotojas: „didinasi tik
+       slenkant i desine") */
+    const nr=winRect(el);
+    if(kr.indexOf('w')>=0) el.style.left=(WIN.r0.right-nr.width)+'px';
+    if(kr.indexOf('n')>=0) el.style.top=(WIN.r0.bottom-nr.height)+'px';
+    return;
+  }
   if(WIN.mode==='move'){
     if(Math.hypot(e.clientX-WIN.x,e.clientY-WIN.y)>4) WIN.moved=true;
     const r=el.getBoundingClientRect();
@@ -9910,6 +10127,7 @@ function winBind(el){
   el._winBound=true;
   el.addEventListener('pointerdown',e=>winDown(e,el));
   el.addEventListener('pointermove',winMove);
+  el.addEventListener('pointerleave',()=>{ if(el.style) el.style.cursor=''; });
   el.addEventListener('pointerup',winUp);
   el.addEventListener('pointercancel',winUp);
 }
@@ -13710,20 +13928,48 @@ if(typeof document!=='undefined'&&document.fonts&&document.fonts.ready&&document
    instancuotais tinkleliais ir neturi atskirų objektų. Galima tik pridėti savo
    ir juos trinti. */
 const EDIT_DATA=[];          // v202: čia įrašomas išsaugotas sąrašas
-const EDIT={on:false,sel:null,model:null,kat:null,objs:[]};
+/* v250: kat = RODYMO grupė (augalai/gyvunai/daiktai/apranga),
+   tipas = STATYMO tipas (daiktai/augalai/turtai/saltiniai/monstrai). */
+const EDIT={on:false,sel:null,model:null,tipas:null,kat:null,objs:[]};
 const GAMTOS_VARDAI=/fern|grass|clover|mushroom|bush|rock|pebble|flower|plant|stone|log|branch/i;
+/* v250: KATEGORIJOS YRA RODYMO GRUPĖS, NE STATYMO TIPAI (vartotojo prašymu:
+   augalai ir medžiai · gyvūnai ir monstrai · daiktai ir akmenys · apranga).
+   Viena grupė maišo kelis tipus — medis yra 'turtai', papartis 'augalai',
+   riedulys 'augalai', bet abu pastarieji rodomi skirtingose grupėse. Todėl
+   tipas nuo šiol gyvena PRIE KIEKVIENO įrašo: {t,v}. Išsaugotuose duomenyse
+   (EDIT_DATA, giriaEdit) t nepasikeitė, tad senas JSON kraunasi kaip anksčiau. */
+const MEDZIU_VARDAI=/^(pine|tree|birch|deadtree|deadbirch)_/i;
+const AKMENU_VARDAI=/rock|pebble|stone/i;
 function editKategorijos(){
-  const k={};
-  if(typeof DAIKTAI!=='undefined'&&Object.keys(DAIKTAI).length){
-    const visi=Object.keys(DAIKTAI).sort();
-    const augalai=visi.filter(v=>GAMTOS_VARDAI.test(v));
-    const daiktai=visi.filter(v=>!GAMTOS_VARDAI.test(v));
-    if(daiktai.length) k.daiktai={v:'Daiktai',s:daiktai};
-    if(augalai.length) k.augalai={v:'Augalai ir akmenys',s:augalai};
+  const k={augalai:{v:'Augalai ir medžiai',s:[]},
+           gyvunai:{v:'Gyvūnai ir monstrai',s:[]},
+           daiktai:{v:'Daiktai ir akmenys',s:[]},
+           apranga:{v:'Apranga',s:[]}};
+  if(typeof DAIKTAI!=='undefined') for(const v of Object.keys(DAIKTAI).sort()){
+    const t=GAMTOS_VARDAI.test(v)?'augalai':'daiktai';   // dydis ir statymas — kaip iki v250
+    ((t==='daiktai'||AKMENU_VARDAI.test(v))?k.daiktai:k.augalai).s.push({t,v});
   }
-  if(typeof TURTAS!=='undefined'&&Object.keys(TURTAS).length) k.turtai={v:'Medžiai ir žvėrys',s:Object.keys(TURTAS).sort()};
-  k.saltiniai={v:'Šaltiniai',s:NODE_KINDS.map(x=>x.key)};
+  if(typeof TURTAS!=='undefined') for(const v of Object.keys(TURTAS).sort()){
+    const gr=(typeof FAUNA_DEF!=='undefined'&&FAUNA_DEF.some(d=>d.m===v))?k.gyvunai
+            :(MEDZIU_VARDAI.test(v)?k.augalai:k.daiktai);
+    gr.s.push({t:'turtai',v});
+  }
+  /* v250: monstrai. Vartotojas: „gyvūnai tam ir įdėti, kad būtų lygiai taip
+     pat skerdžiami kaip ir kipšai ar slogučiai" — tad ir vieni, ir kiti
+     statomi kaip TIKRI priešai, vienoje grupėje. */
+  if(typeof MOBS!=='undefined') for(const m of MOBS) k.gyvunai.s.push({t:'monstrai',v:m.key});
+  for(const n of NODE_KINDS) k.daiktai.s.push({t:'saltiniai',v:n.key});
+  /* Apranga tuščia SĄMONINGAI: sarvai/ aplanke modelių dar nėra, o žaidimo
+     šarvai yra tik krepšio piktogramos. Vartotojas pasirinko palikti vietą. */
   return k;
+}
+/* langelio užrašas: monstrai paveiksliuko neturi (jų modelis kraunasi tik
+   prie gyvo priešo), tad rodom vardą vartotojo kalba */
+function editVardas(t,v){
+  if(t==='monstrai'&&typeof MOBS!=='undefined'){
+    const m=MOBS.find(x=>x.key===v); if(m) return Lx(m.name);
+  }
+  return v;
 }
 /* ============ REDAKTORIAUS NUMATYTAS DYDIS (v212) ============
    Vartotojas: „kai kurie daiktai yra ryskiai per dideli". Taip ir buvo:
@@ -13735,6 +13981,7 @@ function editKategorijos(){
    Dabar kiekvienai rūšiai imamas TAS PATS dydis, kokį naudoja pats žaidimas. */
 function editNumatytas(tipas,vardas){
   if(tipas==='saltiniai') return 1;               // dydį duoda kindGeoMat (texS)
+  if(tipas==='monstrai') return 1;                // dydį duoda paties priešo def.scale
   if(tipas==='turtai'){
     if(FAUNA_DEF.some(d=>d.m===vardas)) return 1; // dydį duoda pati rūšis (d.s)
     return .8;                                    // kaip dressForest (t.sc*0.8)
@@ -13789,6 +14036,20 @@ function editPastatyti(tipas,vardas,x,z,rot,s){
         m.castShadow=true; m.receiveShadow=true; obj.add(m); }
       if(md.mastelis) obj.userData.medK=md.mastelis;
     }else{ obj=new THREE.Mesh(TURTAS[vardas],TURTAS_MAT); obj.castShadow=true; }
+  }else if(tipas==='monstrai'){
+    /* v250: monstras statomas kaip TIKRAS priešas (spawnEnemy), lygiai kaip
+       nuo v212 žvėris statomas kaip gyvas žvėris. Redaktoriui lieka nematomas
+       gaudytuvas, kuris jį seka — kitaip nubėgusio nebūtų kaip pažymėti. */
+    const def=(typeof MOBS!=='undefined')&&MOBS.find(mm=>mm.key===vardas);
+    if(!def||typeof spawnEnemy!=='function') return null;
+    const en=spawnEnemy(def,x,z);
+    if(!en) return null;
+    const au=1.75*(def.scale||1);
+    const gaud=new THREE.Mesh(GEO.box(au*.8,au,au*.8),
+      new THREE.MeshBasicMaterial({visible:false}));
+    gaud.position.set(x,y+au*.5,z); scene.add(gaud);
+    const ir={t:tipas,v:vardas,x,z,rot:rot||0,s:s||1,obj:gaud,en};
+    EDIT.objs.push(ir); return ir;
   }else if(tipas==='saltiniai'){
     const k=NODE_KINDS.find(kk=>kk.key===vardas); if(!k) return null;
     /* v212: tas pats vaizdas kaip sėtų šaltinių — riedulio modelis su uolos
@@ -13825,12 +14086,23 @@ function editIstrinti(ir){
     ir.fv.dead=true;
     if(ir.fv.e){ ir.fv.e.dead=true; if(ir.fv.e.tag) ir.fv.e.tag.hide(); }
   }
+  if(ir.en){                       // v250: tas pats gyvam monstrui
+    ir.en.dead=true;
+    if(ir.en.obj) ir.en.obj.visible=false;
+    if(ir.en.tag) ir.en.tag.hide();
+  }
   if(ir.nd){ const i=nodes.indexOf(ir.nd); if(i>=0) nodes.splice(i,1); if(ir.nd.tag) ir.nd.tag.hide(); }
   const i=EDIT.objs.indexOf(ir); if(i>=0) EDIT.objs.splice(i,1);
   if(EDIT.sel===ir) EDIT.sel=null;
   editSaugoti(true);
 }
 function editAtnaujintiObj(ir){
+  if(ir.en){                       // v250: monstrą perkeliam, o ne jo gaudytuvą
+    ir.en.pos.set(ir.x,heightAt(ir.x,ir.z),ir.z);
+    ir.en.wx=ir.x; ir.en.wz=ir.z;
+    if(ir.en.home&&ir.en.home.set) ir.en.home.set(ir.x,ir.z);
+    editSaugoti(true); return;
+  }
   if(ir.fv){                       // v212: žvėrį perkeliam, o ne jo gaudytuvą
     ir.fv.x=ir.fv.tx=ir.x; ir.fv.z=ir.fv.tz=ir.z;
     if(ir.fv.e){ ir.fv.e.pos.set(ir.x,heightAt(ir.x,ir.z),ir.z);
@@ -13847,6 +14119,15 @@ function editAtnaujintiObj(ir){
    nebūtų galima nei pažymėti, nei ištrinti (jis nubėga). */
 function editSekti(){
   for(const o of EDIT.objs){
+    if(o.en&&o.obj){               // v250: gaudytuvas seka monstrą
+      o.obj.visible=!o.en.dead;
+      if(!o.en.dead){
+        const ah=(o.obj.geometry&&o.obj.geometry.parameters)?o.obj.geometry.parameters.height:1.75;
+        o.obj.position.set(o.en.pos.x,heightAt(o.en.pos.x,o.en.pos.z)+ah*.5,o.en.pos.z);
+        o.obj.rotation.y=o.en.yaw||0;
+      }
+      continue;
+    }
     if(!o.fv||!o.obj) continue;
     o.obj.visible=!o.fv.dead;
     if(o.fv.dead) continue;
@@ -13994,14 +14275,20 @@ function editRodyti(){
   h+='<div class="ekat">';
   for(const k in kat) h+='<button class="tbtn ekt'+(k===EDIT.kat?' on':'')+'" data-k="'+k+'">'+kat[k].v+'</button>';
   h+='</div><div class="elist">';
-  for(const v of (kat[EDIT.kat]?kat[EDIT.kat].s:[])){
-    const ik=editIkona(EDIT.kat,v), rk='E'+EDIT.kat+'|'+v;
-    POPUP_HTML[rk]='<b style="color:#ffc861">'+v+'</b><br>'+
+  for(const it of (kat[EDIT.kat]?kat[EDIT.kat].s:[])){
+    const ik=editIkona(it.t,it.v), rk='E'+it.t+'|'+it.v, vrd=editVardas(it.t,it.v);
+    POPUP_HTML[rk]='<b style="color:#ffc861">'+vrd+'</b><br>'+
       '<span style="font-size:10.5px">'+kat[EDIT.kat].v+'</span>';
-    h+='<button class="tbtn emd'+(EDIT.model===v?' on':'')+'" data-v="'+v+'" data-p="'+rk+
-       '" title="'+v+'">'+
-       (ik?'<img src="'+ik+'" alt="'+v+'">':'<span class="etxt">'+v+'</span>')+'</button>';
+    /* v251: JOKIO title. Vartotojas: „užvedus ant objekto redakcijoje išlenda
+       daikto pavadinimas žaidime ir dar kartą kaip web popupas" — vardą rodo
+       showAttrPopup (žaidimo burbulas), o title yra naršyklės antras toks pat.
+       alt lieka: jis matomas TIK jei paveiksliukas neužsikrautų. */
+    h+='<button class="tbtn emd'+((EDIT.model===it.v&&EDIT.tipas===it.t)?' on':'')+
+       '" data-v="'+it.v+'" data-t="'+it.t+'" data-p="'+rk+'">'+
+       (ik?'<img src="'+ik+'" alt="'+vrd+'">':'<span class="etxt">'+vrd+'</span>')+'</button>';
   }
+  if(!(kat[EDIT.kat]&&kat[EDIT.kat].s.length))
+    h+='<div class="zgrp" style="grid-column:1/-1;opacity:.6">Tuščia — modelių dar nėra</div>';
   h+='</div>';
   h+='<div class="ehint">Pasirink modelį ir spaudyk žemę — kiekvienas paspaudimas '+
      'pastato dar vieną. Norėdamas perkelti, pasukti, padidinti ar ištrinti — '+
@@ -14010,7 +14297,16 @@ function editRodyti(){
   h+='<button class="tbtn" id="eSave">💾 Išsaugoti</button>';
   h+='<div class="ehint">Nukopijuok šitą eilutę ir atsiųsk — ji įrašoma į žaidimą:</div>';
   h+='<textarea id="editJson" readonly></textarea>';
+  /* v250: išsaugom slinkimą — perjungus kategoriją sąrašas naujas, tad tada
+     viršus teisingas, o piešiant TĄ PAČIĄ kategoriją slinkimas privalo likti
+     (v212 pamoka; vartotojas pranešė antrą kartą). */
+  const senL=b.querySelector('.elist'), senS=senL?senL.scrollTop:0;
+  const pan=document.getElementById('pEdit'), panS=pan?pan.scrollTop:0;
+  const taPati=(editRodyti._kat===EDIT.kat); editRodyti._kat=EDIT.kat;
   b.innerHTML=h;
+  const naujL=b.querySelector('.elist');
+  if(naujL&&senS&&taPati) naujL.scrollTop=senS;
+  if(pan&&panS) pan.scrollTop=panS;
   b.querySelectorAll('.ekt').forEach(el=>el.onclick=()=>{ EDIT.kat=el.dataset.k; editRodyti(); });
   /* v208: bindPopups čia netinka — jis pats pasiima onclick, o paspaudimas
      PRIVALO parinkti modelį (v205: veiksmas kartojamas dešimtis kartų).
@@ -14023,11 +14319,12 @@ function editRodyti(){
       el.onmouseleave=()=>{ try{ hideAttrPopupSoon(); }catch(x){} };
     }
     el.onclick=e=>{
-      EDIT.model=el.dataset.v; EDIT.sel=null;    // v205: naujas modelis — nieko nebepažymėta
+      EDIT.model=el.dataset.v; EDIT.tipas=el.dataset.t; EDIT.sel=null;  // v205: naujas modelis — nieko nebepažymėta
       /* v212: NEPERPIEŠIAM viso katalogo — innerHTML nusviesdavo sąrašą į
          patį viršų, ir po kiekvieno pasirinkimo tekdavo slinkti atgal
          (vartotojo prašymas). Pakanka perjungti „on" klasę. */
-      b.querySelectorAll('.emd').forEach(x=>x.classList.toggle('on',x.dataset.v===EDIT.model));
+      b.querySelectorAll('.emd').forEach(x=>x.classList.toggle('on',
+        x.dataset.v===EDIT.model&&x.dataset.t===EDIT.tipas));
       rodyk(e,isTouch);
     };
   });
@@ -14064,8 +14361,9 @@ function editClick(){
     return true;
   }
   if(!EDIT.model){ log('Pirma pasirink modelį kataloge (🧱).','lg-s'); return true; }
-  const ir=editPastatyti(EDIT.kat,EDIT.model,p.x,p.z,Math.random()*TAU,
-                         editNumatytas(EDIT.kat,EDIT.model));
+  const tp=EDIT.tipas||EDIT.kat;          // v250: statymo tipas, ne rodymo grupė
+  const ir=editPastatyti(tp,EDIT.model,p.x,p.z,Math.random()*TAU,
+                         editNumatytas(tp,EDIT.model));
   /* v205: pastatytas daiktas NEBEPAŽYMIMAS. Anksčiau jis likdavo pažymėtas,
      tad kitas paspaudimas ant žemės jį PERKELDAVO, o ne dėdavo naują — kiekvieną
      daiktą reikėdavo atskirai „patvirtinti". Dabar: pasirenki modelį kataloge
@@ -14088,6 +14386,19 @@ function teksIkona(k){
   const t=ZTEKS.find(x=>x.k===k);
   return t?zemTeksMaza(t):'';
 }
+/* v250: kiekvienas langelis turi NUMERĮ. Vartotojas: „kai kurios niekaip
+   nesirodo" — be numerio apie jas nėra kaip pasakyti, o vardai („Žemė 1",
+   „Rudas žvyras") langelyje nesimato. Numeris yra vieta ZTEKS sąraše, tad
+   nesikeičia perjungiant paviršių ar kalbą. */
+function teksNr(k){ const i=ZTEKS.findIndex(x=>x.k===k); return i<0?0:i+1; }
+/* paviršiaus eilutės vidus — atskirai, nes po tekstūros pasirinkimo
+   perpiešiama TIK ji viena (kitaip nušoktų sąrašo slinkimas) */
+function teksZpvHtml(p){
+  const k=ZT.pav[p.k], ik=teksIkona(k), nr=k?teksNr(k):0;
+  const sp=ZT.tint[p.k]?'<b class="zpvnr" style="color:'+ZT.tint[p.k]+'">■</b>':'';
+  return (ik?'<img src="'+ik+'" alt="">':'<span class="znieko">—</span>')+
+         '<span>'+Lx(p.n)+(nr?' <b class="zpvnr">#'+nr+'</b>':'')+' '+sp+'</span>';
+}
 function teksRodyti(){
   const b=document.getElementById('teksBody'); if(!b) return;
   const kats=[['zeme',T('ztKatZeme')],['pozemis',T('ztKatPozemis')]];
@@ -14099,15 +14410,14 @@ function teksRodyti(){
   for(const kv of kats)
     h+='<button class="tbtn ztk'+(kv[0]===TEKS.kat?' on':'')+'" data-k="'+kv[0]+'">'+kv[1]+'</button>';
   h+='</div><div class="zpav">';
-  for(const p of sar){
-    const ik=teksIkona(ZT.pav[p.k]);
+  for(const p of sar)
     h+='<button class="tbtn zpv'+(p.k===TEKS.pav?' on':'')+'" data-p="'+p.k+'">'+
-       (ik?'<img src="'+ik+'" alt="">':'<span class="znieko">—</span>')+
-       '<span>'+Lx(p.n)+'</span></button>';
-  }
+       teksZpvHtml(p)+'</button>';
   h+='</div><div class="elist">';
-  h+='<button class="tbtn ztx'+(ZT.pav[TEKS.pav]?'':' on')+'" data-v="" title="'+T('ztNieko')+
-     '"><span class="znieko">—</span></button>';
+  /* v251: vardas — žaidimo burbule (POPUP_HTML), ne naršyklės title */
+  POPUP_HTML['ZT|']='<b style="color:#ffc861">'+T('ztNieko')+'</b>';
+  h+='<button class="tbtn ztx'+(ZT.pav[TEKS.pav]?'':' on')+'" data-v="" data-p="ZT|"'+
+     '><span class="znieko">—</span></button>';
   /* v249: langeliai sudėti pagal aplanką, su antraštėle — kitaip marmuras ir
      audeklas atsidurtų vienoje krūvoje su žemės paviršiais ir neaišku, kas iš
      kur. Antraštė užima visą sąrašo plotį (CSS .zgrp). */
@@ -14115,48 +14425,133 @@ function teksRodyti(){
     const sav=ZTEKS.filter(t=>(t.d||'zeme')===gr.d);
     if(!sav.length) continue;
     h+='<div class="zgrp">'+Lx(gr.n)+'</div>';
-    for(const t of sav)
+    for(const t of sav){
+      const nr=teksNr(t.k), rk='ZT|'+t.k;
+      POPUP_HTML[rk]='<b style="color:#ffc861">#'+nr+' '+Lx(t.n)+'</b><br>'+
+        '<span style="font-size:10.5px">'+Lx(ZDIR.find(g=>g.d===(t.d||'zeme')).n)+'</span>';
       h+='<button class="tbtn ztx'+(ZT.pav[TEKS.pav]===t.k?' on':'')+'" data-v="'+t.k+
-         '" title="'+Lx(t.n)+'"><img src="'+zemTeksMaza(t)+'" alt="'+Lx(t.n)+'"></button>';
+         '" data-p="'+rk+'"><img src="'+zemTeksMaza(t)+'" alt="'+Lx(t.n)+
+         '"><i class="znum">'+nr+'</i></button>';
+    }
   }
   h+='</div>';
+  /* v251: slankikliai priklauso PASIRINKTAM paviršiui, ne visam pasauliui */
   h+='<div class="zrow"><span>'+T('ztStipr')+'</span><input type="range" id="ztStiprIn" min="0" max="100" value="'+
-     Math.round(ZT.stipr*100)+'"><span id="ztStiprV">'+Math.round(ZT.stipr*100)+'%</span></div>';
+     Math.round(ztStipr(TEKS.pav)*100)+'"><span id="ztStiprV">'+Math.round(ztStipr(TEKS.pav)*100)+'%</span></div>';
   h+='<div class="zrow"><span>'+T('ztDydis')+'</span><input type="range" id="ztDydisIn" min="40" max="250" value="'+
-     Math.round(ZT.dydis*100)+'"><span id="ztDydisV">'+ZT.dydis.toFixed(2)+'×</span></div>';
+     Math.round(ztDydis(TEKS.pav)*100)+'"><span id="ztDydisV">'+ztDydis(TEKS.pav).toFixed(2)+'×</span></div>';
   h+='<div class="zrow"><button class="tbtn" id="ztJung" style="width:auto;height:26px;padding:0 10px;font-size:11px">'+
      T(ZT.on?'ztOn':'ztOff')+'</button><button class="tbtn" id="ztDef" style="width:auto;height:26px;padding:0 10px;font-size:11px">'+
      T('ztReset')+'</button></div>';
   h+='<div class="ehint">'+T('ztHint')+'</div>';
   h+='<button class="tbtn" id="ztSave">'+T('ztSave')+'</button>';
   h+='<div class="ehint">'+T('ztSaveHint')+'</div><textarea id="teksJson" readonly></textarea>';
+  /* v250: innerHTML numeta slinkimą į patį viršų — vartotojas: „pasirinkus
+     objektą, neturi langas scrollintis į viršų". Ta pati v212 pamoka, tik
+     čia tekstūrų lange. Grąžinam ir langelių sąrašo, ir viso lango slinkimą. */
+  const senL=b.querySelector('.elist'), senS=senL?senL.scrollTop:0;
+  const pan=document.getElementById('pTeks'), panS=pan?pan.scrollTop:0;
   b.innerHTML=h;
+  const naujL=b.querySelector('.elist');
+  if(naujL&&senS) naujL.scrollTop=senS;
+  if(pan&&panS) pan.scrollTop=panS;
   b.querySelectorAll('.ztk').forEach(el=>el.onclick=()=>{ TEKS.kat=el.dataset.k; teksRodyti(); });
   b.querySelectorAll('.zpv').forEach(el=>el.onclick=()=>{ TEKS.pav=el.dataset.p; teksRodyti(); });
   b.querySelectorAll('.ztx').forEach(el=>el.onclick=()=>{
     ZT.pav[TEKS.pav]=el.dataset.v||null;
-    zemTeksTaikyk(); zemTeksSaugoti(true); teksRodyti();
+    /* v250: perjungiam TIK klases ir tą vieną paviršiaus eilutę — teksRodyti()
+       čia numestų slinkimą į viršų po kiekvieno paspaudimo. */
+    const dab=ZT.pav[TEKS.pav]||'';
+    b.querySelectorAll('.ztx').forEach(x=>x.classList.toggle('on',(x.dataset.v||'')===dab));
+    const pp=ZPAV.find(p=>p.k===TEKS.pav);
+    if(pp) b.querySelectorAll('.zpv').forEach(x=>{ if(x.dataset.p===pp.k) x.innerHTML=teksZpvHtml(pp); });
+    zemTeksTaikyk(); zemTeksSaugoti(true);
+  });
+  /* v251: vardas ir numeris — žaidimo burbule, kaip katalogo modeliams.
+     Paspaudus telefone burbulas prisegamas (v195), pele — rodomas užvedus. */
+  b.querySelectorAll('.ztx').forEach(el=>{
+    const rk=el.dataset.p; if(!rk) return;
+    const rodyk=(e,pr)=>{ try{ showAttrPopup(rk,e,!!pr); }catch(x){} };
+    if(!isTouch){
+      el.onmouseenter=e=>rodyk(e,false);
+      el.onmouseleave=()=>{ try{ hideAttrPopupSoon(); }catch(x){} };
+    }
+    const sen=el.onclick;
+    el.onclick=e=>{ if(sen) sen(e); rodyk(e,isTouch); };
   });
   /* v248: slankikliai keičia TIK vienformes, tad lango neperpiešiam — kitaip
      innerHTML nutrauktų patį vilkimą (v212 pamoka apie katalogo slinkimą). */
   const st=document.getElementById('ztStiprIn');
-  if(st) st.oninput=()=>{ ZT.stipr=Math.max(0,Math.min(1,st.value/100));
-    const v=document.getElementById('ztStiprV'); if(v) v.textContent=Math.round(ZT.stipr*100)+'%';
+  if(st) st.oninput=()=>{ ZT.stipr[TEKS.pav]=Math.max(0,Math.min(1,st.value/100));
+    const v=document.getElementById('ztStiprV'); if(v) v.textContent=Math.round(ztStipr(TEKS.pav)*100)+'%';
     zemTeksStiprumas(); zemTeksSaugoti(true); };
   const dy=document.getElementById('ztDydisIn');
-  if(dy) dy.oninput=()=>{ ZT.dydis=Math.max(.4,Math.min(2.5,dy.value/100));
-    const v=document.getElementById('ztDydisV'); if(v) v.textContent=ZT.dydis.toFixed(2)+'×';
+  if(dy) dy.oninput=()=>{ ZT.dydis[TEKS.pav]=Math.max(.4,Math.min(2.5,dy.value/100));
+    const v=document.getElementById('ztDydisV'); if(v) v.textContent=ztDydis(TEKS.pav).toFixed(2)+'×';
     zemTeksMastelis(); zemTeksSaugoti(true); };
   const jg=document.getElementById('ztJung');
   if(jg) jg.onclick=()=>{ ZT.on=!ZT.on; zemTeksTaikyk(); zemTeksSaugoti(true); teksRodyti(); };
   const df=document.getElementById('ztDef');
-  if(df) df.onclick=()=>{ zemTeksNumatyti(); ZT.on=true; ZT.stipr=.85; ZT.dydis=1;
+  if(df) df.onclick=()=>{ zemTeksNumatyti(); ZT.on=true;
     zemTeksTaikyk(); zemTeksSaugoti(true); teksRodyti(); };
   const ob=document.getElementById('ztPerObj');
   if(ob) ob.onclick=()=>{ if(!EDIT.on) editRezimas(true); togglePanel('pEdit',null); editRodyti(); };
   const sv=document.getElementById('ztSave');
   if(sv) sv.onclick=()=>zemTeksSaugoti(false);
+  teksPaleteJungiklis();
   zemTeksSaugoti(true);
+}
+/* ===================== ATSPALVIO PALETĖ (v250) =====================
+   Vartotojas: „kodėl visos tekstūros turi žalią toną?" — todėl, kad nuo v248
+   tekstūra tik prideda GRŪDĄ, o spalvą duoda biomo viršūnių spalva (o giria
+   yra žalia). Paletė leidžia tą toną pakeisti kiekvienam paviršiui atskirai.
+   Langas neuždengia nieko: paletė įsiterpia TARP antraštės ir turinio. */
+const ZPALETE=['#8f9a63','#6f8a55','#a8ae7c','#5d6b48','#9a8a5f','#8a7150','#6f5a3f',
+               '#b0a184','#c9bda0','#8d8d8d','#6f7378','#a8674a','#7a4534','#cfc7b4'];
+function teksPaleteRodyti(){
+  const el=document.getElementById('teksPal'); if(!el) return;
+  const p=ZPAV.find(x=>x.k===TEKS.pav), dab=ZT.tint[TEKS.pav]||'';
+  let h='<b>'+T('ztAtsp')+': '+(p?Lx(p.n):'')+'</b><div class="pgrid">';
+  for(const c of ZPALETE)
+    h+='<button class="zsp'+(dab===c?' on':'')+'" data-c="'+c+'" style="background:'+c+
+       '" title="'+c+'"></button>';
+  h+='</div><div class="prow"><span>'+T('ztAtspSavo')+'</span>'+
+     '<input type="color" id="ztSavo" value="'+(dab||'#8f9a63')+'">'+
+     '<button class="tbtn" id="ztNieko" style="width:auto;height:22px;padding:0 8px;font-size:11px">'+
+     T('ztAtspNieko')+'</button></div>';
+  h+='<div class="prow"><span>'+T('ztAtspStipr')+'</span>'+
+     '<input type="range" id="ztTstipr" min="0" max="100" value="'+Math.round(ZT.tstipr*100)+'">'+
+     '<span id="ztTstiprV">'+Math.round(ZT.tstipr*100)+'%</span></div>';
+  h+='<div class="pmini">'+T('ztAtspHint')+'</div>';
+  el.innerHTML=h;
+  /* perpiesti=false, kai spalva renkama pele iš naršyklės rinkiklio —
+     innerHTML tuo metu uždarytų patį rinkiklį */
+  const uzdek=(c,perpiesti)=>{
+    if(c) ZT.tint[TEKS.pav]=String(c).toLowerCase(); else delete ZT.tint[TEKS.pav];
+    zemTeksAtspalvis(); zemTeksSaugoti(true);
+    const b=document.getElementById('teksBody');
+    if(b&&p) b.querySelectorAll('.zpv').forEach(x=>{ if(x.dataset.p===p.k) x.innerHTML=teksZpvHtml(p); });
+    if(perpiesti!==false) teksPaleteRodyti();
+  };
+  el.querySelectorAll('.zsp').forEach(x=>x.onclick=()=>uzdek(x.dataset.c,true));
+  const sav=document.getElementById('ztSavo');
+  if(sav) sav.oninput=()=>uzdek(sav.value,false);
+  const nk=document.getElementById('ztNieko');
+  if(nk) nk.onclick=()=>uzdek(null,true);
+  const ts=document.getElementById('ztTstipr');
+  if(ts) ts.oninput=()=>{ ZT.tstipr=Math.max(0,Math.min(1,ts.value/100));
+    const v=document.getElementById('ztTstiprV'); if(v) v.textContent=Math.round(ZT.tstipr*100)+'%';
+    zemTeksAtspalvis(); zemTeksSaugoti(true); };
+}
+function teksPaleteJungiklis(){
+  const sp=document.getElementById('teksSpalva'), el=document.getElementById('teksPal');
+  if(!sp||!el) return;
+  sp.onclick=()=>{
+    const on=!el.classList.contains('on');
+    el.classList.toggle('on',on); sp.classList.toggle('on',on);
+    if(on) teksPaleteRodyti(); else el.innerHTML='';
+  };
+  if(el.classList.contains('on')) teksPaleteRodyti();
 }
 document.getElementById('mEdit').onclick=()=>{ toggleToolMenu(false); editRezimas(!EDIT.on); };
 /* v205: katalogas įjungia ir patį redagavimą — atskirai spausti ✎ nebereikia
@@ -14308,8 +14703,10 @@ function mpStart(){
   MP.ch.subscribe((st,err)=>{
     MP.st=st;
     if(st==='SUBSCRIBED'){
+      /* v252: TYLIAI. Pranešimas „girioje matai kitus keliautojus" pasirodydavo
+         vien prisijungus prie kanalo, o ne pamačius ką nors gyvą — tad meluodavo
+         kiekvieną kartą. Kai kas nors tikrai bus, vartotojas jį pamatys. */
       MP.on=true; MP.sendCd=0;
-      log(T('mpOthersVisible'),'lg-a');
     }else{
       MP.on=false;
       log(T('mpStatus')+st+(err&&err.message?' — '+err.message:''),'lg-h');
